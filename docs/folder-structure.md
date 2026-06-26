@@ -1,6 +1,6 @@
-# Struktur Folder & Setup Proyek — POS Apotek (Pilot 1)
+# Folder Structure & Project Setup — Pharmacy POS (Pilot 1)
 
-## 8. Struktur Folder Proyek (Next.js App Router)
+## 8. Project Folder Structure (Next.js App Router)
 
 ```
 pos-apotek/
@@ -8,16 +8,16 @@ pos-apotek/
 │   ├── (auth)/
 │   │   └── login/
 │   │       └── page.tsx
-│   ├── (kasir)/                       # route group, middleware cek role
+│   ├── (kasir)/                       # route group, middleware checks role
 │   │   ├── layout.tsx
 │   │   ├── kasir/
-│   │   │   └── page.tsx               # UI POS utama (scan, cart, checkout)
+│   │   │   └── page.tsx               # main POS UI (scan, cart, checkout)
 │   │   ├── cash-drawer/
 │   │   │   └── page.tsx
 │   │   └── transactions/
-│   │       ├── page.tsx               # riwayat transaksi (read)
-│   │       └── [id]/page.tsx          # detail + cetak ulang struk
-│   ├── (admin)/                       # route group, hanya owner_admin
+│   │       ├── page.tsx               # transaction history (read)
+│   │       └── [id]/page.tsx          # detail + reprint receipt
+│   ├── (admin)/                       # route group, owner_admin only
 │   │   ├── layout.tsx
 │   │   ├── dashboard/page.tsx
 │   │   ├── products/
@@ -60,7 +60,7 @@ pos-apotek/
 │   │   ├── cash-drawer/
 │   │   │   ├── open/route.ts
 │   │   │   ├── current/route.ts
-│   │   │   ├── route.ts               # GET (riwayat, owner_admin)
+│   │   │   ├── route.ts               # GET (history, owner_admin)
 │   │   │   └── [id]/close/route.ts
 │   │   ├── transactions/
 │   │   │   ├── checkout/route.ts
@@ -99,32 +99,32 @@ pos-apotek/
 │   ├── pos/                           # CartItem, BarcodeScanner, UnitSelector, QrisModal, PaymentPanel
 │   ├── products/                      # ProductForm, UnitFieldArray, BatchTable
 │   ├── reports/                       # SalesChart, ProfitLossTable
-│   └── ui/                            # Button, Input, Modal, Table (design system dasar)
+│   └── ui/                            # Button, Input, Modal, Table (base design system)
 ├── lib/
 │   ├── supabase/
-│   │   ├── server.ts                  # createServerClient() -- WAJIB dipanggil per-request, bukan singleton modul (lihat 2.2.2 PRD)
-│   │   ├── admin.ts                   # createAdminClient() service_role, dipanggil per-request juga
-│   │   └── browser.ts                 # createBrowserClient() utk client component
+│   │   ├── server.ts                  # createServerClient() -- must be called per-request, not a module singleton (see PRD 2.2.2)
+│   │   ├── admin.ts                   # createAdminClient() service_role, also called per-request
+│   │   └── browser.ts                 # createBrowserClient() for client components
 │   ├── auth/
 │   │   ├── getSession.ts
-│   │   └── requireRole.ts             # helper guard di API Route: requireRole(req, ['owner_admin'])
+│   │   └── requireRole.ts             # guard helper in API Routes: requireRole(req, ['owner_admin'])
 │   ├── pos/
-│   │   ├── fefo.ts                    # logic alokasi batch FEFO (reusable: checkout, preview stok)
-│   │   ├── pricing.ts                 # hitung subtotal/pajak
-│   │   └── invoiceNumber.ts           # generator INV-YYYYMMDD-XXXX
-│   ├── validation/                    # zod schemas per endpoint (checkoutSchema, productSchema, dst)
+│   │   ├── fefo.ts                    # FEFO batch allocation logic (reusable: checkout, stock preview)
+│   │   ├── pricing.ts                 # subtotal/tax calculation
+│   │   └── invoiceNumber.ts           # INV-YYYYMMDD-XXXX generator
+│   ├── validation/                    # zod schemas per endpoint (checkoutSchema, productSchema, etc.)
 │   └── utils/
 │       ├── date.ts
-│       └── currency.ts                # format Rupiah
+│       └── currency.ts                # Rupiah formatting
 ├── types/
 │   ├── database.types.ts              # generated via `supabase gen types typescript`
-│   └── api.ts                         # tipe request/response per endpoint (selaras Bagian 6)
-├── middleware.ts                      # cek session + role utk route group (admin)/(kasir)
+│   └── api.ts                         # request/response types per endpoint (aligned with Section 6)
+├── middleware.ts                      # session check + role guard for (admin)/(kasir) route groups
 ├── supabase/
 │   ├── migrations/
-│   │   ├── 0001_init.sql              # isi Bagian 3
-│   │   ├── 0002_rls_policies.sql      # isi Bagian 4
-│   │   └── 0003_seed.sql              # data awal: kategori default, app_settings row
+│   │   ├── 0001_init.sql              # Section 3 contents
+│   │   ├── 0002_rls_policies.sql      # Section 4 contents
+│   │   └── 0003_seed.sql              # initial data: default categories, app_settings row
 │   └── config.toml
 ├── public/
 ├── .env.local.example
@@ -138,18 +138,19 @@ pos-apotek/
 ```bash
 # .env.local
 NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=     # dipakai client utk auth & upload langsung ke Storage
-SUPABASE_SERVICE_ROLE_KEY=         # HANYA dipakai di server (API Routes), JANGAN diekspos ke client
+NEXT_PUBLIC_SUPABASE_ANON_KEY=     # used by client for auth & direct Storage uploads
+SUPABASE_SERVICE_ROLE_KEY=         # server only (API Routes) — never expose to the client
 ```
 
-### 8.2 Aturan Krusial Inisialisasi Supabase Client (sesuai catatan PRD 2.2.2 & 8.2)
+### 8.2 Supabase Client Initialization Rules (per PRD 2.2.2 & 8.2)
 
 ```ts
 // lib/supabase/admin.ts
 import { createClient } from "@supabase/supabase-js";
 
-// JANGAN buat instance di top-level module (akan dipakai ulang antar request di Vercel serverless
-// dan berisiko campur data sesi). Selalu panggil function ini DI DALAM setiap handler.
+// Do NOT create an instance at the top-level module scope — it will be reused across
+// requests in Vercel's serverless environment and risks mixing session data between users.
+// Always call this function INSIDE each handler.
 export function createAdminClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -164,11 +165,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireRole } from "@/lib/auth/requireRole";
 
 export async function POST(req: Request) {
-  const session = await requireRole(req, ["owner_admin"]); // 401/403 di dalam helper ini
-  const supabase = createAdminClient(); // <-- dibuat baru, di dalam handler
+  const session = await requireRole(req, ["owner_admin"]); // returns 401/403 inside the helper
+  const supabase = createAdminClient(); // <-- fresh instance, inside the handler
   // ... business logic
 }
 ```
 
 ---
-

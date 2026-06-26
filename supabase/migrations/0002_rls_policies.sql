@@ -1,13 +1,13 @@
 -- Migration: 0002_rls_policies.sql
--- POS Apotek (Pilot 1)
+-- Pharmacy POS (Pilot 1)
 --
--- Pola: seluruh akses database production dilakukan dari Next.js API Routes
--- menggunakan service_role key (otomatis bypass RLS). RLS di sini berfungsi
--- sebagai defense-in-depth untuk MENCEGAH client (browser) mengakses tabel
--- transaksional/operasional secara langsung lewat anon/authenticated key.
+-- Pattern: all production database access is done from Next.js API Routes
+-- using the service_role key (which bypasses RLS automatically). RLS here
+-- acts as defense-in-depth to PREVENT the client (browser) from accessing
+-- transactional/operational tables directly via the anon/authenticated key.
 --
--- TODO: tabel ini sudah dicakup di bawah. Tambahkan tabel baru ke daftar
--- jika ada penambahan skema di migration berikutnya.
+-- TODO: all tables are covered below. Add new tables to this list
+-- if schema is extended in future migrations.
 
 alter table categories enable row level security;
 alter table subcategories enable row level security;
@@ -31,8 +31,8 @@ alter table stock_opname_items enable row level security;
 alter table operational_expenses enable row level security;
 alter table app_settings enable row level security;
 
--- Default: tolak semua akses langsung dari client (anon/authenticated key).
--- service_role (dipakai API Route) otomatis bypass RLS, jadi tidak terdampak policy ini.
+-- Default: deny all direct client access (anon/authenticated key).
+-- service_role (used by API Routes) bypasses RLS automatically and is unaffected by these policies.
 
 create policy "deny_all_client_access" on categories for all to authenticated, anon using (false);
 create policy "deny_all_client_access" on subcategories for all to authenticated, anon using (false);
@@ -56,7 +56,7 @@ create policy "deny_all_client_access" on stock_opname_items for all to authenti
 create policy "deny_all_client_access" on operational_expenses for all to authenticated, anon using (false);
 create policy "deny_all_client_access" on app_settings for all to authenticated, anon using (false);
 
--- Catatan: Supabase Storage bucket (prescriptions, product-images, qris) TIDAK
--- dicakup migration ini. Bucket tersebut menggunakan policy berbasis role dari
--- JWT app_metadata.role karena upload foto dilakukan langsung dari client.
--- Lihat docs/folder-structure.md & docs/api-contract.md § 6.4 untuk detail.
+-- Note: Supabase Storage buckets (prescriptions, product-images, qris) are NOT
+-- covered by this migration. Those buckets use role-based policies derived from
+-- JWT app_metadata.role because prescription photo uploads go directly from the
+-- client. See docs/folder-structure.md & docs/api-contract.md § 6.4 for details.

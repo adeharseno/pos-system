@@ -1,42 +1,42 @@
-# CLAUDE.md — Konteks Proyek POS Apotek (Pilot 1)
+# CLAUDE.md — Pharmacy POS Project Context (Pilot 1)
 
-Ini adalah entry point konteks untuk AI/coding agent yang bekerja di repo ini. Baca file ini dulu sebelum menyentuh kode. Dokumen detail ada di `docs/`, **jangan baca semuanya sekaligus** — rujuk hanya file yang relevan dengan task yang sedang dikerjakan (lihat tabel "Kapan baca file mana" di bawah).
+Entry point for AI/coding agents working in this repo. Read this file first before touching any code. Detailed docs are in `docs/` — **don't read all of them at once**. Only reference the file relevant to the current task (see the "When to read which file" table below).
 
-## Ringkasan Proyek
+## Project Summary
 
-POS (Point of Sale) untuk apotek, Pilot 1. Fokus: kasir, manajemen produk farmasi (multi-unit, multi-batch, FEFO), laporan dasar. Sengaja sederhana & murah — lihat `docs/roadmap.md` bagian "Hal yang Sengaja Tidak Didesain" sebelum menambahkan fitur yang tidak diminta (approval workflow, payment gateway, multi-cabang, RBAC granular, PO/GR, payroll/CRM — semua itu **di luar lingkup**, jangan diimplementasikan kecuali diminta eksplisit).
+A Point of Sale system for a pharmacy, Pilot 1. Focus: cashier, pharmaceutical product management (multi-unit, multi-batch, FEFO), and basic reporting. Intentionally simple and low-cost — read `docs/roadmap.md` section "Intentionally Out of Scope" before adding unrequested features (approval workflows, payment gateway, multi-branch, granular RBAC, PO/GR, payroll/CRM — all **out of scope**, do not implement unless explicitly asked).
 
 ## Tech Stack
 
-- **Next.js (App Router)** — frontend + backend (API Routes) dalam satu codebase
+- **Next.js (App Router)** — frontend + backend (API Routes) in a single codebase
 - **Supabase** — Postgres, Auth, Storage
-- **Vercel** — hosting, serverless function
+- **Vercel** — hosting, serverless functions
 
-## Aturan Krusial (sering dilanggar, jangan dilanggar)
+## Critical Rules (commonly violated — don't break these)
 
-1. **Supabase client harus dibuat di dalam request handler**, bukan di top-level module — lihat `docs/folder-structure.md` § 8.2. Top-level instance akan bocor antar user di serverless Vercel.
-2. **Role disimpan di Supabase Auth `app_metadata.role`** (`owner_admin` | `kasir`), bukan tabel `roles`/`permissions`. Jangan buat tabel RBAC baru.
-3. **Checkout harus pakai `FOR UPDATE` row lock** saat mengambil batch FEFO — lihat `docs/business-logic.md` § 7.1. Tanpa ini bisa oversell saat 2 kasir checkout produk sama bersamaan.
-4. **`transaction_items` = 1 baris per batch sumber**, bukan 1 baris per produk. Jika 1 item checkout butuh ambil dari 2 batch, tulis 2 baris.
-5. **Retur pelanggan selalu balik ke batch ASAL** (dari `transaction_item_id`), tidak membuat batch baru.
-6. **Stok dikurangi saat checkout dibuat**, bukan saat konfirmasi QRIS — supaya stok tidak "terkunci" untuk transaksi QRIS yang batal.
-7. Akses Supabase dari client (browser) di-deny via RLS; semua query produksi lewat `service_role` di API Route. Jangan query Supabase langsung dari client component untuk data transaksional.
+1. **Supabase client must be created inside the request handler**, not at the top-level module — see `docs/folder-structure.md` § 8.2. A top-level instance will leak across users in Vercel's serverless environment.
+2. **Role is stored in Supabase Auth `app_metadata.role`** (`owner_admin` | `kasir`), not in a `roles`/`permissions` table. Do not create new RBAC tables.
+3. **Checkout must use `FOR UPDATE` row locking** when fetching FEFO batches — see `docs/business-logic.md` § 7.1. Without this, two concurrent checkouts of the same product can oversell.
+4. **`transaction_items` = one row per source batch**, not one row per product. If a single checkout item needs to draw from two batches, write two rows.
+5. **Customer returns always go back to the ORIGINAL batch** (via `transaction_item_id`), never creating a new batch.
+6. **Stock is decremented when checkout is created**, not when QRIS payment is confirmed — so stock isn't held hostage to a QRIS transaction that gets abandoned.
+7. Supabase access from the client (browser) is denied via RLS; all production queries go through `service_role` in API Routes. Do not query Supabase directly from client components for transactional data.
 
-## Kapan Baca File Mana
+## When to Read Which File
 
-| Sedang ngerjain... | Baca |
+| Working on... | Read |
 |---|---|
-| Tabel/kolom, relasi, RLS, role model | `docs/database-design.md` |
-| Bikin/ubah endpoint API | `docs/api-contract.md` |
-| Logic checkout, void, retur, opname, laporan | `docs/business-logic.md` |
-| Folder mana taruh file, env vars, init Supabase client | `docs/folder-structure.md` |
-| Requirement asli / kenapa suatu fitur ada-tidak-ada | `docs/prd.md` |
-| Urutan kerja, fitur yang sengaja belum didesain | `docs/roadmap.md` |
+| Tables/columns, relations, RLS, role model | `docs/database-design.md` |
+| Creating/modifying API endpoints | `docs/api-contract.md` |
+| Checkout, void, returns, stock opname, reporting logic | `docs/business-logic.md` |
+| File placement, env vars, Supabase client init | `docs/folder-structure.md` |
+| Original requirements / why a feature exists or doesn't | `docs/prd.md` |
+| Implementation order, intentionally undesigned features | `docs/roadmap.md` |
 
-## Status Implementasi
+## Implementation Status
 
-- Migration SQL sudah ada dan executable: `supabase/migrations/0001_init.sql` (schema) dan `0002_rls_policies.sql` (RLS). Belum dijalankan ke project Supabase manapun.
-- Belum ada kode aplikasi (Next.js project belum di-scaffold). Belum ada `package.json`, `app/`, `lib/`, `types/`.
-- Belum ada seed data (`0003_seed.sql` direncanakan, belum dibuat).
+- SQL migrations are written and ready to run: `supabase/migrations/0001_init.sql` (schema) and `0002_rls_policies.sql` (RLS). Neither has been applied to any Supabase project yet.
+- No application code exists yet (Next.js project not scaffolded). No `package.json`, `app/`, `lib/`, or `types/`.
+- No seed data yet (`0003_seed.sql` is planned, not created).
 
-Urutan pengerjaan ikuti `docs/roadmap.md` (Tahap 1–6). Tahap 1 = jalankan kedua migration ini ke project Supabase baru, lalu scaffold project Next.js sesuai `docs/folder-structure.md`.
+Follow `docs/roadmap.md` (Stages 1–6) for implementation order. Stage 1 = run both migrations against a new Supabase project, then scaffold the Next.js project per `docs/folder-structure.md`.

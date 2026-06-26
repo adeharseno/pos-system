@@ -1,608 +1,552 @@
-# PRD — Sistem POS Apotek (Pilot 1)
-
-> Sumber: PRD_POS_Apotek_Pilot1.docx (v1.0, 22 Juni 2026). Untuk turunan teknis, lihat file lain di folder `docs/` ini.
-
+# PRD — Pharmacy POS System (Pilot 1)
 
 **PRODUCT REQUIREMENTS DOCUMENT**
 
-**Sistem Point of Sale (POS) untuk Apotek**
+**Point of Sale (POS) System for a Pharmacy**
 
-*Pilot 1 — Versi Sederhana, Biaya Minimal*
+*Pilot 1 — Simple, Low-Cost*
 
-Tech Stack: Next.js  ·  Supabase  ·  Vercel
+Tech Stack: Next.js · Supabase · Vercel
 
-Versi 1.0  |  22 Juni 2026
+Version 1.0 | June 22, 2026
 
-*Status: Draft untuk Review*
+*Status: Draft for Review*
 
-# Daftar Isi
+---
 
 # 1. Executive Summary
 
-## 1.1 Latar Belakang
+## 1.1 Background
 
-Dokumen ini menjabarkan kebutuhan produk untuk Pilot 1 dari sistem Point of Sale (POS) yang dirancang khusus untuk operasional apotek. Pilot 1 difokuskan untuk memvalidasi fondasi inti — kasir, manajemen produk farmasi (multi-unit, multi-batch, FEFO), dan laporan dasar — dengan pendekatan teknis yang sederhana, berbiaya minimal, dan cepat untuk dikembangkan serta diuji di lapangan.
+This document defines the product requirements for Pilot 1 of a Point of Sale system built specifically for pharmacy operations. Pilot 1 focuses on validating the core foundation — cashier, pharmaceutical product management (multi-unit, multi-batch, FEFO), and basic reporting — with a technical approach that is simple, low-cost, and fast to build and test in production.
 
-Dibandingkan rencana awal yang menggunakan backend Golang dan integrasi payment gateway penuh, Pilot 1 mengambil pendekatan yang jauh lebih ringkas: seluruh aplikasi (frontend dan backend) dibangun dalam satu codebase menggunakan Next.js, memanfaatkan Supabase sebagai database, autentikasi, dan penyimpanan file, serta di-hosting di Vercel tanpa biaya bulanan pada skala pilot. Pembayaran QRIS menggunakan gambar QRIS statis yang diunggah oleh pemilik usaha, dikonfirmasi secara manual oleh kasir — bukan melalui integrasi payment gateway otomatis.
+Rather than a separate Golang backend with full payment gateway integration, Pilot 1 takes a leaner approach: the entire application (frontend and backend) lives in a single Next.js codebase, uses Supabase for the database, authentication, and file storage, and is hosted on Vercel with no monthly cost at pilot scale. QRIS payment uses a static QRIS image uploaded by the pharmacy owner, confirmed manually by the cashier — no payment gateway integration.
 
-Pendekatan ini dipilih secara sadar untuk mempercepat validasi konsep dengan biaya dan kompleksitas serendah mungkin. Fitur-fitur yang menambah kompleksitas signifikan namun belum terbukti dibutuhkan pada tahap ini — seperti approval workflow berjenjang, integrasi payment gateway, Purchase Order formal, dan offline mode — disisihkan ke pilot/fase berikutnya, dan strategi migrasinya dibahas pada Bagian 9.
+This approach is a deliberate choice to validate the concept as quickly and cheaply as possible. Features that add significant complexity but haven't been proven necessary at this stage — approval workflows, payment gateway integration, formal Purchase Orders, offline mode — are deferred to a later pilot, with migration considerations noted in Section 9.
 
-## 1.2 Tujuan Pilot 1
+## 1.2 Pilot 1 Goals
 
-- Memvalidasi kelayakan operasional sistem kasir untuk apotek dengan kompleksitas farmasi inti: multi-unit (kotak/strip/tablet), multi-batch dengan FEFO, dan klasifikasi obat berdasarkan kewajiban resep.
+- Validate that the cashier system works for pharmacy operations with the core pharmaceutical complexities: multi-unit (box/strip/tablet), multi-batch with FEFO, and drug classification with prescription requirements.
 
-- Membuktikan bahwa arsitektur berbiaya rendah (Next.js + Supabase + Vercel) cukup untuk operasional kasir harian sebuah apotek skala kecil-menengah.
+- Prove that the low-cost architecture (Next.js + Supabase + Vercel) is sufficient for daily cashier operations at a small-to-medium pharmacy.
 
-- Menyediakan visibilitas dasar atas stok, penjualan, dan keuangan tanpa kerumitan workflow approval atau integrasi pihak ketiga.
+- Provide basic visibility into stock, sales, and finances without the complexity of approval workflows or third-party integrations.
 
-- Mengumpulkan masukan nyata dari penggunaan harian sebelum berinvestasi pada kompleksitas tambahan (payment gateway, multi-cabang, payroll, CRM) di pilot/fase berikutnya.
+- Gather real feedback from daily use before investing in additional complexity (payment gateway, multi-branch, payroll, CRM) in a later phase.
 
-## 1.3 Ruang Lingkup Pilot 1
+## 1.3 Pilot 1 Scope
 
-Pilot 1 mencakup tiga modul fitur:
+Pilot 1 covers three feature modules:
 
-- Kasir (Point of Sale) — multi-unit, validasi resep, FEFO otomatis, pembayaran cash & QRIS statis (konfirmasi manual), cetak struk, dan void transaksi sederhana.
+- **Cashier (Point of Sale)** — multi-unit, prescription validation, automatic FEFO, cash & static QRIS payment (manual confirmation), receipt printing, and simple transaction void.
 
-- Manajemen Produk & Stok — kategori hierarkis, multi-batch tracking, lokasi rak penyimpanan, stock opname sederhana, dan retur per-batch.
+- **Product & Stock Management** — hierarchical categories, multi-batch tracking, shelf storage locations, simple stock opname, and per-batch returns.
 
-- Laporan & Keuangan — laporan penjualan berkala, laba-rugi, dan perhitungan pajak (PPN).
+- **Reporting & Finance** — periodic sales reports, profit & loss, and tax (VAT) calculation.
 
-Ditambah kapabilitas operasional dasar: manajemen karyawan sederhana dan dua peran akses (Owner/Admin dan Kasir).
+Plus basic operational capabilities: simple employee management and two access roles (Owner/Admin and Cashier).
 
-## 1.4 Di Luar Ruang Lingkup Pilot 1
+## 1.4 Out of Scope for Pilot 1
 
-Hal-hal berikut secara sadar tidak disertakan pada Pilot 1, termasuk skema/desainnya — bukan sekadar implementasinya — karena dianggap menambah kompleksitas yang belum terbukti perlu pada tahap validasi awal:
+The following are intentionally excluded from Pilot 1, including their schemas — not just their implementation — because they add complexity that hasn't been proven necessary at this validation stage:
 
-- Integrasi payment gateway (Midtrans atau lainnya) — QRIS pada Pilot 1 berupa gambar statis, konfirmasi pembayaran manual oleh kasir. Lihat Bagian 4.2.5 dan Bagian 9 untuk pertimbangan migrasi ke Pilot 2.
+- **Payment gateway integration** (Midtrans or otherwise) — QRIS in Pilot 1 is a static image, manually confirmed by the cashier. See Section 4.2.5 and Section 9 for Pilot 2 migration considerations.
 
-- Approval workflow berjenjang untuk void transaksi, retur, dan stock opname — pada Pilot 1, aksi-aksi ini cukup dicatat dengan alasan dan pelaku, tanpa mekanisme pengajuan-tinjauan-keputusan formal.
+- **Approval workflows** for void, returns, and stock opname — in Pilot 1, these actions are recorded with a reason and actor, without a formal submit-review-decide mechanism.
 
-- Purchase Order (PO) ke Goods Receipt (GR) — termasuk skema data-nya. Input stok tetap manual sepenuhnya.
+- **Purchase Order to Goods Receipt** — including the schema. Stock input remains entirely manual.
 
-- Strategi dan implementasi offline mode — pada Pilot 1, aplikasi diasumsikan selalu memiliki koneksi internet, konsisten dengan kebutuhan dasar arsitektur serverless yang dipilih.
+- **Offline mode** — the app assumes a constant internet connection, consistent with the serverless architecture.
 
-- Role-Based Access Control granular per-aksi — disederhanakan menjadi dua peran tetap: Owner/Admin dan Kasir.
+- **Granular per-action RBAC** — simplified to two fixed roles: Owner/Admin and Cashier.
 
-- Payroll dan Program Loyalitas (CRM) — modul ini berdiri independen dan tidak memengaruhi validasi fondasi inti pada Pilot 1.
+- **Payroll and Loyalty/CRM** — these modules are independent and don't affect validation of the core foundation.
 
-- Multi-cabang dan kanal penjualan online — termasuk flag available_online/available_offline yang sebelumnya direncanakan; pada Pilot 1 struktur ini tidak disertakan untuk menjaga skema data tetap sederhana.
+- **Multi-branch and online sales channels** — including the `available_online`/`available_offline` flags that were planned previously; excluded to keep the schema simple.
 
-***Catatan: ****Berbeda dengan pendekatan dokumen sebelumnya yang menyiapkan skema data untuk fitur yang ditunda, Pilot 1 secara sengaja TIDAK menyiapkan skema untuk hal-hal di atas. Filosofinya: skema yang disiapkan terlalu awal untuk kebutuhan yang belum pasti bentuknya berisiko salah desain dan perlu diubah lagi nanti. Lebih efisien mendesain skema tersebut saat kebutuhan dan konteksnya sudah jelas di pilot/fase berikutnya.*
+> Schemas for the above are intentionally NOT prepared in Pilot 1. Designing a schema too early for uncertain requirements risks building the wrong structure. It's more efficient to design these when the requirements and context are clear in a later phase.
 
-# 2. Tech Stack & Arsitektur
+---
 
-## 2.1 Komponen Teknologi
+# 2. Tech Stack & Architecture
 
-| **Layer** | **Teknologi** | **Keterangan** |
+## 2.1 Technology Components
+
+| Layer | Technology | Notes |
 | --- | --- | --- |
-| Frontend | Next.js (React) | Antarmuka kasir, dashboard admin, dan laporan |
-| Backend | Next.js API Routes | REST API & business logic, berjalan sebagai serverless function dalam satu codebase dengan frontend |
-| Database | PostgreSQL (Supabase) | Database relasional terkelola, mendukung transaksi ACID untuk stok & keuangan |
-| Autentikasi | Supabase Auth | Login kasir/admin, sesi tahan lama dengan refresh token otomatis |
-| File Storage | Supabase Storage | Penyimpanan foto resep dan gambar produk |
-| Hosting | Vercel | Hosting frontend dan backend dalam satu deployment, tanpa biaya bulanan pada skala pilot |
-| Print Struk | Thermal printer (ESC/POS) via WebUSB/lokal service | Cetak struk dari browser kasir |
-| Barcode Scanner | USB/Bluetooth HID scanner | Terbaca sebagai input keyboard, tidak perlu driver khusus |
+| Frontend | Next.js (React) | Cashier UI, admin dashboard, reports |
+| Backend | Next.js API Routes | REST API & business logic, runs as serverless functions in the same codebase as the frontend |
+| Database | PostgreSQL (Supabase) | Managed relational database, ACID transactions for stock & finance |
+| Auth | Supabase Auth | Cashier/admin login, long-lived sessions with automatic token refresh |
+| File Storage | Supabase Storage | Prescription photos and product images |
+| Hosting | Vercel | Frontend + backend in a single deployment, no monthly cost at pilot scale |
+| Receipt Printing | Thermal printer (ESC/POS) via WebUSB/local service | Print from the cashier's browser |
+| Barcode Scanner | USB/Bluetooth HID scanner | Reads as keyboard input, no special driver needed |
 
-## 2.2 Keputusan Arsitektur Kunci
+## 2.2 Key Architecture Decisions
 
-### 2.2.1 Next.js Full-Stack di Atas Vercel
+### 2.2.1 Next.js Full-Stack on Vercel
 
-Pilot 1 menggunakan Next.js sebagai satu-satunya codebase untuk frontend maupun backend, memanfaatkan API Routes/Route Handlers bawaan Next.js sebagai layer backend. Pendekatan ini dipilih murni untuk efisiensi biaya dan kecepatan pengembangan pada tahap validasi:
+Pilot 1 uses Next.js as the single codebase for both frontend and backend, using Next.js API Routes/Route Handlers as the backend layer. This is chosen purely for cost efficiency and development speed during validation:
 
-- Tidak ada server terpisah yang perlu disewa atau dikelola — frontend dan backend di-deploy sebagai satu aplikasi di Vercel.
+- No separate server to rent or manage — frontend and backend are deployed as a single app on Vercel.
+- Vercel's free tier (Hobby) is sufficient for a single outlet with one or a few cashiers.
+- Each backend endpoint runs as a serverless function — invoked on request, then stops. No persistent process is needed, consistent with the decision to exclude payment gateways and webhooks from Pilot 1.
 
-- Vercel menyediakan tingkatan gratis (Hobby) yang mencukupi untuk kebutuhan satu outlet dengan satu atau beberapa kasir.
+> Serverless functions have an execution time limit (around 10 seconds on Vercel's free tier). For Pilot 1 — cashier transactions, product CRUD, and basic reports — this is more than enough. Revisit if later phases introduce long-running operations (e.g. reports over very large datasets).
 
-- Setiap endpoint backend berjalan sebagai serverless function — dipanggil saat ada request, lalu berhenti. Tidak ada proses yang harus terus hidup, yang konsisten dengan keputusan untuk tidak menyertakan payment gateway maupun webhook pada Pilot 1.
+### 2.2.2 Supabase as Database, Auth, and Storage
 
-***Catatan: ****Konsekuensi teknis: serverless function memiliki batas waktu eksekusi (sekitar 10 detik pada tingkatan gratis Vercel). Untuk kebutuhan Pilot 1 — transaksi kasir, CRUD produk, dan laporan dasar — ini lebih dari cukup. Hal ini perlu ditinjau ulang jika di pilot berikutnya terdapat proses yang berjalan lama (misalnya laporan dengan kalkulasi sangat besar).*
+- **Database**: managed PostgreSQL, accessed directly from Next.js API Routes.
+- **Auth**: Supabase Auth handles login for Owner/Admin and Cashier. Sessions are effectively indefinite — the access token is refreshed automatically by the Supabase client roughly every hour, so cashiers don't need to re-login during a work day as long as the app stays open.
+- **Storage**: used for prescription photos (when a transaction requires prescription validation) and product images.
 
-### 2.2.2 Supabase sebagai Database, Auth, dan Storage Terpadu
+> Implementation notes: (1) mount an auth state change listener at the application root so token refresh works consistently across page navigation; (2) always initialize the Supabase client inside the API Route request handler, not at module level, to prevent session data from one user leaking into another in Vercel's serverless environment.
 
-- Database: PostgreSQL terkelola, dapat diakses langsung dari Next.js API Routes.
+### 2.2.3 Static QRIS with Manual Confirmation
 
-- Autentikasi: Supabase Auth digunakan untuk login Owner/Admin dan Kasir. Secara default, sesi berlangsung tanpa batas waktu tertentu — access token diperbarui otomatis di belakang layar oleh client Supabase setiap kurang lebih satu jam, sehingga kasir tidak perlu login ulang sepanjang hari kerja selama aplikasi tetap terbuka.
+Unlike dynamic QRIS via a payment gateway, Pilot 1 uses static QRIS:
 
-- Storage: digunakan untuk menyimpan foto resep (saat transaksi memerlukan validasi resep) dan gambar produk.
+- The pharmacy owner uploads a single static QRIS image (obtained from their merchant QRIS account) via the settings page; it's stored in Supabase Storage.
+- When the cashier selects QRIS as the payment method, the system shows the static QRIS image in a popup/modal for the customer to scan.
+- Since there's no automatic integration with the QRIS provider, the cashier must manually confirm payment (e.g. after seeing a payment notification in the QRIS merchant app) by pressing "Confirm Payment Received" before the transaction is completed.
 
-***Catatan: ****Implementasi perlu memperhatikan: (1) memasang listener perubahan status autentikasi di level aplikasi root agar refresh token berjalan konsisten meski kasir berpindah halaman, dan (2) selalu menginisialisasi client Supabase di dalam request handler API Route — bukan di luar/level modul — untuk mencegah data sesi satu pengguna tercampur dengan pengguna lain akibat sifat serverless function di Vercel yang dapat menggunakan ulang instance proses.*
+> This shifts payment verification responsibility from the system to the cashier manually. Risk: a cashier can complete a transaction before payment is actually received (by mistake or fraud). Mitigation: record confirmation time on every QRIS transaction for audit purposes, and perform periodic reconciliation between QRIS transaction records in the system and actual merchant account transactions. Pilot 2 can replace this with dynamic QRIS via a payment gateway for automatic confirmation — see Section 9.
 
-### 2.2.3 QRIS Statis dengan Konfirmasi Manual
+### 2.2.4 Batch-Based Stock Management and FEFO
 
-Berbeda dari rencana sebelumnya yang menggunakan QRIS dinamis melalui payment gateway, Pilot 1 menggunakan pendekatan QRIS statis:
+Stock is not stored as a single number per product, but as a set of batches (lots) each with their own expiry date. When a sale occurs, the system automatically draws stock from the batch with the nearest expiry date first (FEFO — First Expired First Out), without requiring manual batch selection by the cashier except in special cases. This was retained from the earlier design because it is a core pharmacy requirement that cannot be simplified without undermining the product's core value.
 
-- Pemilik usaha mengunggah satu gambar QRIS statis (didapat dari rekening merchant QRIS miliknya) melalui halaman pengaturan, disimpan di Supabase Storage.
-
-- Saat kasir memilih metode pembayaran QRIS pada transaksi, sistem menampilkan gambar QRIS statis tersebut dalam bentuk popup/modal di layar kasir untuk dipindai pelanggan.
-
-- Karena tidak ada integrasi otomatis dengan penyedia QRIS, kasir harus mengonfirmasi pembayaran secara manual (misalnya setelah melihat notifikasi pembayaran masuk di aplikasi/perangkat penyedia QRIS milik apotek) dengan menekan tombol "Konfirmasi Pembayaran Diterima" sebelum transaksi diselesaikan.
-
-***Catatan: ****Pendekatan ini memindahkan tanggung jawab verifikasi pembayaran dari sistem ke kasir secara manual. Risiko: kasir dapat menyelesaikan transaksi sebelum pembayaran benar-benar diterima (baik karena kelalaian maupun kecurangan). Mitigasi yang disarankan: catat waktu konfirmasi pada setiap transaksi QRIS untuk keperluan audit, dan pertimbangkan rekonsiliasi berkala antara catatan transaksi QRIS di sistem dengan mutasi rekening/aplikasi merchant QRIS yang sebenarnya. Pilot 2 dapat menggantikan mekanisme ini dengan QRIS dinamis melalui payment gateway untuk konfirmasi otomatis — lihat Bagian 9.*
-
-### 2.2.4 Manajemen Stok Berbasis Batch dan FEFO
-
-Stok tidak disimpan sebagai satu angka per produk, melainkan sebagai kumpulan batch (lot) dengan tanggal kedaluwarsa masing-masing. Saat transaksi penjualan terjadi, sistem secara otomatis mengambil stok dari batch dengan tanggal kedaluwarsa paling dekat (FEFO — First Expired First Out), tanpa memerlukan pemilihan manual oleh kasir kecuali pada kasus khusus. Pendekatan ini dipertahankan dari desain sebelumnya karena merupakan kebutuhan inti farmasi yang tidak bisa disederhanakan tanpa mengurangi nilai utama produk.
+---
 
 # 3. Database Schema Overview
 
-Bagian ini menjelaskan entitas-entitas inti dan relasinya secara konseptual untuk Pilot 1. Dibandingkan desain sebelumnya, skema ini disederhanakan secara sengaja — tabel-tabel yang hanya relevan untuk fitur di luar ruang lingkup Pilot 1 (lihat Bagian 1.4) tidak disertakan, agar database tetap ringkas dan mudah dikelola pada tahap validasi awal. Skema detail (tipe data, index, constraint) akan disusun pada tahap technical design terpisah.
+This section describes the core entities and their relationships conceptually for Pilot 1. Compared to the earlier design, the schema is intentionally simplified — tables only relevant to features outside Pilot 1's scope (see Section 1.4) are excluded, keeping the database lean and easy to manage during early validation. Detailed schema (data types, indexes, constraints) is in the separate technical design docs.
 
-## 3.1 Entitas Inti: Produk
+## 3.1 Core Entity: Products
 
-### 3.1.1 Tabel products
+### 3.1.1 products table
 
-Tabel ini menyimpan definisi dasar setiap produk. Detail satuan, harga per satuan, dan stok per-batch disimpan pada tabel terpisah agar satu produk dapat memiliki banyak satuan jual dan banyak batch tanpa duplikasi data.
+Stores the base definition of each product. Unit details, per-unit prices, and per-batch stock are in separate tables so a single product can have many sellable units and many batches without data duplication.
 
-| **Field** | **Tipe** | **Keterangan** |
+| Field | Type | Notes |
 | --- | --- | --- |
 | id | UUID | Primary key |
-| sku | String | Kode produk internal, unik |
-| name | String | Nama produk |
-| generic_name | String | Nama generik obat (misal: "Paracetamol") |
-| description | Text | Deskripsi/keterangan produk (opsional) |
-| manufacturer | String | Produsen/pabrikan (opsional) |
-| image_url | String | URL foto produk di Supabase Storage (opsional) |
-| category_id | UUID (FK) | Relasi ke kategori |
-| subcategory_id | UUID (FK) | Relasi ke subkategori |
-| drug_classification | Enum | otc / otc_limited / prescription_required |
-| requires_prescription | Boolean | Flag turunan dari drug_classification |
-| base_unit | String | Satuan dasar stok, misal "tablet" |
-| cost_price | Decimal | Harga modal per base unit |
-| tax_rate | Decimal | Persentase pajak (PPN) yang berlaku |
-| is_taxable | Boolean | Apakah produk kena pajak |
-| storage_location_id | UUID (FK) | Relasi ke lokasi rak penyimpanan |
-| minimum_stock | Integer | Ambang batas stok minimum untuk alert restock |
-| default_supplier_id | UUID (FK) | Relasi ke supplier utama |
-| is_active | Boolean | Status aktif/discontinued |
+| sku | String | Internal product code, unique |
+| name | String | Product name |
+| generic_name | String | Generic drug name (e.g. "Paracetamol") |
+| description | Text | Product description (optional) |
+| manufacturer | String | Manufacturer (optional) |
+| image_url | String | Product photo URL in Supabase Storage (optional) |
+| category_id | UUID (FK) | Category reference |
+| subcategory_id | UUID (FK) | Subcategory reference |
+| drug_classification | Enum | `otc` / `otc_limited` / `prescription_required` |
+| requires_prescription | Boolean | Derived from drug_classification |
+| base_unit | String | Base stock unit, e.g. "tablet" |
+| cost_price | Decimal | Reference cost price per base unit |
+| tax_rate | Decimal | Applicable tax (VAT) percentage |
+| is_taxable | Boolean | Whether the product is taxable |
+| storage_location_id | UUID (FK) | Shelf location reference |
+| minimum_stock | Integer | Minimum stock threshold for restock alerts |
+| default_supplier_id | UUID (FK) | Primary supplier reference |
+| is_active | Boolean | Active/discontinued status |
 | created_at / updated_at | Timestamp | Audit trail |
 
-***Catatan: ****Dibandingkan desain sebelumnya, field outlet_id, available_online, dan available_offline tidak disertakan pada Pilot 1 karena hanya relevan untuk kebutuhan multi-cabang dan kanal online yang berada di luar ruang lingkup pilot ini (lihat Bagian 1.4).*
+> `outlet_id`, `available_online`, and `available_offline` from the earlier design are excluded — only relevant for multi-branch and online channel features, which are out of scope (Section 1.4).
 
-### 3.1.2 Tabel product_units (multi-unit per produk)
+### 3.1.2 product_units table (multi-unit per product)
 
-Menyimpan seluruh level satuan jual untuk satu produk (contoh: Kotak, Strip, Tablet), masing-masing dengan harga jual dan barcode sendiri.
+Stores all sellable unit levels for a product (e.g. Box, Strip, Tablet), each with its own price and barcode.
 
-| **Field** | **Tipe** | **Keterangan** |
+| Field | Type | Notes |
 | --- | --- | --- |
 | id | UUID | Primary key |
-| product_id | UUID (FK) | Relasi ke produk |
-| unit_name | String | Contoh: "Kotak", "Strip", "Tablet" |
-| conversion_to_base | Integer | Jumlah base unit dalam 1 unit ini (misal 1 kotak = 50 tablet) |
-| selling_price | Decimal | Harga jual khusus untuk unit ini |
-| barcode | String | Barcode khusus unit ini (kotak dan strip umumnya berbeda) |
-| is_base_unit | Boolean | Penanda satuan dasar |
+| product_id | UUID (FK) | Product reference |
+| unit_name | String | e.g. "Box", "Strip", "Tablet" |
+| conversion_to_base | Integer | Number of base units in 1 of this unit (e.g. 1 box = 50 tablets) |
+| selling_price | Decimal | Selling price for this specific unit |
+| barcode | String | Barcode for this unit (box and strip typically differ) |
+| is_base_unit | Boolean | Marks the base unit |
 
-### 3.1.3 Tabel product_batches (multi-batch & kedaluwarsa)
+### 3.1.3 product_batches table (multi-batch & expiry)
 
-Menyimpan setiap batch/lot kedatangan stok beserta tanggal kedaluwarsa dan harga modal masing-masing — menjadi dasar perhitungan FEFO dan stok aktual.
+Stores each incoming stock batch/lot with its expiry date and cost price — the basis for FEFO calculation and actual stock.
 
-| **Field** | **Tipe** | **Keterangan** |
+| Field | Type | Notes |
 | --- | --- | --- |
 | id | UUID | Primary key |
-| product_id | UUID (FK) | Relasi ke produk |
-| batch_number | String | Nomor lot/batch dari supplier |
-| expired_date | Date | Tanggal kedaluwarsa |
-| quantity | Integer | Sisa stok batch ini, dalam base unit |
-| cost_price | Decimal | Harga modal khusus batch ini (dapat berbeda antar pengiriman) |
-| received_date | Date | Tanggal stok masuk |
+| product_id | UUID (FK) | Product reference |
+| batch_number | String | Lot/batch number from supplier |
+| expired_date | Date | Expiry date |
+| quantity | Integer | Remaining stock in this batch, in base units |
+| cost_price | Decimal | Cost price for this batch (can differ per delivery) |
+| received_date | Date | Date stock was received |
 
-## 3.2 Entitas Lokasi Penyimpanan (Storage Location)
+## 3.2 Storage Location Entity
 
-Struktur lokasi rak dibuat hierarkis (Zona → Rak → Level) untuk memudahkan pencarian fisik produk. Setiap produk memiliki satu lokasi utama.
+Shelf locations are hierarchical (Zone → Rack → Level) for easy physical product lookup. Each product has one primary location.
 
-| **Field** | **Tipe** | **Keterangan** |
+| Field | Type | Notes |
 | --- | --- | --- |
 | id | UUID | Primary key |
-| zone_code | String | Contoh: "OTC", "Resep", "Alkes" |
-| rack_code | String | Contoh: "A3" |
-| level_code | String | Contoh: "2" |
-| full_code | String | Gabungan, contoh: "OTC-A3-2" |
+| zone_code | String | e.g. "OTC", "Prescription", "Medical Devices" |
+| rack_code | String | e.g. "A3" |
+| level_code | String | e.g. "2" |
+| full_code | String | Combined, e.g. "OTC-A3-2" |
 
-## 3.3 Entitas Kategori, Subkategori & Supplier
+## 3.3 Categories, Subcategories & Suppliers
 
-### 3.3.1 Tabel categories
+### 3.3.1 categories table
 
-| **Field** | **Tipe** | **Keterangan** |
+| Field | Type | Notes |
 | --- | --- | --- |
 | id | UUID | Primary key |
-| name | String | Nama kategori, misal: "Obat", "Vitamin & Suplemen" |
-| description | Text | Deskripsi kategori (opsional) |
-| display_order | Integer | Urutan tampil di UI |
-| is_active | Boolean | Status aktif |
+| name | String | Category name, e.g. "Medicine", "Vitamins & Supplements" |
+| description | Text | Category description (optional) |
+| display_order | Integer | Display order in UI |
+| is_active | Boolean | Active status |
 
-### 3.3.2 Tabel subcategories
+### 3.3.2 subcategories table
 
-| **Field** | **Tipe** | **Keterangan** |
+| Field | Type | Notes |
 | --- | --- | --- |
 | id | UUID | Primary key |
-| category_id | UUID (FK) | Relasi ke kategori induk |
-| name | String | Nama subkategori, misal: "Analgesik", "Antibiotik" |
-| display_order | Integer | Urutan tampil di UI |
-| is_active | Boolean | Status aktif |
+| category_id | UUID (FK) | Parent category reference |
+| name | String | Subcategory name, e.g. "Analgesics", "Antibiotics" |
+| display_order | Integer | Display order in UI |
+| is_active | Boolean | Active status |
 
-### 3.3.3 Tabel suppliers
+### 3.3.3 suppliers table
 
-| **Field** | **Tipe** | **Keterangan** |
+| Field | Type | Notes |
 | --- | --- | --- |
 | id | UUID | Primary key |
-| name | String | Nama supplier/distributor |
-| contact_person | String | Nama PIC (Person in Charge) |
-| phone | String | Nomor telepon |
-| address | Text | Alamat (opsional) |
-| license_number | String | Nomor izin PBF (Pedagang Besar Farmasi) |
-| is_active | Boolean | Status aktif |
+| name | String | Supplier/distributor name |
+| contact_person | String | Person in charge |
+| phone | String | Phone number |
+| address | Text | Address (optional) |
+| license_number | String | Pharmaceutical distributor license number |
+| is_active | Boolean | Active status |
 
-***Catatan: ****Field npwp dan payment_terms yang sebelumnya direncanakan disederhanakan/dihilangkan pada Pilot 1 karena belum ada kebutuhan PO formal yang memanfaatkannya — dapat ditambahkan kembali saat Purchase Order diimplementasikan pada fase berikutnya.*
+> `npwp` and `payment_terms` fields from the earlier design are dropped — they're only useful for formal PO workflows, which are out of scope. Add them back when Purchase Orders are implemented in a later phase.
 
-## 3.4 Entitas Transaksi
+## 3.4 Transaction Entities
 
-| **Tabel** | **Keterangan** |
+| Table | Notes |
 | --- | --- |
-| transactions | Header transaksi penjualan: nomor invoice, kasir, total, status, metode pembayaran, waktu, waktu konfirmasi pembayaran (untuk QRIS) |
-| transaction_items | Detail item per transaksi: produk, unit terpilih, jumlah, batch sumber (FEFO), subtotal |
-| transaction_prescriptions | Data resep terkait transaksi: nomor resep, nama dokter, nama pasien, foto resep (jika ada item wajib resep) |
-| returns | Retur transaksi: item dikembalikan, batch tujuan pengembalian stok, alasan retur, dicatat oleh |
+| transactions | Sale transaction header: invoice number, cashier, total, status, payment method, timestamps, QRIS payment confirmation time |
+| transaction_items | Line items per transaction: product, selected unit, quantity, source batch (FEFO), subtotal |
+| transaction_prescriptions | Prescription data linked to a transaction: prescription number, doctor name, patient name, prescription photo (if any prescription item) |
+| returns | Transaction returns: items returned, destination batch for stock restoration, reason, processed by |
 
-***Catatan: ****Tabel payments yang sebelumnya berisi referensi transaksi payment gateway disederhanakan: status dan metode pembayaran kini disimpan langsung sebagai kolom pada tabel transactions, karena tidak ada lagi referensi eksternal (gateway) yang perlu disimpan terpisah pada Pilot 1.*
+> The separate `payments` table from the earlier design (which held payment gateway references) is removed — payment status and method are now columns directly on `transactions`, since there are no external gateway references to store in Pilot 1.
 
-## 3.5 Entitas Operasional
+## 3.5 Operational Entities
 
-| **Tabel** | **Keterangan** |
+| Table | Notes |
 | --- | --- |
-| employees | Data karyawan: identitas, jabatan, tanggal bergabung |
-| shifts | Jadwal & catatan shift kerja karyawan |
-| attendances | Absensi: check-in/out, terkait ke shift |
-| cash_drawer_sessions | Sesi buka/tutup kas per shift kasir, termasuk rekonsiliasi selisih |
-| stock_opname_sessions | Sesi stock opname: tanggal, daftar selisih stok fisik vs sistem, dan hasil adjustment |
+| employees | Employee data: identity, position, join date |
+| shifts | Employee shift schedule and records |
+| attendances | Attendance: check-in/out, linked to shifts |
+| cash_drawer_sessions | Cashier shift cash open/close sessions, including variance reconciliation |
+| stock_opname_sessions | Stock opname sessions: date, physical vs system variance list, and applied adjustments |
 
-***Catatan: ****Peran pengguna (Owner/Admin dan Kasir) dikelola melalui Supabase Auth (metadata pengguna), bukan melalui tabel roles **&** permissions terpisah seperti pada desain RBAC granular sebelumnya — sesuai keputusan untuk menyederhanakan menjadi dua peran tetap (lihat Bagian 7.3).*
+> User roles (Owner/Admin and Cashier) are managed through Supabase Auth (user metadata), not a separate `roles`/`permissions` table as in the earlier granular RBAC design — per the decision to simplify to two fixed roles (Section 7.3).
 
-# 4. Fitur 1: Kasir (Point of Sale)
+---
 
-## 4.1 Tujuan
+# 4. Feature 1: Cashier (Point of Sale)
 
-Menyediakan antarmuka kasir yang cepat dan akurat untuk memproses transaksi penjualan, termasuk validasi khusus farmasi (klasifikasi resep, FEFO) dengan mekanisme pembayaran yang sederhana dan tidak bergantung pada integrasi pihak ketiga.
+## 4.1 Goal
 
-## 4.2 Daftar Kebutuhan Fungsional
+Provide a fast and accurate cashier interface for processing sales transactions, including pharmacy-specific validation (prescription classification, FEFO) with simple payment mechanisms that don't depend on third-party integrations.
 
-### 4.2.1 Pemindaian Barcode
+## 4.2 Functional Requirements
 
-- Kasir dapat memindai barcode produk menggunakan scanner USB/Bluetooth (terbaca sebagai input keyboard).
+### 4.2.1 Barcode Scanning
 
-- Sistem mencocokkan barcode terhadap tabel product_units — karena satu produk dapat memiliki barcode berbeda untuk tiap satuan (kotak vs strip).
+- The cashier can scan product barcodes using a USB/Bluetooth scanner (reads as keyboard input).
+- The system matches the barcode against `product_units` — because a single product can have different barcodes for each unit level (box vs strip).
+- If the barcode is not found, the system shows a manual search option by name/SKU.
 
-- Jika barcode tidak ditemukan, sistem menampilkan opsi pencarian manual berdasarkan nama/SKU.
+### 4.2.2 Sell Unit Selection
 
-### 4.2.2 Pemilihan Satuan Jual
+- When a product is added to the cart, the cashier can select the sell unit (Box/Strip/Tablet) if the product has more than one.
+- Price automatically adjusts based on the selected unit, from `product_units` data.
+- The system converts the sold quantity to base units for stock deduction.
 
-- Saat produk ditambahkan ke keranjang, kasir dapat memilih satuan jual (Kotak/Strip/Tablet) jika produk memiliki lebih dari satu satuan.
+### 4.2.3 Prescription Classification Validation
 
-- Harga otomatis menyesuaikan berdasarkan satuan yang dipilih, sesuai data pada product_units.
+- If a cart item has `drug_classification = prescription_required`, the system holds the checkout and shows a required prescription form (prescription number, doctor name, patient name).
+- The form supports optional prescription photo upload (stored in Supabase Storage).
+- Items classified as `otc` or `otc_limited` can be processed without additional friction.
 
-- Sistem mengonversi jumlah yang dijual ke dalam base unit untuk keperluan pengurangan stok.
+### 4.2.4 Automatic Stock Allocation (FEFO)
 
-### 4.2.3 Validasi Klasifikasi Resep
+- At checkout, the system automatically selects the batch with the nearest `expired_date` first (FEFO) to fulfill the sold quantity.
+- If one batch has insufficient stock, the system automatically splits the allocation across multiple batches.
+- The system records the source batch on each `transaction_items` row, for stock card and return purposes.
+- Expired products (`expired_date` has passed) cannot be sold; the system blocks the sale and shows a warning to the cashier.
 
-- Jika item dalam keranjang memiliki drug_classification = prescription_required, sistem akan menahan proses checkout dan menampilkan form data resep wajib (nomor resep, nama dokter, nama pasien).
+### 4.2.5 Payment Methods
 
-- Form mendukung unggah foto resep (disimpan ke Supabase Storage) sebagai lampiran opsional.
-
-- Item dengan klasifikasi otc atau otc_limited dapat langsung diproses tanpa friksi tambahan.
-
-### 4.2.4 Pengambilan Stok Otomatis (FEFO)
-
-- Saat checkout, sistem secara otomatis memilih batch dengan expired_date paling dekat terlebih dahulu (FEFO) untuk memenuhi jumlah yang terjual.
-
-- Jika stok pada satu batch tidak mencukupi, sistem akan memecah pengambilan dari lebih dari satu batch secara otomatis.
-
-- Sistem mencatat batch sumber pada setiap transaction_items, untuk keperluan kartu stok dan retur.
-
-- Produk dengan status kedaluwarsa (expired_date telah lewat) tidak dapat dijual; sistem akan memblokir dan menampilkan peringatan kepada kasir.
-
-### 4.2.5 Metode Pembayaran
-
-| **Metode** | **Mekanisme** |
+| Method | Mechanism |
 | --- | --- |
-| Cash | Input nominal diterima, sistem menghitung kembalian otomatis |
-| QRIS (Statis) | Sistem menampilkan popup berisi gambar QRIS statis yang telah diunggah sebelumnya oleh Owner/Admin. Kasir menunggu pelanggan memindai dan membayar, kemudian menekan tombol "Konfirmasi Pembayaran Diterima" secara manual setelah memverifikasi pembayaran masuk (misalnya melalui notifikasi di aplikasi/perangkat penyedia QRIS milik apotek) |
+| Cash | Cashier enters amount received, system calculates change automatically |
+| QRIS (Static) | System shows a popup with the static QRIS image uploaded by Owner/Admin. Cashier waits for the customer to scan and pay, then manually presses "Confirm Payment Received" after verifying payment arrived (e.g. via notification in the pharmacy's QRIS merchant app) |
 
-- Transfer bank dan e-wallet otomatis tidak disertakan pada Pilot 1 — lihat Bagian 1.4 dan Bagian 9 untuk rencana penambahan metode pembayaran lain pada pilot berikutnya.
+- Bank transfer and automatic e-wallets are not included in Pilot 1 — see Section 1.4 and Section 9 for plans to add more payment methods in a later phase.
+- QRIS transactions record the confirmation time (`payment_confirmed_at`) and the confirming cashier, as a basic audit trail given that confirmation is manual.
 
-- Transaksi QRIS mencatat waktu konfirmasi (payment_confirmed_at) dan kasir yang mengonfirmasi, sebagai jejak audit dasar mengingat konfirmasi dilakukan manual.
+### 4.2.6 Receipt Printing
 
-### 4.2.6 Cetak Struk
+- A receipt is printed automatically via a thermal printer after a successful transaction, showing item details, unit, price, tax, and payment method.
+- Receipt reprint is available from transaction history.
 
-- Struk dicetak otomatis melalui thermal printer setelah transaksi berhasil, mencantumkan rincian item, satuan, harga, pajak, dan metode pembayaran.
+### 4.2.7 Void & Cancel Transaction
 
-- Tersedia opsi cetak ulang struk dari riwayat transaksi.
+- The cashier can void a saved transaction by entering a cancellation reason.
+- Voiding a transaction automatically restores stock to the original source batches.
+- Every void is recorded clearly: who did it, when, and why — but with no approval workflow. Owner/Admin can review the full void history at any time via reports, as a passive post-transaction audit rather than a prerequisite for the void itself.
 
-### 4.2.7 Void & Cancel Transaksi (Sederhana)
+> This simplification fits Pilot 1's scale assumptions: a single outlet with few cashiers, where the Owner/Admin is likely also directly overseeing daily operations. Approval workflows can be reconsidered in a later phase if the business grows (more cashiers, owner not directly supervising day-to-day).
 
-- Kasir dapat membatalkan transaksi yang sudah tersimpan, dengan mengisi alasan pembatalan.
+### 4.2.8 Cash Drawer (Shift Cash Management)
 
-- Pembatalan transaksi otomatis mengembalikan stok ke batch asal.
+- The cashier opens a cash session at the start of a shift by recording the opening balance (physical cash).
+- At the end of the shift, the cashier closes the session by counting physical cash; the system compares it to the expected amount (opening balance + cash sales) and records any variance.
+- Session history can be reviewed by Owner/Admin.
 
-- Setiap aksi void tercatat dengan jelas: kasir yang melakukan, waktu, dan alasan — namun tanpa mekanisme persetujuan berjenjang (approval) seperti pada desain sebelumnya. Owner/Admin dapat meninjau seluruh riwayat void kapan saja melalui laporan, namun tinjauan ini bersifat pengawasan pasca-transaksi, bukan prasyarat sebelum void dapat dilakukan.
+## 4.3 Happy Path Flow
 
-***Catatan: ****Penyederhanaan ini sesuai dengan asumsi skala Pilot 1: satu outlet dengan jumlah kasir terbatas, di mana Owner/Admin kemungkinan adalah pihak yang juga mengawasi operasional harian secara langsung. Mekanisme approval berjenjang dapat dipertimbangkan kembali pada pilot/fase berikutnya jika skala usaha bertambah (lebih banyak kasir, kepemilikan tidak langsung mengawasi harian).*
+1. Cashier logs in via Supabase Auth and opens a cash drawer session at the start of shift.
+2. Cashier scans a product barcode or searches manually.
+3. System shows the product and available units; cashier selects the sell unit.
+4. If the product requires a prescription, the system requests prescription data before the item can be added to the cart.
+5. Cashier repeats steps 2–4 for all items.
+6. Cashier selects payment method (Cash or QRIS).
+7. For QRIS, the system shows the static QRIS popup; cashier presses confirm after verifying payment received.
+8. System deducts stock via FEFO, records the transaction, and prints the receipt.
+9. Cashier closes the cash drawer session at the end of shift with reconciliation.
 
-### 4.2.8 Cash Drawer (Manajemen Kas Shift)
+## 4.4 Core Business Rules
 
-- Kasir membuka sesi kas di awal shift dengan mencatat modal awal (kas fisik).
+- A transaction cannot be completed if any item requires a prescription and no prescription data has been entered.
+- A transaction cannot be completed if available stock (across all active batches) is insufficient for the requested quantity.
+- A QRIS transaction cannot be completed without manual confirmation from the cashier.
+- Products where all batches have expired cannot be sold.
 
-- Di akhir shift, kasir menutup sesi dengan menghitung kas fisik akhir; sistem membandingkan dengan kas yang seharusnya (modal awal + penjualan cash) dan mencatat selisih jika ada.
+---
 
-- Riwayat sesi kas dapat ditinjau oleh Owner/Admin.
+# 5. Feature 2: Product & Stock Management
 
-## 4.3 Alur Utama (Happy Path)
+## 5.1 Goal
 
-- Kasir login menggunakan Supabase Auth dan membuka sesi kas (cash drawer) di awal shift.
+Provide control over product data, categories, suppliers, and stock — including pharmacy-specific complexity like multi-unit, multi-batch, storage locations, and FEFO compliance — with a lean process requiring no approval workflows.
 
-- Kasir memindai barcode produk atau mencari manual.
+## 5.2 Dashboard
 
-- Sistem menampilkan produk dan satuan yang tersedia; kasir memilih satuan jual.
-
-- Jika produk wajib resep, sistem meminta data resep sebelum item dapat ditambahkan ke keranjang.
-
-- Kasir mengulangi langkah 2-4 untuk seluruh item pembelian.
-
-- Kasir memilih metode pembayaran (Cash atau QRIS).
-
-- Untuk QRIS, sistem menampilkan popup gambar QRIS statis; kasir menekan tombol konfirmasi setelah memverifikasi pembayaran diterima.
-
-- Sistem mengurangi stok berdasarkan FEFO, mencatat transaksi, dan mencetak struk.
-
-- Kasir menutup sesi kas di akhir shift dengan rekonsiliasi.
-
-## 4.4 Business Rules Utama
-
-- Transaksi tidak dapat diselesaikan jika ada item wajib resep tanpa data resep terisi.
-
-- Transaksi tidak dapat diselesaikan jika stok yang tersedia (gabungan seluruh batch aktif) tidak mencukupi jumlah yang diminta.
-
-- Transaksi dengan metode QRIS tidak dapat diselesaikan tanpa konfirmasi manual dari kasir.
-
-- Produk dengan seluruh batch berstatus kedaluwarsa otomatis tidak dapat dijual.
-
-# 5. Fitur 2: Manajemen Produk & Stok
-
-## 5.1 Tujuan
-
-Menyediakan kontrol atas data produk, kategori, supplier, dan stok — termasuk kompleksitas khusus farmasi seperti multi-unit, multi-batch, lokasi penyimpanan, dan kepatuhan terhadap praktik FEFO — dengan proses yang ringkas dan tidak memerlukan persetujuan berjenjang.
-
-## 5.2 Dashboard Transaksi
-
-- Menampilkan ringkasan total transaksi dan nilai penjualan dengan filter: Hari Ini, Bulan Ini, Tahun Ini, dan Sepanjang Waktu (all-time).
-
-- Menampilkan indikator stok kritis (produk di bawah minimum_stock) dan produk mendekati kedaluwarsa.
+- Shows a summary of total transactions and sales value with filters: Today, This Month, This Year, and All Time.
+- Shows critical stock indicators (products below `minimum_stock`) and near-expiry products.
 
 ## 5.3 Category Management
 
-- CRUD kategori (tingkat 1) dan subkategori (tingkat 2) — struktur hierarkis dua tingkat.
+- CRUD for categories (level 1) and subcategories (level 2) — two-level hierarchical structure.
+- Every product must be linked to one category and one subcategory.
 
-- Setiap produk wajib terhubung ke satu kategori dan satu subkategori.
+## 5.4 Product CRUD
 
-## 5.4 CRUD Produk
+- Product input/edit form covers all base fields (see Section 3.1.1), including drug classification, base unit, and shelf location.
+- Multi-unit management (`product_units`) is in the same form — admin can add new units with their own price and barcode.
+- Validation: at least one unit must be marked `is_base_unit`.
+- Product search and filter by category, drug classification, stock status, and shelf location.
 
-- Form input/edit produk mencakup seluruh field dasar (lihat Bagian 3.1.1), termasuk klasifikasi obat, satuan dasar, dan lokasi rak.
+## 5.5 Supplier CRUD
 
-- Pengelolaan multi-unit (product_units) dilakukan dalam satu form yang sama — admin dapat menambahkan satuan baru beserta harga dan barcode masing-masing.
+- Supplier input/edit form covers the fields in Section 3.3.3, including the pharmaceutical distributor license number.
 
-- Validasi: setidaknya satu satuan harus ditandai sebagai is_base_unit.
+## 5.6 Storage Locations
 
-- Pencarian dan filter produk berdasarkan kategori, klasifikasi obat, status stok, dan lokasi rak.
+- Manage the Zone → Rack → Level hierarchical structure as its own master data.
+- Each product is linked to one primary storage location, used for quick physical product lookup by staff.
 
-## 5.5 CRUD Supplier
+## 5.7 Stock & Batch Management
 
-- Form input/edit supplier mencakup field pada Bagian 3.3.3, termasuk nomor izin PBF (Pedagang Besar Farmasi).
+### 5.7.1 Manual Stock/Batch Input
 
-## 5.6 Lokasi Penyimpanan (Storage Location)
+- Stock additions are done via manual input: admin/staff enter product, quantity, batch number, expiry date, cost price, and received date.
+- Each manual stock input creates a new `product_batches` entry, unless the batch number and expiry date are identical to an existing entry (in which case the quantity is added to the existing row).
 
-- Pengelolaan struktur hierarkis Zona → Rak → Level sebagai master data tersendiri.
+### 5.7.2 Per-Batch Stock Card
 
-- Setiap produk ditautkan ke satu lokasi penyimpanan utama, digunakan untuk pencarian cepat produk oleh staf.
+- The stock card is derived from transaction history, returns, and opname adjustments linked to each batch.
+- Stock card reports can be viewed per product or per specific batch.
 
-## 5.7 Manajemen Stok & Batch
+### 5.7.3 Expiry Alerts
 
-### 5.7.1 Input Stok & Batch (Manual)
+- The system shows notifications for batches expiring within a configurable time window (e.g. 30/60/90 days ahead).
+- Batches past their expiry date are automatically excluded from the sales process.
 
-- Penambahan stok dilakukan melalui input manual: admin/staf menginput produk, jumlah, nomor batch, tanggal kedaluwarsa, harga modal, dan tanggal terima.
+## 5.8 Stock Opname
 
-- Setiap input stok manual membuat entri baru pada product_batches, kecuali nomor batch dan tanggal kedaluwarsa identik dengan entri sebelumnya.
+- Admin can create a new stock opname session, with products filterable by shelf location.
+- Staff enters the actual physical stock count per product (and per batch where identifiable).
+- The system computes the variance between system stock and physical count; staff/admin can apply the adjustment directly with a note/reason — no additional approval needed.
+- Full history of all opname sessions and adjustments is stored for Owner/Admin review at any time.
 
-### 5.7.2 Kartu Stok per Batch
+## 5.9 Returns
 
-- Kartu stok ditampilkan berdasarkan riwayat transaksi, retur, dan adjustment opname yang terkait dengan masing-masing batch.
+- Returns can be initiated from transaction history (customer returns) or independently (supplier returns for expired/defective products).
+- Customer returns restore stock to the original source batch (recorded in `transaction_items` at checkout), not to a new batch.
+- Every return is recorded with a reason and the person who processed it, and is applied directly to stock — no approval workflow.
+- Supplier returns record a stock deduction from the relevant batch with a reason (expired, damaged, recall) and do not affect sales reports.
 
-- Laporan kartu stok dapat ditampilkan per produk maupun per batch spesifik.
+---
 
-### 5.7.3 Peringatan Kedaluwarsa
+# 6. Feature 3: Reporting & Finance
 
-- Sistem menampilkan notifikasi untuk batch yang akan kedaluwarsa dalam rentang waktu yang dapat dikonfigurasi (misal: 30/60/90 hari ke depan).
+## 6.1 Goal
 
-- Batch yang sudah melewati tanggal kedaluwarsa otomatis disembunyikan dari proses penjualan.
+Give the pharmacy owner/admin basic financial visibility, accounting for the complexity of per-batch cost prices and per-unit selling prices.
 
-## 5.8 Stock Opname (Sederhana)
+## 6.2 Sales Report
 
-- Admin dapat membuat sesi stock opname baru, dengan daftar produk yang dapat difilter berdasarkan lokasi rak.
+- Sales summary with period filters: daily, weekly, monthly, and yearly.
+- Available as a summary (total revenue, transaction count, average transaction value) or itemized per product/category.
+- Additional filters: by cashier and payment method (Cash/QRIS).
 
-- Staf menginput jumlah stok fisik aktual per produk (dan per batch jika dapat diidentifikasi).
+## 6.3 Profit & Loss Report
 
-- Sistem menghitung selisih antara stok sistem dan stok fisik, dan staf/admin dapat langsung menerapkan adjustment tersebut dengan mengisi catatan/alasan — tanpa memerlukan persetujuan tambahan dari pihak lain.
+- Computes net profit with the formula: Total Sales − Cost of Goods Sold (COGS) − Operational Expenses.
+- COGS is based on the `cost_price` of the batch actually sold (from FEFO recording at transaction time), not a moving average.
+- Operational expenses (salary, rent, electricity, etc.) can be entered as manual entries per period by Owner/Admin.
 
-- Riwayat seluruh sesi opname dan adjustment tersimpan untuk ditinjau Owner/Admin kapan saja.
+## 6.4 Tax Calculation (VAT)
 
-## 5.9 Fitur Retur (Sederhana)
+- Each product has its own `is_taxable` flag and `tax_rate`.
+- The system calculates VAT automatically on each transaction, shown separately on the receipt and in reports.
 
-- Retur dapat diajukan dari riwayat transaksi (retur dari pelanggan) atau secara independen (retur ke supplier untuk produk kedaluwarsa/cacat).
+## 6.5 Stock Reports (Finance Support)
 
-- Retur dari pelanggan mengembalikan stok ke batch asal tempat item tersebut awalnya diambil (tercatat pada transaction_items saat checkout), bukan menambahkan ke batch baru.
+- Current stock value report (based on `cost_price` of each batch still in stock).
+- Per-product/batch stock card report as described in Section 5.7.2.
 
-- Setiap retur dicatat dengan alasan dan siapa yang memprosesnya, dan langsung diterapkan ke stok — tanpa mekanisme persetujuan berjenjang.
+---
 
-- Retur ke supplier mencatat pengurangan stok dari batch terkait dengan alasan (kedaluwarsa, rusak, recall) dan tidak memengaruhi laporan penjualan.
+# 7. Operations
 
-# 6. Fitur 3: Laporan & Keuangan
+## 7.1 Goal
 
-## 6.1 Tujuan
+Support basic access management and employee operations for the pharmacy, with a simple role structure appropriate for Pilot 1's scale.
 
-Memberikan visibilitas keuangan dasar kepada pemilik/Owner apotek, dengan memperhitungkan kompleksitas harga modal per-batch dan harga jual per-satuan.
+## 7.2 Employee Management
 
-## 6.2 Laporan Penjualan
+- CRUD for employee data: identity, position, and join date.
+- Attendance recording (check-in/check-out) linked to shift sessions and the cash drawer (Section 4.2.8) for cashiers.
+- Shift scheduling per employee.
 
-- Rekap penjualan dengan filter periode: harian, mingguan, bulanan, dan tahunan.
+## 7.3 Access Roles (Two Roles)
 
-- Dapat ditampilkan dalam bentuk ringkasan (total omset, jumlah transaksi, rata-rata nilai transaksi) maupun rincian per produk/kategori.
+Pilot 1 uses two fixed roles, managed through Supabase Auth, without a granular per-module/per-action permission matrix:
 
-- Filter tambahan: berdasarkan kasir dan metode pembayaran (Cash/QRIS).
-
-## 6.3 Laporan Laba-Rugi
-
-- Menghitung omset bersih dengan formula: Total Penjualan − Harga Pokok Penjualan (HPP) − Biaya Operasional.
-
-- HPP dihitung berdasarkan cost_price dari batch yang benar-benar terjual (sesuai pencatatan FEFO pada saat transaksi), bukan harga modal rata-rata.
-
-- Biaya operasional (gaji, sewa, listrik, dan lainnya) dapat diinput sebagai entri manual per periode oleh Owner/Admin.
-
-## 6.4 Perhitungan Pajak (PPN)
-
-- Setiap produk memiliki flag is_taxable dan tax_rate sendiri.
-
-- Sistem menghitung PPN otomatis pada setiap transaksi, ditampilkan secara terpisah pada struk dan laporan.
-
-## 6.5 Laporan Stok (Pendukung Keuangan)
-
-- Laporan nilai stok saat ini (berdasarkan cost_price tiap batch yang masih tersedia).
-
-- Laporan kartu stok per produk/batch sebagaimana dijelaskan pada Bagian 5.7.2.
-
-# 7. Operasional
-
-## 7.1 Tujuan
-
-Mendukung pengelolaan akses dan operasional dasar karyawan apotek dengan struktur peran yang sederhana, sesuai skala Pilot 1.
-
-## 7.2 Manajemen Karyawan
-
-- CRUD data karyawan: identitas, jabatan, dan tanggal bergabung.
-
-- Pencatatan absensi (check-in/check-out) yang terhubung dengan sesi shift dan cash drawer (Bagian 4.2.8) untuk kasir.
-
-- Penjadwalan shift kerja per karyawan.
-
-## 7.3 Peran Akses (Dua Peran)
-
-Pilot 1 menggunakan dua peran tetap, dikelola melalui Supabase Auth, tanpa permission matrix granular per modul/aksi:
-
-| **Peran** | **Hak Akses** |
+| Role | Access |
 | --- | --- |
-| Owner/Admin | Akses penuh ke seluruh modul: kasir, manajemen produk & stok, laporan & keuangan, manajemen karyawan, dan pengaturan (termasuk unggah gambar QRIS statis) |
-| Kasir | Akses ke modul kasir (transaksi, cash drawer) dan dapat melihat (namun tidak mengubah) data produk untuk kebutuhan pencarian saat transaksi |
+| Owner/Admin | Full access to all modules: cashier, product & stock management, reports & finance, employee management, and settings (including static QRIS image upload) |
+| Cashier | Access to the cashier module (transactions, cash drawer) and read-only access to product data for search during transactions |
 
-- Seluruh aksi penting (transaksi, void, retur, adjustment stok) tetap mencatat identitas pelaku (kasir/admin yang login), terlepas dari tidak adanya mekanisme approval — sehingga riwayat tetap dapat ditelusuri oleh Owner/Admin.
+- All significant actions (transactions, void, returns, stock adjustments) record the actor's identity (logged-in cashier/admin), regardless of the absence of an approval mechanism — so history remains traceable by Owner/Admin.
 
-***Catatan: ****Jika di kemudian hari dibutuhkan peran tambahan (misalnya Apoteker dengan kewenangan khusus atas validasi resep, atau Supervisor terpisah dari Owner), struktur dua peran ini dapat diperluas tanpa perlu mengubah fondasi Supabase Auth yang sudah digunakan — lihat Bagian 9 untuk pertimbangan pilot/fase berikutnya.*
+> If additional roles are needed later (e.g. a Pharmacist with specific prescription validation authority, or a Supervisor separate from the Owner), the two-role structure can be extended without changing the Supabase Auth foundation already in place — see Section 9 for later-phase considerations.
+
+---
 
 # 8. Non-Functional Requirements
 
-## 8.1 Performa
+## 8.1 Performance
 
-- Proses pemindaian barcode hingga produk tampil di keranjang harus berlangsung kurang dari 1 detik.
+- Barcode scan to product appearing in the cart must be under 1 second.
+- The static QRIS image popup must appear instantly (under 1 second) since the image is already stored, not dynamically generated.
+- Every API call (Next.js API Route) must complete within Vercel's serverless function time limit (around 10 seconds on the free tier); potentially slow operations (annual reports over large datasets) need database-side aggregation/pagination.
 
-- Popup gambar QRIS statis harus tampil seketika (kurang dari 1 detik) karena gambar sudah tersimpan, bukan digenerate dinamis.
+## 8.2 Reliability & Data Integrity
 
-- Setiap panggilan API (Next.js API Route) harus menyelesaikan eksekusi dalam batas waktu serverless function di Vercel (sekitar 10 detik pada tingkatan gratis); operasi yang berpotensi lama (laporan tahunan dengan data besar) perlu dioptimalkan melalui agregasi/paginasi di sisi database.
+- All operations that affect stock (sales, returns, opname adjustments) must be atomic (database transaction) to prevent inconsistencies, especially when drawing stock from multiple batches simultaneously.
+- The Supabase client in each API Route must be initialized inside the request handler, not stored in a shared variable across requests, to prevent session data leakage across users in Vercel's serverless environment.
 
-## 8.2 Keandalan & Integritas Data
+## 8.3 Security
 
-- Seluruh operasi yang memengaruhi stok (penjualan, retur, adjustment opname) harus bersifat atomik (database transaction) untuk mencegah inkonsistensi data, khususnya saat pengambilan stok dari beberapa batch sekaligus.
-
-- Client Supabase pada setiap API Route harus diinisialisasi di dalam request handler, bukan disimpan pada variabel bersama antar request, untuk mencegah kebocoran data sesi antar pengguna pada lingkungan serverless Vercel.
-
-## 8.3 Keamanan
-
-- Seluruh komunikasi menggunakan HTTPS (default pada Vercel).
-
-- Autentikasi pengguna menggunakan Supabase Auth dengan refresh token otomatis.
-
-- Foto resep dan data pasien disimpan di Supabase Storage dengan akses terbatas sesuai peran (Owner/Admin dan Kasir).
+- All communication over HTTPS (default on Vercel).
+- User authentication via Supabase Auth with automatic token refresh.
+- Prescription photos and patient data stored in Supabase Storage with role-based access restrictions (Owner/Admin and Cashier).
 
 ## 8.4 Auditability
 
-- Seluruh aksi penting (transaksi, void, retur, adjustment stok, konfirmasi pembayaran QRIS) mencatat waktu dan identitas pelaku, meskipun tidak melalui mekanisme approval berjenjang.
+- All significant actions (transactions, void, returns, stock adjustments, QRIS payment confirmation) record the time and actor, even without a multi-level approval mechanism.
 
-## 8.5 Biaya Operasional
+## 8.5 Operational Cost
 
-- Seluruh komponen (Vercel, Supabase) ditargetkan beroperasi dalam tingkatan gratis (free tier) pada skala satu outlet dengan beberapa kasir, sesuai tujuan utama Pilot 1 untuk memvalidasi konsep dengan biaya minimal.
+- All components (Vercel, Supabase) are targeted to run within free tiers at single-outlet scale with a few cashiers, consistent with Pilot 1's goal of concept validation at minimal cost.
+- If usage exceeds free tier limits (e.g. Supabase row count or Vercel function invocations), upgrading to the entry-level paid tier on both platforms is relatively cheap (roughly USD 0–25/month) compared to the cost and complexity of the earlier infrastructure plan.
 
-- Jika penggunaan melebihi batas tingkatan gratis (misalnya jumlah baris database di Supabase atau jumlah eksekusi function di Vercel), peningkatan ke tingkatan berbayar awal pada kedua platform tersebut relatif murah (kisaran USD 0-25/bulan) dibandingkan kompleksitas dan biaya infrastruktur pada rencana arsitektur sebelumnya.
+---
 
-# 9. Roadmap & Pertimbangan Pilot 2
+# 9. Roadmap & Pilot 2 Considerations
 
-## 9.1 Filosofi Perencanaan
+## 9.1 Planning Philosophy
 
-Berbeda dari pendekatan dokumen sebelumnya yang menyiapkan skema data sejak awal untuk fitur yang ditunda, Pilot 1 secara sengaja menjaga skema data seminimal mungkin. Pertimbangannya: pada tahap validasi awal, bentuk akhir kebutuhan (misalnya skema Purchase Order, atau struktur multi-cabang) belum tentu sesuai dengan asumsi yang dibuat hari ini. Mendesain skema terlalu awal untuk kebutuhan yang belum pasti berisiko menghasilkan struktur yang harus diubah ulang, alih-alih dipakai langsung.
+Unlike the earlier approach of pre-designing schemas for deferred features, Pilot 1 intentionally keeps the schema as minimal as possible. The reasoning: at the early validation stage, the final form of requirements (e.g. a Purchase Order schema, or multi-branch structure) isn't necessarily what we'd assume today. Designing schemas too early for uncertain requirements risks building structures that need to be reworked rather than used directly.
 
-## 9.2 Urutan Pengembangan Pilot 1
+## 9.2 Pilot 1 Development Stages
 
-| **Tahap** | **Fokus** |
+| Stage | Focus |
 | --- | --- |
-| Tahap 1 | Setup Next.js + Supabase + Vercel, struktur database inti (produk, unit, batch, kategori, supplier, lokasi rak) |
-| Tahap 2 | Kasir inti: barcode, pemilihan unit, FEFO, validasi resep, cash payment, cetak struk |
-| Tahap 3 | QRIS statis: unggah gambar QRIS, popup pembayaran, konfirmasi manual |
-| Tahap 4 | Manajemen stok lanjutan: stock opname, retur, alert kedaluwarsa |
-| Tahap 5 | Laporan & keuangan: dashboard, laporan penjualan, laba-rugi, pajak |
-| Tahap 6 | Operasional: manajemen karyawan, shift, cash drawer, dua peran akses |
+| 1 | Next.js + Supabase + Vercel setup, core database structure (products, units, batches, categories, suppliers, shelf locations) |
+| 2 | Core cashier: barcode, unit selection, FEFO, prescription validation, cash payment, receipt printing |
+| 3 | Static QRIS: upload QRIS image, payment popup, manual confirmation |
+| 4 | Advanced stock management: stock opname, returns, expiry alerts |
+| 5 | Reports & finance: dashboard, sales reports, profit & loss, tax |
+| 6 | Operations: employee management, shifts, cash drawer, two-role enforcement |
 
-## 9.3 Pertimbangan Migrasi ke Pilot 2
+## 9.3 Pilot 2 Migration Considerations
 
-Beberapa keputusan pada Pilot 1 perlu ditinjau ulang secara spesifik saat memasuki Pilot 2, dengan trade-off yang sudah diidentifikasi sejak tahap ini:
+Several Pilot 1 decisions need to be specifically revisited when moving to Pilot 2, with trade-offs already identified at this stage:
 
-### 9.3.1 Integrasi Payment Gateway
+### 9.3.1 Payment Gateway Integration
 
-- Arsitektur Next.js + Vercel + Supabase yang dipilih pada Pilot 1 tetap dapat digunakan untuk Pilot 2 dengan payment gateway — tidak diperlukan migrasi ke server yang harus selalu hidup (seperti Railway/Render/VPS) hanya karena alasan menerima webhook, karena Next.js API Route sudah dapat menjadi endpoint publik yang menerima notifikasi pembayaran.
+- The Next.js + Vercel + Supabase architecture can be used for Pilot 2 with a payment gateway — no migration to a long-running server (Railway/Render/VPS) is needed just to receive webhooks, since Next.js API Routes already work as public endpoints that can receive payment notifications.
+- Things to handle at implementation: (1) idempotency on the webhook endpoint, so duplicate notifications from the payment gateway don't cause duplicate transaction records or double stock deductions; (2) ensure the Supabase database connection uses connection pooling mode (Supavisor/PgBouncer, already provided by Supabase), since serverless functions can spin up many instances simultaneously each opening a new connection; (3) design atomic transaction status checking to avoid conflicts between cashier-side polling and webhook notifications arriving nearly simultaneously.
+- The `transactions` table needs additional columns (e.g. `payment_gateway_reference_id`) when this feature is implemented; this is an additive change and doesn't require major structural migration from the Pilot 1 schema.
 
-- Hal yang perlu diperhatikan saat implementasi: (1) idempotency pada endpoint webhook, agar notifikasi yang dikirim lebih dari satu kali oleh payment gateway tidak menyebabkan duplikasi pencatatan transaksi atau pengurangan stok dua kali; (2) memastikan koneksi ke database Supabase menggunakan mode connection pooling (Supavisor/PgBouncer, sudah disediakan Supabase secara bawaan), karena serverless function dapat menjalankan banyak instance bersamaan yang masing-masing membuka koneksi baru; (3) desain pemeriksaan status transaksi yang atomic, untuk menghindari konflik antara proses polling status dari sisi kasir dan notifikasi webhook yang datang hampir bersamaan.
+### 9.3.2 Approval Workflows
 
-- Tabel transactions perlu diperluas dengan kolom referensi eksternal (misalnya payment_gateway_reference_id) saat fitur ini diimplementasikan; perubahan ini bersifat aditif dan tidak memerlukan migrasi struktural besar dari skema Pilot 1.
-
-### 9.3.2 Approval Workflow
-
-- Jika skala usaha bertambah (lebih banyak kasir, kepemilikan yang tidak mengawasi operasional harian secara langsung), mekanisme approval berjenjang untuk void/retur/opname sebagaimana dirancang pada dokumen sebelumnya dapat dipertimbangkan kembali dan diimplementasikan sebagai penambahan terhadap struktur yang ada, tanpa mengubah fondasi pencatatan yang sudah berjalan di Pilot 1.
+- If the business scales (more cashiers, ownership not directly supervising daily operations), multi-level approval for void/return/opname as designed in the earlier document can be reconsidered and implemented as an addition to the existing recording structure, without changing the foundation built in Pilot 1.
 
 ### 9.3.3 Purchase Order & Goods Receipt
 
-- Skema untuk PO/GR akan didesain saat fitur ini benar-benar dikerjakan, dengan mempertimbangkan pola input stok manual yang telah berjalan di Pilot 1 sebagai referensi kebutuhan riil di lapangan.
+- The PO/GR schema will be designed when this feature is actually being built, using the manual stock input pattern from Pilot 1 as a reference for real field requirements.
 
-### 9.3.4 Multi-Cabang dan Kanal Online
+### 9.3.4 Multi-Branch and Online Channels
 
-- Karena Pilot 1 tidak menyertakan kolom outlet_id sejak awal, migrasi ke multi-cabang pada fase berikutnya memerlukan penambahan kolom tersebut ke seluruh tabel transaksional dan operasional, beserta migrasi data dari kondisi single-outlet. Ini adalah trade-off yang disadari dan diterima demi kesederhanaan skema pada Pilot 1.
+- Since Pilot 1 doesn't include an `outlet_id` column from the start, migrating to multi-branch in a later phase requires adding that column to all transactional and operational tables, along with a data migration from the single-outlet state. This is a known and accepted trade-off in exchange for a simpler schema in Pilot 1.
 
-### 9.3.5 RBAC Granular, Payroll, dan CRM
+### 9.3.5 Granular RBAC, Payroll, and CRM
 
-- Modul-modul ini dapat ditambahkan secara independen pada fase berikutnya tanpa memengaruhi fondasi yang sudah dibangun pada Pilot 1, karena keduanya tidak memiliki dependensi struktural terhadap modul kasir maupun stok.
+- These modules can be added independently in a later phase without affecting the Pilot 1 foundation, as they have no structural dependencies on the cashier or stock modules.
 
-# 10. Open Questions & Asumsi
+---
 
-## 10.1 Hal yang Masih Memerlukan Keputusan
+# 10. Open Questions & Assumptions
 
-- Mekanisme rekonsiliasi antara catatan transaksi QRIS di sistem dengan mutasi rekening/aplikasi merchant QRIS yang sebenarnya — apakah dilakukan manual oleh Owner/Admin secara berkala, atau perlu fitur pendukung tambahan.
+## 10.1 Decisions Still Needed
 
-- Penanganan jika kasir keliru menekan "Konfirmasi Pembayaran Diterima" padahal pembayaran belum diterima — apakah cukup dengan void transaksi manual, atau perlu mekanisme koreksi khusus.
+- Reconciliation mechanism between QRIS transaction records in the system and actual merchant account/QRIS app transactions — whether done manually by Owner/Admin periodically, or via an additional supporting feature.
+- Handling cases where a cashier accidentally presses "Confirm Payment Received" before payment has arrived — whether voiding the transaction manually is sufficient, or a specific correction mechanism is needed.
+- Return policy for prescription drugs (pharmacy regulatory/internal policy on returning prescription medications).
 
-- Kebijakan retur khusus untuk obat wajib resep (regulasi/kebijakan internal apotek terkait pengembalian obat resep).
+## 10.2 Assumptions Used in This Document
 
-## 10.2 Asumsi yang Digunakan dalam Dokumen Ini
-
-- Pilot 1 beroperasi pada satu lokasi fisik dengan satu atau beberapa kasir, di mana Owner/Admin dapat mengawasi operasional secara langsung sehingga mekanisme approval berjenjang belum diperlukan.
-
-- Perangkat kasir memiliki koneksi internet stabil sepanjang operasional, karena arsitektur serverless yang dipilih tidak mendukung mode offline.
-
-- Apotek memiliki rekening/akun merchant QRIS aktif secara independen dari sistem ini; sistem hanya menampilkan gambar QRIS statis yang diunggah, tidak terintegrasi dengan penyedia QRIS manapun.
-
-- Printer thermal yang digunakan kompatibel dengan standar ESC/POS.
-
-- Pengelolaan resep pada Pilot 1 bersifat pencatatan administratif (nomor resep, dokter, pasien), bukan verifikasi medis otomatis.
-
-Halaman
+- Pilot 1 operates at a single physical location with one or a few cashiers, where Owner/Admin can directly supervise operations, so a multi-level approval mechanism is not yet needed.
+- The cashier device has a stable internet connection throughout operations, as the serverless architecture does not support offline mode.
+- The pharmacy has an active QRIS merchant account independent of this system; the system only displays the static QRIS image that was uploaded, with no integration with any QRIS provider.
+- The thermal printer is ESC/POS compatible.
+- Prescription management in Pilot 1 is administrative record-keeping (prescription number, doctor, patient), not automatic medical verification.
