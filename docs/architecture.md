@@ -102,6 +102,12 @@ Responsible for login and session management. Application roles remain in Auth `
 - `owner_admin`
 - `kasir`
 
+An authenticated user receives business access only after the server resolves
+the stable `auth.users -> user_profiles -> employees` UUID relationship and
+confirms that the employee is active. Role and employee identity are never
+accepted from browser input. Next.js Proxy refreshes cookies; authoritative
+authorization remains in server layouts, actions, and application services.
+
 ### Supabase Storage
 
 Used for:

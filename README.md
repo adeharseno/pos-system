@@ -46,6 +46,7 @@ or the generated temporary state.
 - [`docs/architecture.md`](docs/architecture.md) — modular-monolith architecture and deployment
 - [`docs/database-design.md`](docs/database-design.md) — database model and integrity rules
 - [`docs/business-logic.md`](docs/business-logic.md) — checkout, FEFO, QRIS, void, returns, stock opname, reports
+- [`docs/authentication.md`](docs/authentication.md) — Supabase Auth, employee mapping, authorization, and provisioning
 - [`docs/api-contract.md`](docs/api-contract.md) — HTTP API contract
 - [`docs/folder-structure.md`](docs/folder-structure.md) — proposed Next.js/domain module structure
 - [`docs/roadmap.md`](docs/roadmap.md) — implementation order and test gates

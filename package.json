@@ -15,6 +15,7 @@
     "db:test": "supabase test db --local supabase/tests/database",
     "db:test:concurrency": "node supabase/tests/concurrency/core-rpc-concurrency.cjs",
     "test:data": "tsx --test src/modules/data-layer.test.ts",
+    "test:auth": "tsx --test src/modules/auth/auth.test.ts",
     "db:types": "supabase gen types typescript --local --schema public > src/types/database.types.ts"
   },
   "dependencies": {
