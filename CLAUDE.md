@@ -53,6 +53,10 @@ Do **not** introduce microservices, a separate Express/Nest/Go backend, queues, 
 - `0001_init.sql` and `0002_rls_policies.sql` have been updated to the hardened data model.
 - Neither migration has been applied to a Supabase project yet.
 - `0003_core_functions.sql` is **planned but not yet implemented**; it must contain the atomic RPCs before cashier transaction coding is considered complete.
-- No Next.js application code exists yet.
+- M1.1 application foundation is implemented: Next.js App Router, strict
+  TypeScript, Tailwind CSS, ESLint, modular domain directories, and foundational
+  Supabase browser/server/admin client factories.
+- Authentication flows, database queries, API routes, and business features are
+  not implemented yet.
 
 Start with `docs/roadmap.md` M1. Do not skip the database concurrency tests listed there.

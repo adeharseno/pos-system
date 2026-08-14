@@ -1,0 +1,18 @@
+# dependencies
+/node_modules
+
+# Next.js
+/.next
+/out
+
+# environment files (example files remain tracked)
+.env*
+!.env.example
+
+# tooling and logs
+*.log
+*.tsbuildinfo
+.vercel
+
+# operating system
+.DS_Store

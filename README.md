@@ -4,7 +4,23 @@ Low-cost pharmacy Point of Sale pilot using a **Next.js modular monolith + Supab
 
 ## Current Status
 
-Architecture/schema documentation is prepared; application implementation has not started.
+M1.1 project foundation is ready: Next.js App Router, strict TypeScript,
+Tailwind CSS, ESLint, modular domain boundaries, and foundational Supabase
+browser/server clients. Business features and database RPCs are not implemented yet.
+
+## Local Development
+
+1. Copy `.env.example` to `.env.local` and provide Supabase credentials.
+2. Install dependencies with `npm install`.
+3. Start the application with `npm run dev`.
+
+Quality checks:
+
+```bash
+npm run lint
+npm run typecheck
+npm run build
+```
 
 ## Documentation
 
