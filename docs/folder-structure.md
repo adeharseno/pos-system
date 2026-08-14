@@ -200,6 +200,18 @@ Expected RPCs:
 
 Exact signatures may evolve while implementing, but their transactional responsibility must not move back into multiple independent HTTP database calls.
 
+Generated public-schema types live at `src/types/database.types.ts`. Regenerate
+them from a running local Supabase database with:
+
+```bash
+npm run db:types
+```
+
+Do not manually edit the generated file. Domain application services validate
+basic input, domain data adapters map camelCase application contracts to RPC
+arguments, and the shared server-only RPC adapter maps PostgreSQL errors into
+safe typed application errors.
+
 ---
 
 ## 7. Deployment

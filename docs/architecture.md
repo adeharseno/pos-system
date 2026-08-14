@@ -59,6 +59,21 @@ Responsible for:
 
 Route Handlers must stay thin. They should not contain large FEFO/stock mutation algorithms.
 
+Application code follows one-way dependency flow:
+
+```text
+presentation / future Route Handler
+  -> domain application service
+  -> domain data adapter
+  -> server-only Supabase client
+  -> PostgreSQL RPC
+```
+
+Critical mutations are exposed by the `sales`, `returns`, and `inventory`
+application services. Callers must not bypass these services with browser-side
+table writes or reimplement FEFO, invoice, returnability, restoration, or
+stock-opname algorithms in TypeScript.
+
 ### Supabase PostgreSQL
 
 Responsible for:

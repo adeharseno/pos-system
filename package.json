@@ -13,7 +13,9 @@
     "db:reset": "supabase db reset",
     "db:lint": "supabase db lint --local",
     "db:test": "supabase test db --local supabase/tests/database",
-    "db:test:concurrency": "node supabase/tests/concurrency/core-rpc-concurrency.cjs"
+    "db:test:concurrency": "node supabase/tests/concurrency/core-rpc-concurrency.cjs",
+    "test:data": "tsx --test src/modules/data-layer.test.ts",
+    "db:types": "supabase gen types typescript --local --schema public > src/types/database.types.ts"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.0",
@@ -34,6 +36,7 @@
     "pg": "^8.23.0",
     "supabase": "2.114.0",
     "tailwindcss": "4.3.3",
+    "tsx": "^4.23.12",
     "typescript": "5.9.3"
   }
 }
