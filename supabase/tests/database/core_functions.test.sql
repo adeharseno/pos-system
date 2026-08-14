@@ -1,5 +1,5 @@
 begin;
-select plan(40);
+select plan(48);
 
 insert into public.categories(id,name) values ('10000000-0000-0000-0000-000000000001','Test');
 insert into public.subcategories(id,category_id,name) values ('10000000-0000-0000-0000-000000000002','10000000-0000-0000-0000-000000000001','Test');
@@ -51,9 +51,29 @@ select is((select status::text from public.transactions where id=(select id from
 select throws_ok(format('select public.confirm_qris_payment(%L,%L)',(select id from rpc_state where key='qris_tx'),'50000000-0000-0000-0000-000000000001'),'P0001','QRIS_ALREADY_CONFIRMED','repeat confirmation rejected');
 select throws_ok(format('select public.confirm_qris_payment(%L,%L)',(select id from rpc_state where key='cash_tx'),'50000000-0000-0000-0000-000000000001'),'P0001','NOT_QRIS_TRANSACTION','cash cannot be QRIS-confirmed');
 
-select lives_ok(format('select public.void_transaction(%L,%L,%L)',(select id from rpc_state where key='qris_tx'),'50000000-0000-0000-0000-000000000001','cancelled'),'void succeeds');
-select is((select quantity from public.product_batches where id='40000000-0000-0000-0000-000000000003'),50,'void restores original batch');
-select throws_ok(format('select public.void_transaction(%L,%L,%L)',(select id from rpc_state where key='qris_tx'),'50000000-0000-0000-0000-000000000001','again'),'P0001','TRANSACTION_ALREADY_VOIDED','double void rejected');
+select throws_ok(format('select public.void_transaction(%L,%L,%L)',(select id from rpc_state where key='qris_tx'),'50000000-0000-0000-0000-000000000001','paid'),
+  'P0001','PAID_TRANSACTION_REQUIRES_RETURN','confirmed QRIS cannot be voided');
+select is((select quantity from public.product_batches where id='40000000-0000-0000-0000-000000000003'),45,'rejected paid QRIS void leaves stock deducted');
+select throws_like(format('update public.transactions set status=''voided'',voided_at=now(),voided_by=%L,void_reason=''direct'' where id=%L',
+  '50000000-0000-0000-0000-000000000001',(select id from rpc_state where key='qris_tx')),'%chk_qris_void_must_be_unconfirmed%','database constraint rejects voided plus confirmed state');
+insert into rpc_state values ('qris_source_item',(select id from public.transaction_items where transaction_id=(select id from rpc_state where key='qris_tx')));
+select lives_ok(format('select public.create_customer_return(%L,%L,%L,null,%L,jsonb_build_array(jsonb_build_object(%L,%L,%L,1)))',
+  '50000000-0000-0000-0000-000000000001',(select id from rpc_state where key='qris_tx'),'qris','paid refund','transaction_item_id',(select id from rpc_state where key='qris_source_item'),'quantity_in_base'),'confirmed QRIS remains returnable');
+select is((select count(*)::integer from public.return_items where transaction_item_id=(select id from rpc_state where key='qris_source_item')),1,'QRIS return is recorded');
+
+insert into rpc_state values ('pending_void_tx',(
+  public.checkout_transaction('50000000-0000-0000-0000-000000000001','60000000-0000-0000-0000-000000000001','qris',
+    '[{"product_unit_id":"30000000-0000-0000-0000-000000000003","quantity":1}]',null,null)->>'transaction_id')::uuid);
+select lives_ok(format('select public.void_transaction(%L,%L,%L)',(select id from rpc_state where key='pending_void_tx'),'50000000-0000-0000-0000-000000000001','abandoned'),'pending QRIS can be voided');
+select ok((select status='voided' and payment_confirmed_at is null and payment_confirmed_by is null from public.transactions where id=(select id from rpc_state where key='pending_void_tx')),'voided pending QRIS remains unconfirmed');
+select is((select quantity from public.product_batches where id='40000000-0000-0000-0000-000000000003'),46,'pending QRIS void restores stock exactly once');
+select throws_ok(format('select public.void_transaction(%L,%L,%L)',(select id from rpc_state where key='pending_void_tx'),'50000000-0000-0000-0000-000000000001','again'),'P0001','TRANSACTION_ALREADY_VOIDED','double pending QRIS void rejected');
+
+insert into rpc_state values ('cash_void_tx',(
+  public.checkout_transaction('50000000-0000-0000-0000-000000000001','60000000-0000-0000-0000-000000000001','cash',
+    '[{"product_unit_id":"30000000-0000-0000-0000-000000000003","quantity":1}]',1000,null)->>'transaction_id')::uuid);
+select lives_ok(format('select public.void_transaction(%L,%L,%L)',(select id from rpc_state where key='cash_void_tx'),'50000000-0000-0000-0000-000000000001','cash correction'),'cash void remains supported');
+select is((select quantity from public.product_batches where id='40000000-0000-0000-0000-000000000003'),46,'cash void restores stock');
 
 insert into rpc_state values ('source_item',(select id from public.transaction_items where transaction_id=(select id from rpc_state where key='cash_tx')));
 insert into rpc_state values ('return1',(

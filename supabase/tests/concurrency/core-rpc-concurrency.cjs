@@ -49,6 +49,28 @@ async function race(calls) {
   }
 }
 
+// The winner keeps its transaction open after the RPC has acquired/updated the
+// lifecycle row. The loser is submitted on another connection before commit,
+// so it must wait for the real PostgreSQL row lock and then re-check state.
+async function serializedRace(winner, loser) {
+  const winnerClient = await connection('forced-winner');
+  const loserClient = await connection('forced-loser');
+  try {
+    await winnerClient.query('begin');
+    const winnerResult = await winnerClient.query(winner.text, winner.values || []);
+    const loserPromise = loserClient.query(loser.text, loser.values || []);
+    await new Promise((resolve) => setImmediate(resolve));
+    await winnerClient.query('commit');
+    const loserResult = await Promise.allSettled([loserPromise]);
+    return [{ status: 'fulfilled', value: winnerResult }, loserResult[0]];
+  } catch (error) {
+    await winnerClient.query('rollback').catch(() => {});
+    throw error;
+  } finally {
+    await Promise.all([winnerClient.end(), loserClient.end()]);
+  }
+}
+
 async function clean(client) {
   await client.query('truncate table public.categories, public.employees, public.storage_locations, public.invoice_sequences cascade');
 }
@@ -186,18 +208,29 @@ async function main() {
     assert((await client.query('select status from public.transactions where id=$1',[ids.transaction])).rows[0].status==='completed','QRIS final state invalid');
   });
 
-  await run('QRIS confirm vs void', async (client) => {
+  await run('QRIS confirm vs void (confirm wins)', async (client) => {
     const ids=await prepareSale(client,1,10,'qris');
-    const results=await race([
+    const results=await serializedRace(
       {text:'select public.confirm_qris_payment($1,$2)',values:[ids.transaction,ids.cashier]},
-      {text:'select public.void_transaction($1,$2,\'race\')',values:[ids.transaction,ids.cashier]},
-    ]);
+      {text:'select public.void_transaction($1,$2,\'race\')',values:[ids.transaction,ids.cashier]}
+    );
     const tx=(await client.query('select status,payment_confirmed_at from public.transactions where id=$1',[ids.transaction])).rows[0];
-    assert(['completed','voided'].includes(tx.status),'invalid QRIS terminal state');
-    assert(!(tx.status==='completed' && !tx.payment_confirmed_at),'completed QRIS lacks confirmation');
+    assert(successes(results).length===1 && messageOf(failures(results)[0]).includes('PAID_TRANSACTION_REQUIRES_RETURN'),'void did not reject confirmed QRIS');
+    assert(tx.status==='completed' && tx.payment_confirmed_at,'confirm winner metadata invalid');
     const stock=(await client.query('select quantity from public.product_batches where id=$1',[ids.batch1])).rows[0].quantity;
-    assert(stock===(tx.status==='voided'?10:9),'QRIS race inventory mismatch');
-    assert(successes(results).length>=1,'neither terminal operation succeeded');
+    assert(stock===9,'confirmed QRIS stock was incorrectly restored');
+  });
+
+  await run('QRIS confirm vs void (void wins)', async (client) => {
+    const ids=await prepareSale(client,1,10,'qris');
+    const results=await serializedRace(
+      {text:'select public.void_transaction($1,$2,\'race\')',values:[ids.transaction,ids.cashier]},
+      {text:'select public.confirm_qris_payment($1,$2)',values:[ids.transaction,ids.cashier]}
+    );
+    const tx=(await client.query('select status,payment_confirmed_at,payment_confirmed_by from public.transactions where id=$1',[ids.transaction])).rows[0];
+    assert(successes(results).length===1 && messageOf(failures(results)[0]).includes('INVALID_TRANSACTION_STATE'),'confirmation did not reject voided QRIS');
+    assert(tx.status==='voided' && tx.payment_confirmed_at===null && tx.payment_confirmed_by===null,'void winner created forbidden mixed state');
+    assert((await client.query('select quantity from public.product_batches where id=$1',[ids.batch1])).rows[0].quantity===10,'void winner did not restore stock exactly once');
   });
 
   await run('customer return vs void', async (client) => {

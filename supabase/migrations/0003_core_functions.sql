@@ -4,6 +4,17 @@
 -- product/FEFO order; transaction and source-item rows are locked first where
 -- they define the lifecycle being changed.
 
+-- A paid QRIS sale is reversed through customer return/refund, never void.
+-- This supplements the RPC transition check with database-level protection.
+alter table public.transactions
+  add constraint chk_qris_void_must_be_unconfirmed check (
+    not (
+      payment_method = 'qris'
+      and status = 'voided'
+      and payment_confirmed_at is not null
+    )
+  );
+
 create or replace function public.checkout_transaction(
   p_employee_id uuid,
   p_cash_drawer_session_id uuid,
@@ -229,6 +240,9 @@ begin
   select * into v_tx from public.transactions where id=p_transaction_id for update;
   if not found then raise exception 'TRANSACTION_NOT_FOUND'; end if;
   if v_tx.status='voided' then raise exception 'TRANSACTION_ALREADY_VOIDED'; end if;
+  if v_tx.payment_method='qris' and (v_tx.status='completed' or v_tx.payment_confirmed_at is not null) then
+    raise exception 'PAID_TRANSACTION_REQUIRES_RETURN';
+  end if;
   if exists(select 1 from public.returns where transaction_id=p_transaction_id and source='customer') then raise exception 'TRANSACTION_HAS_RETURNS'; end if;
   perform 1 from public.product_batches pb join public.transaction_item_batches tib on tib.batch_id=pb.id
     join public.transaction_items ti on ti.id=tib.transaction_item_id

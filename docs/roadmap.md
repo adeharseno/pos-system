@@ -9,7 +9,7 @@
 | Architecture | Modular monolith: Next.js + Vercel + Supabase |
 | Transaction atomicity | Critical stock mutations move to PostgreSQL RPC/functions |
 | Checkout model | `transaction_items` separated from `transaction_item_batches` |
-| QRIS | `pending_payment -> completed` manual confirmation |
+| QRIS | `pending_payment -> completed` manual confirmation or `pending_payment -> voided`; confirmed QRIS uses return/refund |
 | Void | Restore allocation stock; reject if customer return exists |
 | Customer return | Cumulative return validation + original-batch restoration + refund/COGS snapshots |
 | Stock opname | Batch-level operational freeze; nullable physical count; apply/cancel releases freeze |
@@ -90,7 +90,7 @@ Before calling Pilot 1 transaction logic complete, test at least:
 2. One sell unit split across multiple batches produces one receipt line and multiple batch allocations.
 3. Two concurrent checkouts cannot get the same invoice number.
 4. QRIS pending transactions do not appear as completed revenue.
-5. QRIS confirmation vs void cannot both win.
+5. QRIS confirmation vs void cannot produce `voided` with confirmation metadata; confirmed QRIS cannot be voided.
 6. Multiple partial returns cannot exceed the originally sold quantity.
 7. Voiding a transaction with an existing customer return is rejected.
 8. Customer returns reduce net sales and reverse the appropriate COGS.

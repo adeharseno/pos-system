@@ -21,6 +21,7 @@ Do **not** introduce microservices, a separate Express/Nest/Go backend, queues, 
 1. **Critical stock mutations are PostgreSQL transactions/RPCs.** Checkout, QRIS confirmation, void, returns, and stock-opname apply must not be implemented as several independent `supabase.from()` calls and assumed to be atomic.
 2. **`transaction_items` is one row per customer-facing cart/receipt line.** FEFO sources belong in `transaction_item_batches` (1..N per item).
 3. **QRIS checkout starts as `pending_payment`.** It becomes `completed` only after manual confirmation. Pending QRIS does not count as completed revenue.
+   Pending QRIS may be voided, but confirmed QRIS cannot be voided and must use customer return/refund for reversal.
 4. **Customer returns are cumulative.** Previous returns must be included when checking the remaining returnable quantity.
 5. **Customer returns restore original sale allocation batches** and snapshot refunds/COGS reversal.
 6. **A transaction with an existing customer return cannot be voided** in Pilot 1.
@@ -59,7 +60,7 @@ Do **not** introduce microservices, a separate Express/Nest/Go backend, queues, 
 - M1.3 database integrity tests use pgTAP against real local PostgreSQL and
   cover relational, numeric, payment lifecycle, void, return, stock-opname,
   cash-drawer, and RLS constraints. Run them with `npm run db:test`.
-- `0003_core_functions.sql` is **planned but not yet implemented**; it must contain the atomic RPCs before cashier transaction coding is considered complete.
+- `0003_core_functions.sql` implements the atomic checkout, payment, void, return, and stock-opname RPCs and has passed local deterministic and concurrency verification. It is not yet applied remotely.
 - M1.1 application foundation is implemented: Next.js App Router, strict
   TypeScript, Tailwind CSS, ESLint, modular domain directories, and foundational
   Supabase browser/server/admin client factories.

@@ -171,6 +171,7 @@ No body required unless later audit notes are added. Only QRIS transactions in `
 Void is rejected when:
 
 - transaction already voided
+- QRIS payment was already confirmed (`PAID_TRANSACTION_REQUIRES_RETURN`); use customer return/refund
 - transaction has customer returns
 - another conflicting state transition has already completed
 

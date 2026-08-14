@@ -111,8 +111,13 @@ Database constraints enforce valid state shapes, including:
 - QRIS never stores cash tender/change
 - QRIS `pending_payment` has no confirmation actor/time
 - QRIS `completed` has confirmation actor/time
+- QRIS `voided` has no confirmation actor/time; only unconfirmed pending QRIS may be voided
 - confirmation actor/time are always both null or both non-null
 - `voided` requires void actor/time/nonblank reason; non-voided rows cannot carry void metadata
+
+The lifecycle is `pending_payment -> completed` through confirmation or
+`pending_payment -> voided` through cancellation. A confirmed QRIS sale is
+reversed using customer return/refund and can never transition to `voided`.
 
 ### 2.6 Invoice concurrency
 

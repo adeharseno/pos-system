@@ -146,8 +146,15 @@ Rules:
 - `payment_confirmed_at` and `payment_confirmed_by` are written together on confirmation.
 - Sales/revenue reports include only `completed` transactions.
 - A pending QRIS transaction may be voided to release stock if payment is abandoned.
-- Confirmation and void must lock/check the transaction row so both transitions cannot win.
+- Confirmation and void lock/check the same transaction row. The first transition wins.
+- A confirmed QRIS transaction cannot be voided. Reversal of a paid QRIS sale must use customer return/refund.
 - QRIS never uses `cash_received` or `cash_change`.
+
+```text
+pending_payment
+├── confirm -> completed -> return/refund only
+└── void    -> voided
+```
 
 Database check constraints provide a second layer of protection against invalid payment/status combinations.
 
@@ -161,20 +168,21 @@ Void restores the stock that was allocated by the sale.
 BEGIN
   1. SELECT transaction FOR UPDATE.
   2. Reject if already voided.
-  3. Reject if customer returns already exist for the transaction.
-  4. Load original transaction_item_batches in deterministic batch order.
-  5. Lock every referenced product_batch.
-  6. Re-check each batch is not frozen by an in_progress stock opname.
+  3. Reject confirmed/paid QRIS with PAID_TRANSACTION_REQUIRES_RETURN.
+  4. Reject if customer returns already exist for the transaction.
+  5. Load original transaction_item_batches in deterministic batch order.
+  6. Lock every referenced product_batch.
+  7. Re-check each batch is not frozen by an in_progress stock opname.
      If frozen: RAISE STOCK_OPNAME_IN_PROGRESS.
-  7. For every allocation:
+  8. For every allocation:
        UPDATE product_batches
        SET quantity = quantity + allocation.quantity_in_base
        WHERE id = allocation.batch_id;
-  8. Set status='voided', voided_at, voided_by, void_reason.
+  9. Set status='voided', voided_at, voided_by, void_reason.
 COMMIT
 ```
 
-A completed transaction that already has a customer return cannot be voided in Pilot 1. This prevents stock from being restored twice.
+A completed transaction that already has a customer return cannot be voided in Pilot 1. Confirmed QRIS cannot be voided even before a return exists; it remains eligible for customer return/refund. These rules prevent incorrect lifecycle history and duplicate stock restoration.
 
 ---
 
