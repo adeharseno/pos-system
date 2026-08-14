@@ -4,10 +4,10 @@ Low-cost pharmacy Point of Sale pilot using a **Next.js modular monolith + Supab
 
 ## Current Status
 
-M1.1 application foundation and M1.2 local Supabase/database foundation are
-ready. Both authoritative migrations reproduce a clean local database and pass
-schema lint. The remote project is not linked, and business features/database
-RPCs are not implemented yet.
+M1.1 application foundation, M1.2 Supabase/database foundation, and M1.3
+database integrity verification are complete. The remote project is linked and
+migrations `0001`/`0002` are synchronized. Business features/database RPCs are
+not implemented yet.
 
 ## Local Development
 
@@ -32,6 +32,7 @@ checked-in migrations:
 npm run supabase:start
 npm run db:reset
 npm run db:lint
+npm run db:test
 ```
 
 Remote project linking is intentionally local developer state. Create a

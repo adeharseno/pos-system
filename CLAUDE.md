@@ -55,7 +55,10 @@ Do **not** introduce microservices, a separate Express/Nest/Go backend, queues, 
   developer-local and must never commit credentials.
 - `0001_init.sql` and `0002_rls_policies.sql` have been applied successfully by
   a clean local `supabase db reset`, catalog-verified, and schema-linted. The
-  remote Supabase project is not linked yet.
+  remote Supabase project is linked and both migrations are synchronized.
+- M1.3 database integrity tests use pgTAP against real local PostgreSQL and
+  cover relational, numeric, payment lifecycle, void, return, stock-opname,
+  cash-drawer, and RLS constraints. Run them with `npm run db:test`.
 - `0003_core_functions.sql` is **planned but not yet implemented**; it must contain the atomic RPCs before cashier transaction coding is considered complete.
 - M1.1 application foundation is implemented: Next.js App Router, strict
   TypeScript, Tailwind CSS, ESLint, modular domain directories, and foundational

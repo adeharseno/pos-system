@@ -11,7 +11,8 @@
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "db:reset": "supabase db reset",
-    "db:lint": "supabase db lint --local"
+    "db:lint": "supabase db lint --local",
+    "db:test": "supabase test db --local supabase/tests/database"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.0",
