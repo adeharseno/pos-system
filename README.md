@@ -4,9 +4,10 @@ Low-cost pharmacy Point of Sale pilot using a **Next.js modular monolith + Supab
 
 ## Current Status
 
-M1.1 project foundation is ready: Next.js App Router, strict TypeScript,
-Tailwind CSS, ESLint, modular domain boundaries, and foundational Supabase
-browser/server clients. Business features and database RPCs are not implemented yet.
+M1.1 application foundation and M1.2 local Supabase/database foundation are
+ready. Both authoritative migrations reproduce a clean local database and pass
+schema lint. The remote project is not linked, and business features/database
+RPCs are not implemented yet.
 
 ## Local Development
 
@@ -22,6 +23,22 @@ npm run typecheck
 npm run build
 ```
 
+## Local Supabase
+
+Docker Desktop must be running. The local database is reproducible from the
+checked-in migrations:
+
+```bash
+npm run supabase:start
+npm run db:reset
+npm run db:lint
+```
+
+Remote project linking is intentionally local developer state. Create a
+Supabase project, authenticate the CLI, then run
+`npx supabase link --project-ref <project-ref>` without committing credentials
+or the generated temporary state.
+
 ## Documentation
 
 - [`docs/prd.md`](docs/prd.md) — product requirements and scope
@@ -32,6 +49,7 @@ npm run build
 - [`docs/folder-structure.md`](docs/folder-structure.md) — proposed Next.js/domain module structure
 - [`docs/roadmap.md`](docs/roadmap.md) — implementation order and test gates
 - [`docs/revision-summary.md`](docs/revision-summary.md) — M0 hardening changes
+- [`docs/database-setup.md`](docs/database-setup.md) — local/remote migration workflow
 
 ## Infrastructure Target
 

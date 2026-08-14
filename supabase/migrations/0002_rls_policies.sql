@@ -30,6 +30,13 @@ alter table stock_opname_items enable row level security;
 alter table operational_expenses enable row level security;
 alter table app_settings enable row level security;
 
+-- Explicit table privileges keep the HTTP/database boundary reproducible on
+-- projects where new public tables are not auto-exposed. RLS does not replace
+-- SQL privileges, and it does not apply to TRUNCATE, so browser roles receive
+-- no table privileges while the trusted server role receives CRUD access.
+revoke all privileges on all tables in schema public from anon, authenticated;
+grant select, insert, update, delete on all tables in schema public to service_role;
+
 create policy "deny_all_client_access" on categories for all to authenticated, anon using (false);
 create policy "deny_all_client_access" on subcategories for all to authenticated, anon using (false);
 create policy "deny_all_client_access" on suppliers for all to authenticated, anon using (false);

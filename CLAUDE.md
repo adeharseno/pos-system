@@ -51,7 +51,11 @@ Do **not** introduce microservices, a separate Express/Nest/Go backend, queues, 
 
 - Architecture and schema documentation have completed a second hardening pass based on concurrency/integrity review.
 - `0001_init.sql` and `0002_rls_policies.sql` have been updated to the hardened data model.
-- Neither migration has been applied to a Supabase project yet.
+- Local Supabase CLI configuration is available. Remote project linking remains
+  developer-local and must never commit credentials.
+- `0001_init.sql` and `0002_rls_policies.sql` have been applied successfully by
+  a clean local `supabase db reset`, catalog-verified, and schema-linted. The
+  remote Supabase project is not linked yet.
 - `0003_core_functions.sql` is **planned but not yet implemented**; it must contain the atomic RPCs before cashier transaction coding is considered complete.
 - M1.1 application foundation is implemented: Next.js App Router, strict
   TypeScript, Tailwind CSS, ESLint, modular domain directories, and foundational
