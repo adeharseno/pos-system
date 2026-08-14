@@ -1,42 +1,58 @@
 # CLAUDE.md — Pharmacy POS Project Context (Pilot 1)
 
-Entry point for AI/coding agents working in this repo. Read this file first before touching any code. Detailed docs are in `docs/` — **don't read all of them at once**. Only reference the file relevant to the current task (see the "When to read which file" table below).
+Entry point for AI/coding agents working in this repo. Read this file before implementation. Detailed docs are in `docs/`; use the source-of-truth file relevant to the task.
 
 ## Project Summary
 
-A Point of Sale system for a pharmacy, Pilot 1. Focus: cashier, pharmaceutical product management (multi-unit, multi-batch, FEFO), and basic reporting. Intentionally simple and low-cost — read `docs/roadmap.md` section "Intentionally Out of Scope" before adding unrequested features (approval workflows, payment gateway, multi-branch, granular RBAC, PO/GR, payroll/CRM — all **out of scope**, do not implement unless explicitly asked).
+Pharmacy POS Pilot 1 focused on cashier operations, multi-unit products, multi-batch FEFO inventory, prescription requirements, returns, stock opname, and basic reporting.
 
-## Tech Stack
+The architecture is intentionally a **modular monolith**:
 
-- **Next.js (App Router)** — frontend + backend (API Routes) in a single codebase
-- **Supabase** — Postgres, Auth, Storage
-- **Vercel** — hosting, serverless functions
+- Next.js App Router: frontend + HTTP/backend boundary
+- Vercel: one application deployment
+- Supabase PostgreSQL: relational database and atomic transaction functions
+- Supabase Auth: authentication
+- Supabase Storage: images/documents
 
-## Critical Rules (commonly violated — don't break these)
+Do **not** introduce microservices, a separate Express/Nest/Go backend, queues, or extra infrastructure unless requirements explicitly change.
 
-1. **Supabase client must be created inside the request handler**, not at the top-level module — see `docs/folder-structure.md` § 8.2. A top-level instance will leak across users in Vercel's serverless environment.
-2. **Role is stored in Supabase Auth `app_metadata.role`** (`owner_admin` | `kasir`), not in a `roles`/`permissions` table. Do not create new RBAC tables.
-3. **Checkout must use `FOR UPDATE` row locking** when fetching FEFO batches — see `docs/business-logic.md` § 7.1. Without this, two concurrent checkouts of the same product can oversell.
-4. **`transaction_items` = one row per source batch**, not one row per product. If a single checkout item needs to draw from two batches, write two rows.
-5. **Customer returns always go back to the ORIGINAL batch** (via `transaction_item_id`), never creating a new batch.
-6. **Stock is decremented when checkout is created**, not when QRIS payment is confirmed — so stock isn't held hostage to a QRIS transaction that gets abandoned.
-7. Supabase access from the client (browser) is denied via RLS; all production queries go through `service_role` in API Routes. Do not query Supabase directly from client components for transactional data.
+## Critical Rules
+
+1. **Critical stock mutations are PostgreSQL transactions/RPCs.** Checkout, QRIS confirmation, void, returns, and stock-opname apply must not be implemented as several independent `supabase.from()` calls and assumed to be atomic.
+2. **`transaction_items` is one row per customer-facing cart/receipt line.** FEFO sources belong in `transaction_item_batches` (1..N per item).
+3. **QRIS checkout starts as `pending_payment`.** It becomes `completed` only after manual confirmation. Pending QRIS does not count as completed revenue.
+4. **Customer returns are cumulative.** Previous returns must be included when checking the remaining returnable quantity.
+5. **Customer returns restore original sale allocation batches** and snapshot refunds/COGS reversal.
+6. **A transaction with an existing customer return cannot be voided** in Pilot 1.
+7. **Checkout validates cash-drawer ownership** against the authenticated employee and requires the session to be open.
+8. **Invoice numbers are generated DB-side inside checkout** using a concurrency-safe daily sequence.
+9. **Business timezone is Asia/Jakarta.** Store timestamps as UTC, but use WIB business dates for invoice/report/day boundaries.
+10. **Transactional tables are server-only.** Never expose `SUPABASE_SERVICE_ROLE_KEY`; browser database access to operational tables is denied by RLS.
+11. **Role model stays simple**: Supabase Auth `app_metadata.role` = `owner_admin` | `kasir`. Do not create granular RBAC tables in Pilot 1.
+12. **Stock opname is batch-level with operational freeze** in Pilot 1; `physical_quantity` is nullable until counted, only one session may be `in_progress`, frozen batches reject normal stock mutations, and apply is blocked while any item is uncounted.
+13. **Cash refunds use the current refund drawer**, never the original transaction drawer. The drawer must be open and owned by the authenticated processor.
+14. **Product/unit/batch consistency is enforced by composite foreign keys**, not only by RPC validation.
+15. **Payment lifecycle shape is enforced by database checks** in addition to RPC state-transition locking.
+16. **Checkout inserts the transaction header before transaction items** after authoritative totals and invoice number are calculated, so foreign-key order is valid.
 
 ## When to Read Which File
 
 | Working on... | Read |
 |---|---|
-| Tables/columns, relations, RLS, role model | `docs/database-design.md` |
-| Creating/modifying API endpoints | `docs/api-contract.md` |
-| Checkout, void, returns, stock opname, reporting logic | `docs/business-logic.md` |
-| File placement, env vars, Supabase client init | `docs/folder-structure.md` |
-| Original requirements / why a feature exists or doesn't | `docs/prd.md` |
-| Implementation order, intentionally undesigned features | `docs/roadmap.md` |
+| Architecture/deployment/module boundaries | `docs/architecture.md` |
+| Tables/relations/RLS/integrity | `docs/database-design.md` |
+| API endpoints and payloads | `docs/api-contract.md` |
+| Checkout/QRIS/void/returns/opname/report algorithms | `docs/business-logic.md` |
+| File placement/module structure/env | `docs/folder-structure.md` |
+| Product scope/requirements | `docs/prd.md` |
+| Implementation order/test gates | `docs/roadmap.md` |
 
 ## Implementation Status
 
-- SQL migrations are written and ready to run: `supabase/migrations/0001_init.sql` (schema) and `0002_rls_policies.sql` (RLS). Neither has been applied to any Supabase project yet.
-- No application code exists yet (Next.js project not scaffolded). No `package.json`, `app/`, `lib/`, or `types/`.
-- No seed data yet (`0003_seed.sql` is planned, not created).
+- Architecture and schema documentation have completed a second hardening pass based on concurrency/integrity review.
+- `0001_init.sql` and `0002_rls_policies.sql` have been updated to the hardened data model.
+- Neither migration has been applied to a Supabase project yet.
+- `0003_core_functions.sql` is **planned but not yet implemented**; it must contain the atomic RPCs before cashier transaction coding is considered complete.
+- No Next.js application code exists yet.
 
-Follow `docs/roadmap.md` (Stages 1–6) for implementation order. Stage 1 = run both migrations against a new Supabase project, then scaffold the Next.js project per `docs/folder-structure.md`.
+Start with `docs/roadmap.md` M1. Do not skip the database concurrency tests listed there.

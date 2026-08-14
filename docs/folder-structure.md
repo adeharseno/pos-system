@@ -1,174 +1,220 @@
 # Folder Structure & Project Setup — Pharmacy POS (Pilot 1)
 
-## 8. Project Folder Structure (Next.js App Router)
+> Architecture style: **modular monolith**. One Next.js application and deployment, with domain boundaries kept explicit in code.
 
-```
+## 1. Proposed Structure
+
+```text
 pos-apotek/
 ├── app/
 │   ├── (auth)/
-│   │   └── login/
-│   │       └── page.tsx
-│   ├── (kasir)/                       # route group, middleware checks role
-│   │   ├── layout.tsx
-│   │   ├── kasir/
-│   │   │   └── page.tsx               # main POS UI (scan, cart, checkout)
-│   │   ├── cash-drawer/
-│   │   │   └── page.tsx
+│   │   └── login/page.tsx
+│   ├── (kasir)/
+│   │   ├── kasir/page.tsx
+│   │   ├── cash-drawer/page.tsx
 │   │   └── transactions/
-│   │       ├── page.tsx               # transaction history (read)
-│   │       └── [id]/page.tsx          # detail + reprint receipt
-│   ├── (admin)/                       # route group, owner_admin only
-│   │   ├── layout.tsx
+│   │       ├── page.tsx
+│   │       └── [id]/page.tsx
+│   ├── (admin)/
 │   │   ├── dashboard/page.tsx
-│   │   ├── products/
-│   │   │   ├── page.tsx
-│   │   │   ├── new/page.tsx
-│   │   │   └── [id]/edit/page.tsx
+│   │   ├── products/[...]/
 │   │   ├── categories/page.tsx
 │   │   ├── suppliers/page.tsx
 │   │   ├── storage-locations/page.tsx
-│   │   ├── stock/
-│   │   │   ├── batches/page.tsx
-│   │   │   ├── opname/page.tsx
-│   │   │   └── opname/[id]/page.tsx
+│   │   ├── stock/[...]/
 │   │   ├── returns/page.tsx
-│   │   ├── reports/
-│   │   │   ├── sales/page.tsx
-│   │   │   ├── profit-loss/page.tsx
-│   │   │   └── stock-value/page.tsx
+│   │   ├── reports/[...]/
 │   │   ├── employees/page.tsx
-│   │   └── settings/page.tsx          # upload QRIS image, expiry_alert_days
+│   │   └── settings/page.tsx
 │   ├── api/
-│   │   ├── products/
-│   │   │   ├── route.ts               # GET, POST
-│   │   │   ├── lookup/route.ts        # GET ?barcode=
-│   │   │   └── [id]/
-│   │   │       ├── route.ts           # GET, PUT, DELETE
-│   │   │       ├── batches/route.ts   # GET, POST
-│   │   │       └── stock-card/route.ts
-│   │   ├── categories/
-│   │   │   ├── route.ts
-│   │   │   └── [id]/
-│   │   │       ├── route.ts
-│   │   │       └── subcategories/route.ts
-│   │   ├── subcategories/[id]/route.ts
-│   │   ├── suppliers/[..]/route.ts
-│   │   ├── storage-locations/[..]/route.ts
-│   │   ├── stock/
-│   │   │   ├── expiring/route.ts
-│   │   │   └── low/route.ts
-│   │   ├── cash-drawer/
-│   │   │   ├── open/route.ts
-│   │   │   ├── current/route.ts
-│   │   │   ├── route.ts               # GET (history, owner_admin)
-│   │   │   └── [id]/close/route.ts
-│   │   ├── transactions/
-│   │   │   ├── checkout/route.ts
-│   │   │   ├── route.ts               # GET list
-│   │   │   └── [id]/
-│   │   │       ├── route.ts           # GET detail
-│   │   │       ├── confirm-payment/route.ts
-│   │   │       ├── void/route.ts
-│   │   │       └── receipt/route.ts
-│   │   ├── returns/
-│   │   │   ├── route.ts
-│   │   │   └── [id]/route.ts
-│   │   ├── stock-opname/
-│   │   │   ├── route.ts
-│   │   │   └── [id]/
-│   │   │       ├── route.ts
-│   │   │       ├── items/[itemId]/route.ts
-│   │   │       └── apply/route.ts
-│   │   ├── reports/
-│   │   │   ├── sales/route.ts
-│   │   │   ├── profit-loss/route.ts
-│   │   │   └── stock-value/route.ts
+│   │   ├── products/[...]/route.ts
+│   │   ├── categories/[...]/route.ts
+│   │   ├── suppliers/[...]/route.ts
+│   │   ├── storage-locations/[...]/route.ts
+│   │   ├── stock/[...]/route.ts
+│   │   ├── cash-drawer/[...]/route.ts
+│   │   ├── transactions/[...]/route.ts
+│   │   ├── returns/[...]/route.ts
+│   │   ├── stock-opname/[...]/route.ts
+│   │   ├── reports/[...]/route.ts
 │   │   ├── expenses/route.ts
-│   │   ├── dashboard/summary/route.ts
-│   │   ├── employees/[..]/route.ts
+│   │   ├── employees/[...]/route.ts
 │   │   ├── shifts/route.ts
-│   │   ├── attendances/check-in/route.ts
-│   │   ├── attendances/check-out/route.ts
-│   │   ├── storage/
-│   │   │   ├── prescription-upload-url/route.ts
-│   │   │   └── qris-upload-url/route.ts
+│   │   ├── attendances/[...]/route.ts
+│   │   ├── storage/[...]/route.ts
 │   │   └── settings/route.ts
 │   ├── layout.tsx
 │   └── globals.css
+│
+├── modules/
+│   ├── auth/
+│   │   ├── service.ts
+│   │   ├── guards.ts
+│   │   └── types.ts
+│   ├── catalog/
+│   │   ├── service.ts
+│   │   ├── repository.ts
+│   │   ├── schemas.ts
+│   │   └── types.ts
+│   ├── inventory/
+│   │   ├── service.ts
+│   │   ├── repository.ts
+│   │   ├── schemas.ts
+│   │   └── types.ts
+│   ├── sales/
+│   │   ├── service.ts              # calls checkout/confirm/void RPCs
+│   │   ├── repository.ts           # read-only/list/detail queries
+│   │   ├── schemas.ts
+│   │   └── types.ts
+│   ├── returns/
+│   ├── cash-drawer/
+│   ├── reporting/
+│   └── employees/
+│
 ├── components/
-│   ├── pos/                           # CartItem, BarcodeScanner, UnitSelector, QrisModal, PaymentPanel
-│   ├── products/                      # ProductForm, UnitFieldArray, BatchTable
-│   ├── reports/                       # SalesChart, ProfitLossTable
-│   └── ui/                            # Button, Input, Modal, Table (base design system)
+│   ├── pos/
+│   ├── products/
+│   ├── inventory/
+│   ├── reports/
+│   └── ui/
+│
 ├── lib/
 │   ├── supabase/
-│   │   ├── server.ts                  # createServerClient() -- must be called per-request, not a module singleton (see PRD 2.2.2)
-│   │   ├── admin.ts                   # createAdminClient() service_role, also called per-request
-│   │   └── browser.ts                 # createBrowserClient() for client components
-│   ├── auth/
-│   │   ├── getSession.ts
-│   │   └── requireRole.ts             # guard helper in API Routes: requireRole(req, ['owner_admin'])
-│   ├── pos/
-│   │   ├── fefo.ts                    # FEFO batch allocation logic (reusable: checkout, stock preview)
-│   │   ├── pricing.ts                 # subtotal/tax calculation
-│   │   └── invoiceNumber.ts           # INV-YYYYMMDD-XXXX generator
-│   ├── validation/                    # zod schemas per endpoint (checkoutSchema, productSchema, etc.)
+│   │   ├── server.ts
+│   │   ├── admin.ts
+│   │   └── browser.ts
+│   ├── validation/
 │   └── utils/
-│       ├── date.ts
-│       └── currency.ts                # Rupiah formatting
+│       ├── date.ts                 # Asia/Jakarta helpers
+│       └── currency.ts
+│
 ├── types/
-│   ├── database.types.ts              # generated via `supabase gen types typescript`
-│   └── api.ts                         # request/response types per endpoint (aligned with Section 6)
-├── middleware.ts                      # session check + role guard for (admin)/(kasir) route groups
+│   ├── database.types.ts
+│   └── api.ts
+│
 ├── supabase/
 │   ├── migrations/
-│   │   ├── 0001_init.sql              # Section 3 contents
-│   │   ├── 0002_rls_policies.sql      # Section 4 contents
-│   │   └── 0003_seed.sql              # initial data: default categories, app_settings row
+│   │   ├── 0001_init.sql
+│   │   ├── 0002_rls_policies.sql
+│   │   ├── 0003_core_functions.sql # checkout/confirm/void/returns/opname
+│   │   └── 0004_seed.sql
 │   └── config.toml
+│
+├── middleware.ts
 ├── public/
 ├── .env.local.example
-├── next.config.js
+├── next.config.ts
 ├── package.json
 └── tsconfig.json
 ```
 
-### 8.1 Environment Variables
+---
 
-```bash
-# .env.local
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=     # used by client for auth & direct Storage uploads
-SUPABASE_SERVICE_ROLE_KEY=         # server only (API Routes) — never expose to the client
+## 2. Dependency Direction
+
+```text
+app/api Route Handler
+      |
+      v
+module service
+      |
+      +--> module repository (normal queries)
+      |
+      `--> Supabase RPC (critical atomic mutation)
+
+module -> lib is allowed
+lib -> module is not allowed
+one module should not reach into another module's repository directly
 ```
 
-### 8.2 Supabase Client Initialization Rules (per PRD 2.2.2 & 8.2)
-
-```ts
-// lib/supabase/admin.ts
-import { createClient } from "@supabase/supabase-js";
-
-// Do NOT create an instance at the top-level module scope — it will be reused across
-// requests in Vercel's serverless environment and risks mixing session data between users.
-// Always call this function INSIDE each handler.
-export function createAdminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false, autoRefreshToken: false } }
-  );
-}
-```
-```ts
-// app/api/products/route.ts
-import { createAdminClient } from "@/lib/supabase/admin";
-import { requireRole } from "@/lib/auth/requireRole";
-
-export async function POST(req: Request) {
-  const session = await requireRole(req, ["owner_admin"]); // returns 401/403 inside the helper
-  const supabase = createAdminClient(); // <-- fresh instance, inside the handler
-  // ... business logic
-}
-```
+For cross-domain use cases, call the other module's public service or keep the orchestration in a dedicated domain service.
 
 ---
+
+## 3. Route Handler Rule
+
+Route Handlers are HTTP adapters, not the business-logic layer.
+
+Preferred pattern:
+
+```ts
+export async function POST(req: Request) {
+  const actor = await requireRole(req, ["kasir", "owner_admin"]);
+  const input = checkoutSchema.parse(await req.json());
+  const result = await salesService.checkout({ actor, input });
+  return Response.json({ data: result, error: null });
+}
+```
+
+Do not put FEFO loops, multi-table stock updates, invoice sequencing, or return allocation directly in Route Handlers.
+
+---
+
+## 4. Supabase Clients
+
+### Browser client
+
+Use only for:
+
+- Supabase Auth/session operations
+- approved signed/direct Storage uploads
+
+Do not use it for transactional operational-table queries.
+
+### Server user/session client
+
+Create per request when the current Supabase session is required.
+
+### Admin/service-role client
+
+Server-only. Never expose the key to browser code.
+
+A service-role client can be created by a helper; do not attach mutable user session state to a shared singleton. Route authorization must always derive from the incoming authenticated request before privileged DB access is performed.
+
+---
+
+## 5. Environment Variables
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+```
+
+Never prefix the service-role key with `NEXT_PUBLIC_`.
+
+---
+
+## 6. Database Function Boundary
+
+Create `supabase/migrations/0003_core_functions.sql` during implementation hardening.
+
+Expected RPCs:
+
+- `checkout_transaction(...)`
+- `confirm_qris_payment(...)`
+- `void_transaction(...)`
+- `create_customer_return(...)`
+- `create_supplier_return(...)`
+- `apply_stock_opname(...)`
+
+Exact signatures may evolve while implementing, but their transactional responsibility must not move back into multiple independent HTTP database calls.
+
+---
+
+## 7. Deployment
+
+Pilot target:
+
+```text
+Git repository
+  -> Vercel Next.js deployment
+  -> *.vercel.app
+
+Supabase project
+  -> PostgreSQL
+  -> Auth
+  -> Storage
+```
+
+No custom domain or VPS is required for development/demo Pilot 1. Re-check current hosting plan terms before commercial production use.

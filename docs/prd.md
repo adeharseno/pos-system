@@ -8,9 +8,9 @@
 
 Tech Stack: Next.js · Supabase · Vercel
 
-Version 1.0 | June 22, 2026
+Version 1.1 | August 14, 2026
 
-*Status: Draft for Review*
+*Status: Architecture-Hardened Draft*
 
 ---
 
@@ -20,7 +20,7 @@ Version 1.0 | June 22, 2026
 
 This document defines the product requirements for Pilot 1 of a Point of Sale system built specifically for pharmacy operations. Pilot 1 focuses on validating the core foundation — cashier, pharmaceutical product management (multi-unit, multi-batch, FEFO), and basic reporting — with a technical approach that is simple, low-cost, and fast to build and test in production.
 
-Rather than a separate Golang backend with full payment gateway integration, Pilot 1 takes a leaner approach: the entire application (frontend and backend) lives in a single Next.js codebase, uses Supabase for the database, authentication, and file storage, and is hosted on Vercel with no monthly cost at pilot scale. QRIS payment uses a static QRIS image uploaded by the pharmacy owner, confirmed manually by the cashier — no payment gateway integration.
+Rather than a separate backend service or microservice architecture, Pilot 1 uses a **modular monolith**: frontend and backend HTTP endpoints live in one Next.js codebase, while Supabase provides PostgreSQL, authentication, and file storage. The application is designed to deploy on Vercel without requiring a custom domain or VPS during development/demo validation. QRIS uses a static image uploaded by the pharmacy owner and manual cashier confirmation — no payment gateway integration. Critical stock-changing workflows execute atomically inside PostgreSQL functions/RPC rather than as several independent API-to-database calls.
 
 This approach is a deliberate choice to validate the concept as quickly and cheaply as possible. Features that add significant complexity but haven't been proven necessary at this stage — approval workflows, payment gateway integration, formal Purchase Orders, offline mode — are deferred to a later pilot, with migration considerations noted in Section 9.
 
@@ -28,7 +28,7 @@ This approach is a deliberate choice to validate the concept as quickly and chea
 
 - Validate that the cashier system works for pharmacy operations with the core pharmaceutical complexities: multi-unit (box/strip/tablet), multi-batch with FEFO, and drug classification with prescription requirements.
 
-- Prove that the low-cost architecture (Next.js + Supabase + Vercel) is sufficient for daily cashier operations at a small-to-medium pharmacy.
+- Validate that the low-cost modular-monolith architecture (Next.js + Supabase + Vercel) is technically sufficient for the Pilot 1 workload without introducing unnecessary infrastructure.
 
 - Provide basic visibility into stock, sales, and finances without the complexity of approval workflows or third-party integrations.
 
@@ -75,45 +75,52 @@ The following are intentionally excluded from Pilot 1, including their schemas �
 | Layer | Technology | Notes |
 | --- | --- | --- |
 | Frontend | Next.js (React) | Cashier UI, admin dashboard, reports |
-| Backend | Next.js API Routes | REST API & business logic, runs as serverless functions in the same codebase as the frontend |
-| Database | PostgreSQL (Supabase) | Managed relational database, ACID transactions for stock & finance |
+| Backend / HTTP boundary | Next.js Route Handlers | Authentication, authorization, request validation, and domain-service orchestration in the same codebase as the frontend |
+| Database | PostgreSQL (Supabase) | Managed relational database, constraints, reporting queries, and atomic RPC/functions for critical stock & finance mutations |
 | Auth | Supabase Auth | Cashier/admin login, long-lived sessions with automatic token refresh |
 | File Storage | Supabase Storage | Prescription photos and product images |
-| Hosting | Vercel | Frontend + backend in a single deployment, no monthly cost at pilot scale |
+| Hosting | Vercel | Single Next.js deployment; `*.vercel.app` is sufficient during development/demo so a custom domain is not required |
 | Receipt Printing | Thermal printer (ESC/POS) via WebUSB/local service | Print from the cashier's browser |
 | Barcode Scanner | USB/Bluetooth HID scanner | Reads as keyboard input, no special driver needed |
 
 ## 2.2 Key Architecture Decisions
 
-### 2.2.1 Next.js Full-Stack on Vercel
+### 2.2.1 Modular Monolith: Next.js Full-Stack on Vercel
 
-Pilot 1 uses Next.js as the single codebase for both frontend and backend, using Next.js API Routes/Route Handlers as the backend layer. This is chosen purely for cost efficiency and development speed during validation:
+Pilot 1 is a **modular monolith**, not a microservice system. There is one Next.js application, one deployment, and one PostgreSQL database. Business domains (catalog, inventory, sales, returns, cash drawer, reporting, employees) are kept as explicit code modules so the application remains maintainable without paying the complexity cost of distributed services.
 
-- No separate server to rent or manage — frontend and backend are deployed as a single app on Vercel.
-- Vercel's free tier (Hobby) is sufficient for a single outlet with one or a few cashiers.
-- Each backend endpoint runs as a serverless function — invoked on request, then stops. No persistent process is needed, consistent with the decision to exclude payment gateways and webhooks from Pilot 1.
+- No separate application server or microservice deployment is required.
+- Next.js Route Handlers are the HTTP boundary; they authenticate, authorize, validate input, and call domain services.
+- Long/critical stock algorithms are not implemented as a chain of independent Supabase HTTP calls. Atomic workflows are delegated to PostgreSQL functions/RPC.
+- A `*.vercel.app` URL is acceptable for development/demo Pilot 1, so purchasing a domain is not required.
 
-> Serverless functions have an execution time limit (around 10 seconds on Vercel's free tier). For Pilot 1 — cashier transactions, product CRUD, and basic reports — this is more than enough. Revisit if later phases introduce long-running operations (e.g. reports over very large datasets).
+> Hosting quotas and commercial-use terms can change. Before live commercial pharmacy operation, re-check the current Vercel/Supabase plan limits and terms. A hosting-plan change should not require an architecture rewrite.
 
 ### 2.2.2 Supabase as Database, Auth, and Storage
 
-- **Database**: managed PostgreSQL, accessed directly from Next.js API Routes.
-- **Auth**: Supabase Auth handles login for Owner/Admin and Cashier. Sessions are effectively indefinite — the access token is refreshed automatically by the Supabase client roughly every hour, so cashiers don't need to re-login during a work day as long as the app stays open.
-- **Storage**: used for prescription photos (when a transaction requires prescription validation) and product images.
+- **Database**: managed PostgreSQL. Normal reads/CRUD are orchestrated from server-side domain services. Checkout, void, returns, QRIS state transitions, and stock-opname apply use PostgreSQL functions/RPC so locking and writes occur inside one ACID transaction.
+- **Auth**: Supabase Auth handles login for Owner/Admin and Cashier.
+- **Storage**: used for prescription photos, product images, and the static QRIS image.
 
-> Implementation notes: (1) mount an auth state change listener at the application root so token refresh works consistently across page navigation; (2) always initialize the Supabase client inside the API Route request handler, not at module level, to prevent session data from one user leaking into another in Vercel's serverless environment.
+> The browser must never receive the Supabase `service_role` key. Transactional tables are not queried directly from client components. Server-side privileged database access occurs only after the incoming request has been authenticated and authorized.
 
 ### 2.2.3 Static QRIS with Manual Confirmation
 
 Unlike dynamic QRIS via a payment gateway, Pilot 1 uses static QRIS:
 
 - The pharmacy owner uploads a single static QRIS image (obtained from their merchant QRIS account) via the settings page; it's stored in Supabase Storage.
-- When the cashier selects QRIS as the payment method, the system shows the static QRIS image in a popup/modal for the customer to scan.
-- Since there's no automatic integration with the QRIS provider, the cashier must manually confirm payment (e.g. after seeing a payment notification in the QRIS merchant app) by pressing "Confirm Payment Received" before the transaction is completed.
+- When QRIS checkout is submitted, the atomic checkout transaction allocates/deducts stock and creates the sale as `pending_payment`; the system then shows the static QRIS image in a popup/modal for the customer to scan.
+- Since there's no automatic integration with the QRIS provider, the cashier must manually confirm payment (e.g. after seeing a payment notification in the QRIS merchant app) by pressing "Confirm Payment Received". Only then does the transaction transition from `pending_payment` to `completed`.
 
 > This shifts payment verification responsibility from the system to the cashier manually. Risk: a cashier can complete a transaction before payment is actually received (by mistake or fraud). Mitigation: record confirmation time on every QRIS transaction for audit purposes, and perform periodic reconciliation between QRIS transaction records in the system and actual merchant account transactions. Pilot 2 can replace this with dynamic QRIS via a payment gateway for automatic confirmation — see Section 9.
 
-### 2.2.4 Batch-Based Stock Management and FEFO
+### 2.2.4 Database-Side Atomic Transactions
+
+Supabase client calls such as separate `.select()`, `.update()`, and `.insert()` requests do not form one shared database transaction. Therefore, workflows that require row locks and all-or-nothing behavior are implemented as PostgreSQL functions invoked through Supabase RPC.
+
+Critical RPC boundaries include checkout/FEFO allocation, QRIS confirmation, void, customer/supplier returns, and stock-opname apply. This keeps the single-database consistency advantage of the modular monolith.
+
+### 2.2.5 Batch-Based Stock Management and FEFO
 
 Stock is not stored as a single number per product, but as a set of batches (lots) each with their own expiry date. When a sale occurs, the system automatically draws stock from the batch with the nearest expiry date first (FEFO — First Expired First Out), without requiring manual batch selection by the cashier except in special cases. This was retained from the earlier design because it is a core pharmacy requirement that cannot be simplified without undermining the product's core value.
 
@@ -234,10 +241,13 @@ Shelf locations are hierarchical (Zone → Rack → Level) for easy physical pro
 
 | Table | Notes |
 | --- | --- |
-| transactions | Sale transaction header: invoice number, cashier, total, status, payment method, timestamps, QRIS payment confirmation time |
-| transaction_items | Line items per transaction: product, selected unit, quantity, source batch (FEFO), subtotal |
-| transaction_prescriptions | Prescription data linked to a transaction: prescription number, doctor name, patient name, prescription photo (if any prescription item) |
-| returns | Transaction returns: items returned, destination batch for stock restoration, reason, processed by |
+| transactions | Sale transaction header: DB-generated invoice number, business date, cashier/drawer, totals, payment method, lifecycle status, QRIS confirmation, void audit |
+| transaction_items | Customer-facing cart/receipt lines: product, selected unit, unit/base quantity, price/tax snapshots |
+| transaction_item_batches | FEFO allocation rows: one transaction item can draw stock from one or more source batches with cost snapshots |
+| transaction_prescriptions | Prescription data linked to a transaction: prescription number, doctor name, patient name, prescription photo |
+| returns | Customer/supplier return header with actor/reason and customer refund snapshots |
+| return_items | Return lines, referencing original transaction item for customer returns |
+| return_item_batches | Exact batches restored/deducted by each return line, including cost snapshots |
 
 > The separate `payments` table from the earlier design (which held payment gateway references) is removed — payment status and method are now columns directly on `transactions`, since there are no external gateway references to store in Pilot 1.
 
@@ -285,7 +295,7 @@ Provide a fast and accurate cashier interface for processing sales transactions,
 
 - At checkout, the system automatically selects the batch with the nearest `expired_date` first (FEFO) to fulfill the sold quantity.
 - If one batch has insufficient stock, the system automatically splits the allocation across multiple batches.
-- The system records the source batch on each `transaction_items` row, for stock card and return purposes.
+- The system records each FEFO source batch in `transaction_item_batches`. One customer-facing `transaction_items` row may have multiple batch allocations.
 - Expired products (`expired_date` has passed) cannot be sold; the system blocks the sale and shows a warning to the cashier.
 
 ### 4.2.5 Payment Methods
@@ -296,7 +306,7 @@ Provide a fast and accurate cashier interface for processing sales transactions,
 | QRIS (Static) | System shows a popup with the static QRIS image uploaded by Owner/Admin. Cashier waits for the customer to scan and pay, then manually presses "Confirm Payment Received" after verifying payment arrived (e.g. via notification in the pharmacy's QRIS merchant app) |
 
 - Bank transfer and automatic e-wallets are not included in Pilot 1 — see Section 1.4 and Section 9 for plans to add more payment methods in a later phase.
-- QRIS transactions record the confirmation time (`payment_confirmed_at`) and the confirming cashier, as a basic audit trail given that confirmation is manual.
+- QRIS transactions record the confirmation time (`payment_confirmed_at`) and confirming cashier. Pending QRIS transactions are excluded from completed-sales revenue and can be voided to release stock if payment is abandoned.
 
 ### 4.2.6 Receipt Printing
 
@@ -306,7 +316,7 @@ Provide a fast and accurate cashier interface for processing sales transactions,
 ### 4.2.7 Void & Cancel Transaction
 
 - The cashier can void a saved transaction by entering a cancellation reason.
-- Voiding a transaction automatically restores stock to the original source batches.
+- Voiding a transaction automatically restores stock using the original `transaction_item_batches` allocations. A transaction with an existing customer return cannot be voided in Pilot 1, preventing double stock restoration.
 - Every void is recorded clearly: who did it, when, and why — but with no approval workflow. Owner/Admin can review the full void history at any time via reports, as a passive post-transaction audit rather than a prerequisite for the void itself.
 
 > This simplification fits Pilot 1's scale assumptions: a single outlet with few cashiers, where the Owner/Admin is likely also directly overseeing daily operations. Approval workflows can be reconsidered in a later phase if the business grows (more cashiers, owner not directly supervising day-to-day).
@@ -324,17 +334,20 @@ Provide a fast and accurate cashier interface for processing sales transactions,
 3. System shows the product and available units; cashier selects the sell unit.
 4. If the product requires a prescription, the system requests prescription data before the item can be added to the cart.
 5. Cashier repeats steps 2–4 for all items.
-6. Cashier selects payment method (Cash or QRIS).
-7. For QRIS, the system shows the static QRIS popup; cashier presses confirm after verifying payment received.
-8. System deducts stock via FEFO, records the transaction, and prints the receipt.
-9. Cashier closes the cash drawer session at the end of shift with reconciliation.
+6. Cashier selects payment method (Cash or QRIS) and submits checkout.
+7. The checkout database RPC validates the cashier's open drawer, locks eligible batches, performs FEFO allocation, deducts stock, generates the invoice number, and records the transaction atomically. Cash becomes `completed`; QRIS becomes `pending_payment`.
+8. For QRIS, the system shows the static QRIS popup; after verifying payment in the merchant app, the cashier confirms the payment and the transaction transitions to `completed`.
+9. The receipt can be printed for the completed transaction.
+10. Cashier closes the cash drawer session at the end of shift with reconciliation.
 
 ## 4.4 Core Business Rules
 
 - A transaction cannot be completed if any item requires a prescription and no prescription data has been entered.
 - A transaction cannot be completed if available stock (across all active batches) is insufficient for the requested quantity.
-- A QRIS transaction cannot be completed without manual confirmation from the cashier.
+- QRIS checkout is created as `pending_payment`; it becomes `completed` only after manual cashier confirmation. Pending QRIS transactions do not count as completed sales revenue.
 - Products where all batches have expired cannot be sold.
+- Checkout requires an open cash drawer session owned by the authenticated cashier.
+- Sales, voids, returns, and stock-opname apply must be atomic database transactions.
 
 ---
 
@@ -390,16 +403,23 @@ Provide control over product data, categories, suppliers, and stock — includin
 ## 5.8 Stock Opname
 
 - Admin can create a new stock opname session, with products filterable by shelf location.
-- Staff enters the actual physical stock count per product (and per batch where identifiable).
-- The system computes the variance between system stock and physical count; staff/admin can apply the adjustment directly with a note/reason — no additional approval needed.
+- Pilot 1 snapshots and counts stock **per batch**. The UI may group batches by product for convenience, but adjustments must remain batch-specific for traceability.
+- `physical_quantity` remains empty until the batch is counted. The session cannot be applied while any row is uncounted.
+- Pilot 1 uses an **operational freeze** for batches included in an `in_progress` stock-opname session. Checkout, void, returns, and manual stock changes that would touch a frozen batch are rejected until the session is applied or cancelled.
+- Only one `in_progress` stock-opname session is allowed globally in Pilot 1.
+- The system computes each batch variance and applies all counted quantities atomically with a note/reason — no additional approval needed. Setting live stock directly to the counted quantity is safe because the affected batches remain frozen from snapshot through apply.
+- An opname can be cancelled before apply; cancellation changes no stock and releases the freeze.
+- Physical stock with no known batch must first be entered through manual batch stock entry rather than assigned silently to an arbitrary existing batch.
 - Full history of all opname sessions and adjustments is stored for Owner/Admin review at any time.
 
 ## 5.9 Returns
 
 - Returns can be initiated from transaction history (customer returns) or independently (supplier returns for expired/defective products).
-- Customer returns restore stock to the original source batch (recorded in `transaction_items` at checkout), not to a new batch.
-- Every return is recorded with a reason and the person who processed it, and is applied directly to stock — no approval workflow.
-- Supplier returns record a stock deduction from the relevant batch with a reason (expired, damaged, recall) and do not affect sales reports.
+- Customer returns reference the original `transaction_item_id` and restore stock only to batches used by that item's original FEFO allocations.
+- Cumulative partial returns may never exceed the originally sold quantity.
+- Customer returns snapshot refund values and returned COGS so net sales and P&L remain historically correct. The operator records whether the refund was paid via Cash or QRIS/manual non-cash. A cash refund is linked to the currently-open drawer that physically pays the refund, not the drawer from the original sale.
+- Every return is recorded with a reason and processor and is applied atomically to stock — no approval workflow.
+- Supplier returns deduct stock from the selected batch and do not reduce customer sales revenue.
 
 ---
 
@@ -417,8 +437,8 @@ Give the pharmacy owner/admin basic financial visibility, accounting for the com
 
 ## 6.3 Profit & Loss Report
 
-- Computes net profit with the formula: Total Sales − Cost of Goods Sold (COGS) − Operational Expenses.
-- COGS is based on the `cost_price` of the batch actually sold (from FEFO recording at transaction time), not a moving average.
+- Computes net profit using net sales and net COGS: `(completed sales − customer refunds) − (sale COGS − returned COGS) − operational expenses`.
+- Sale COGS is based on `transaction_item_batches.cost_price_snapshot`; returned COGS is reversed from `return_item_batches.cost_price_snapshot`, not from current product cost or a moving average.
 - Operational expenses (salary, rent, electricity, etc.) can be entered as manual entries per period by Owner/Admin.
 
 ## 6.4 Tax Calculation (VAT)
@@ -466,12 +486,17 @@ Pilot 1 uses two fixed roles, managed through Supabase Auth, without a granular 
 
 - Barcode scan to product appearing in the cart must be under 1 second.
 - The static QRIS image popup must appear instantly (under 1 second) since the image is already stored, not dynamically generated.
-- Every API call (Next.js API Route) must complete within Vercel's serverless function time limit (around 10 seconds on the free tier); potentially slow operations (annual reports over large datasets) need database-side aggregation/pagination.
+- API requests must remain short-running and compatible with the limits of the currently selected Vercel plan; potentially slow reports use database-side aggregation and pagination. Hosting limits must be re-checked before deployment because provider quotas can change.
 
 ## 8.2 Reliability & Data Integrity
 
-- All operations that affect stock (sales, returns, opname adjustments) must be atomic (database transaction) to prevent inconsistencies, especially when drawing stock from multiple batches simultaneously.
-- The Supabase client in each API Route must be initialized inside the request handler, not stored in a shared variable across requests, to prevent session data leakage across users in Vercel's serverless environment.
+- All operations that affect stock (checkout, void, returns, opname adjustments) must be atomic database transactions. Critical workflows run inside PostgreSQL functions/RPC and use row locking where required.
+- Privileged database access occurs server-side only after session and role verification. The browser never receives the service-role key.
+- Invoice generation must be concurrency-safe and occur inside the checkout transaction.
+- Database composite foreign keys must prevent cross-product unit/batch references in transaction, return, and opname rows.
+- Database check constraints must reject invalid payment lifecycle combinations (for example cash + `pending_payment`, QRIS pending with confirmation metadata, or voided rows without void metadata).
+- Stock-changing RPCs must re-check active stock-opname freezes after acquiring their target batch locks so a concurrent opname start cannot be bypassed.
+- Operational business-day calculations use `Asia/Jakarta` while persisted timestamps remain UTC.
 
 ## 8.3 Security
 
@@ -485,8 +510,8 @@ Pilot 1 uses two fixed roles, managed through Supabase Auth, without a granular 
 
 ## 8.5 Operational Cost
 
-- All components (Vercel, Supabase) are targeted to run within free tiers at single-outlet scale with a few cashiers, consistent with Pilot 1's goal of concept validation at minimal cost.
-- If usage exceeds free tier limits (e.g. Supabase row count or Vercel function invocations), upgrading to the entry-level paid tier on both platforms is relatively cheap (roughly USD 0–25/month) compared to the cost and complexity of the earlier infrastructure plan.
+- Development/demo Pilot 1 targets zero purchased infrastructure: Vercel-hosted Next.js, Supabase, and a `*.vercel.app` URL, with no VPS or custom domain required.
+- Free-tier quotas and hosting/commercial-use terms are external constraints and may change. They must be verified before live commercial use. If a plan/host change becomes necessary, the modular-monolith architecture should remain portable without redesigning the application domains or database model.
 
 ---
 
@@ -500,12 +525,13 @@ Unlike the earlier approach of pre-designing schemas for deferred features, Pilo
 
 | Stage | Focus |
 | --- | --- |
-| 1 | Next.js + Supabase + Vercel setup, core database structure (products, units, batches, categories, suppliers, shelf locations) |
-| 2 | Core cashier: barcode, unit selection, FEFO, prescription validation, cash payment, receipt printing |
-| 3 | Static QRIS: upload QRIS image, payment popup, manual confirmation |
-| 4 | Advanced stock management: stock opname, returns, expiry alerts |
-| 5 | Reports & finance: dashboard, sales reports, profit & loss, tax |
-| 6 | Operations: employee management, shifts, cash drawer, two-role enforcement |
+| M0 | Architecture/schema hardening: modular-monolith boundaries, transaction/batch allocation, composite FKs, payment lifecycle constraints, refund-drawer attribution, stock-opname freeze, return/void rules, invoice sequencing, timezone |
+| M1 | Next.js + Supabase setup, schema/RLS, atomic PostgreSQL RPC/functions, database tests |
+| M2 | Auth, master data, product/unit/batch inventory basics |
+| M3 | Cashier core: drawer, barcode/cart, atomic FEFO checkout, cash, receipt, void |
+| M4 | Static QRIS: image upload, `pending_payment`, manual confirmation |
+| M5 | Customer/supplier returns, batch stock opname, stock card |
+| M6 | Reports/finance and employee operations |
 
 ## 9.3 Pilot 2 Migration Considerations
 

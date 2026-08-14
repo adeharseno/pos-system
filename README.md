@@ -1,1 +1,36 @@
-# pos-system
+# Pharmacy POS — Pilot 1
+
+Low-cost pharmacy Point of Sale pilot using a **Next.js modular monolith + Supabase PostgreSQL/Auth/Storage + Vercel**.
+
+## Current Status
+
+Architecture/schema documentation is prepared; application implementation has not started.
+
+## Documentation
+
+- [`docs/prd.md`](docs/prd.md) — product requirements and scope
+- [`docs/architecture.md`](docs/architecture.md) — modular-monolith architecture and deployment
+- [`docs/database-design.md`](docs/database-design.md) — database model and integrity rules
+- [`docs/business-logic.md`](docs/business-logic.md) — checkout, FEFO, QRIS, void, returns, stock opname, reports
+- [`docs/api-contract.md`](docs/api-contract.md) — HTTP API contract
+- [`docs/folder-structure.md`](docs/folder-structure.md) — proposed Next.js/domain module structure
+- [`docs/roadmap.md`](docs/roadmap.md) — implementation order and test gates
+- [`docs/revision-summary.md`](docs/revision-summary.md) — M0 hardening changes
+
+## Infrastructure Target
+
+```text
+Next.js -> Vercel
+          |
+          v
+       Supabase
+       |- PostgreSQL
+       |- Auth
+       `- Storage
+```
+
+A custom domain or VPS is not required for development/demo Pilot 1. Hosting plan limits and commercial-use terms must be verified before live production use.
+
+## Important
+
+Critical inventory/financial workflows are designed to run atomically in PostgreSQL RPC/functions. Do not implement checkout/void/returns/opname as unrelated database calls from the Next.js API layer. Stock opname freezes affected batches while in progress; cash refunds belong to the drawer that pays the refund; composite FKs and lifecycle checks are part of the base schema.

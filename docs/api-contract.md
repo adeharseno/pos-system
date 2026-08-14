@@ -1,197 +1,281 @@
 # API Contract — Pharmacy POS (Pilot 1)
 
-> Part of the Technical Design. Related table schemas are in `database-design.md`. Detailed logic is in `business-logic.md`.
+> HTTP boundary for the modular monolith. Route Handlers authenticate, authorize, validate, then call domain services or atomic PostgreSQL RPCs. See `architecture.md` and `business-logic.md`.
 
-## 6. API Contract (Next.js API Routes)
+## 1. General Contract
 
-Base path: `/api`. All success responses: `{ data: ..., error: null }`. All errors: `{ data: null, error: { code, message } }`, HTTP status as appropriate (400/401/403/404/409/422/500).
-Required header: `Authorization: Bearer <supabase_access_token>` (read from the Supabase session cookie; no manual header needed for same-origin requests from the client).
+Base path: `/api`.
 
-### 6.1 Products & Master Data
+Success:
+
+```json
+{ "data": {}, "error": null }
+```
+
+Error:
+
+```json
+{ "data": null, "error": { "code": "ERROR_CODE", "message": "Human readable message" } }
+```
+
+Typical HTTP statuses: `400`, `401`, `403`, `404`, `409`, `422`, `500`.
+
+Same-origin browser requests use the Supabase session cookie. Every Route Handler independently verifies the session and role.
+
+---
+
+## 2. Products & Master Data
 
 | Method | Endpoint | Role | Description |
 |---|---|---|---|
-| GET | `/api/products` | both | List products. Query params: `q` (search by name/SKU), `category_id`, `subcategory_id`, `drug_classification`, `storage_location_id`, `stock_status` (`low`/`out`/`all`), `page`, `limit` |
-| GET | `/api/products/:id` | both | Product detail + `product_units[]` + `product_batches[]` (where `quantity > 0`, sorted `expired_date` ASC) |
-| GET | `/api/products/lookup?barcode=` | both | Find product by barcode in `product_units.barcode`. Used when scanning at the register. |
-| POST | `/api/products` | owner_admin | Create product + `units[]` (at least 1, exactly one must have `is_base_unit=true`) |
-| PUT | `/api/products/:id` | owner_admin | Update product + units (upsert) |
-| DELETE | `/api/products/:id` | owner_admin | Soft delete: set `is_active=false` (no hard delete, transaction history must be preserved) |
-| GET | `/api/categories` | both | List categories + nested subcategories |
-| POST | `/api/categories` | owner_admin | Create category |
-| PUT/DELETE | `/api/categories/:id` | owner_admin | Update/deactivate category |
+| GET | `/api/products` | both | Search/filter products |
+| GET | `/api/products/:id` | both | Product + units + batches |
+| GET | `/api/products/lookup?barcode=` | both | Barcode lookup |
+| POST | `/api/products` | owner_admin | Create product + units |
+| PUT | `/api/products/:id` | owner_admin | Update product + units |
+| DELETE | `/api/products/:id` | owner_admin | Deactivate product |
+| GET/POST | `/api/categories` | GET both / POST owner_admin | Category list/create |
+| PUT/DELETE | `/api/categories/:id` | owner_admin | Update/deactivate |
 | POST | `/api/categories/:id/subcategories` | owner_admin | Create subcategory |
-| PUT/DELETE | `/api/subcategories/:id` | owner_admin | Update/deactivate subcategory |
-| GET/POST | `/api/suppliers` | owner_admin (GET: both) | List/create supplier |
+| PUT/DELETE | `/api/subcategories/:id` | owner_admin | Update/deactivate |
+| GET/POST | `/api/suppliers` | GET both / POST owner_admin | Supplier list/create |
 | PUT/DELETE | `/api/suppliers/:id` | owner_admin | Update/deactivate |
-| GET/POST | `/api/storage-locations` | owner_admin (GET: both) | List/create shelf locations |
+| GET/POST | `/api/storage-locations` | GET both / POST owner_admin | Location list/create |
 
-**Example — `POST /api/products`**
-```jsonc
-// Request
-{
-  "sku": "PCT-500-001",
-  "name": "Paracetamol 500mg",
-  "generic_name": "Paracetamol",
-  "category_id": "uuid",
-  "subcategory_id": "uuid",
-  "drug_classification": "otc",
-  "base_unit": "tablet",
-  "tax_rate": 11,
-  "is_taxable": true,
-  "storage_location_id": "uuid",
-  "minimum_stock": 100,
-  "default_supplier_id": "uuid",
-  "units": [
-    { "unit_name": "Tablet", "conversion_to_base": 1, "selling_price": 500, "barcode": "899000111", "is_base_unit": true },
-    { "unit_name": "Strip", "conversion_to_base": 10, "selling_price": 4500, "barcode": "899000112", "is_base_unit": false },
-    { "unit_name": "Box", "conversion_to_base": 100, "selling_price": 40000, "barcode": "899000113", "is_base_unit": false }
-  ]
-}
-// Response 201
-{ "data": { "id": "uuid", "sku": "PCT-500-001", "...": "..." }, "error": null }
-```
-Server validation: exactly one `units[].is_base_unit = true` and `conversion_to_base = 1` for that unit → `422` if not satisfied.
+Product validation:
 
-### 6.2 Batches & Stock
+- exactly one base unit
+- base-unit conversion = 1
+- subcategory belongs to category
+- tax rate 0..100
+- non-negative minimum stock and prices
+
+---
+
+## 3. Batches & Stock
 
 | Method | Endpoint | Role | Description |
 |---|---|---|---|
-| GET | `/api/products/:id/batches` | both | List product batches (including expired, for history) |
-| POST | `/api/products/:id/batches` | owner_admin | Manual stock entry (5.7.1). If `batch_number`+`expired_date` match an existing entry → add to its `quantity`, do not insert a new row |
-| GET | `/api/products/:id/stock-card` | owner_admin | Stock card (5.7.2): combined view of transaction_items, return_items, stock_opname_items for a product/batch, sorted by time |
-| GET | `/api/stock/expiring` | both | List batches expiring within N days (default from `app_settings.expiry_alert_days`) |
-| GET | `/api/stock/low` | both | List products where total active stock < `minimum_stock` |
+| GET | `/api/products/:id/batches` | both | All batches including history |
+| POST | `/api/products/:id/batches` | owner_admin | Manual stock/batch entry |
+| GET | `/api/products/:id/stock-card` | owner_admin | Batch movement history |
+| GET | `/api/stock/expiring` | both | Near-expiry batches |
+| GET | `/api/stock/low` | both | Products below minimum stock |
 
-**Example — `POST /api/products/:id/batches`**
-```jsonc
-// Request
-{ "batch_number": "B240601", "expired_date": "2027-06-01", "quantity": 500, "cost_price": 350, "received_date": "2026-06-20" }
-// Response 201
-{ "data": { "id": "uuid", "product_id": "uuid", "quantity": 500, "...": "..." }, "error": null }
-```
+Manual batch entry may increment an existing matching product+batch number+expiry row atomically.
 
-### 6.3 Cashier / Transactions (core)
+---
+
+## 4. Cash Drawer
 
 | Method | Endpoint | Role | Description |
 |---|---|---|---|
-| POST | `/api/cash-drawer/open` | kasir | Open a shift cash session |
-| GET | `/api/cash-drawer/current` | kasir | Active cash session for the logged-in cashier |
-| POST | `/api/cash-drawer/:id/close` | kasir | Close session, compute variance |
-| GET | `/api/cash-drawer` | owner_admin | All session history |
-| POST | `/api/transactions/checkout` | kasir | **Core endpoint**: process a sale transaction (see algorithm 7.1) |
-| POST | `/api/transactions/:id/confirm-payment` | kasir | Manually confirm QRIS payment received |
-| GET | `/api/transactions` | both | List transactions. Query params: `from`, `to`, `cashier_id`, `payment_method`, `status` |
-| GET | `/api/transactions/:id` | both | Transaction detail + items + prescription |
-| GET | `/api/transactions/:id/receipt` | both | Formatted data for receipt printing (ESC/POS payload, see 7.3) |
-| POST | `/api/transactions/:id/void` | kasir/owner_admin | Void a transaction (7.2) |
+| POST | `/api/cash-drawer/open` | kasir/owner_admin | Open own drawer session |
+| GET | `/api/cash-drawer/current` | kasir/owner_admin | Current employee's open session |
+| POST | `/api/cash-drawer/:id/close` | kasir/owner_admin | Close own session and calculate variance |
+| GET | `/api/cash-drawer` | owner_admin | Session history |
 
-**Example — `POST /api/transactions/checkout`**
+A cashier cannot open a second active session and cannot transact against another employee's drawer session.
+
+---
+
+## 5. Transactions
+
+| Method | Endpoint | Role | Description |
+|---|---|---|---|
+| POST | `/api/transactions/checkout` | kasir/owner_admin | Atomic checkout RPC |
+| POST | `/api/transactions/:id/confirm-payment` | kasir/owner_admin | `pending_payment` QRIS -> `completed` |
+| POST | `/api/transactions/:id/void` | kasir/owner_admin | Atomic void + stock restore |
+| GET | `/api/transactions` | both | List/filter transactions |
+| GET | `/api/transactions/:id` | both | Detail + item/batch allocations + prescription |
+| GET | `/api/transactions/:id/receipt` | both | Structured receipt payload |
+
+### 5.1 Checkout request
+
 ```jsonc
-// Request
 {
   "cash_drawer_session_id": "uuid",
   "items": [
-    { "product_id": "uuid", "product_unit_id": "uuid", "quantity": 2 },
-    { "product_id": "uuid-2", "product_unit_id": "uuid-2", "quantity": 1 }
+    { "product_id": "uuid", "product_unit_id": "uuid", "quantity": 2 }
   ],
-  "prescription": {                       // required if any item has requires_prescription = true
+  "prescription": {
     "prescription_number": "RX-001",
     "doctor_name": "dr. Andi",
     "patient_name": "Budi",
-    "photo_url": "https://.../prescriptions/xxx.jpg"  // already uploaded to Storage from the client
+    "photo_url": "https://..."
   },
-  "payment_method": "cash",               // "cash" | "qris"
-  "cash_received": 50000                  // required if payment_method = cash
+  "payment_method": "cash",
+  "cash_received": 50000
 }
-// Response 201
+```
+
+The client does **not** submit authoritative prices, tax, cost, invoice number, or batch IDs. The server/database resolves those values.
+
+### 5.2 Checkout response
+
+```jsonc
 {
   "data": {
     "transaction_id": "uuid",
-    "invoice_number": "INV-20260626-0007",
+    "invoice_number": "INV-20260814-0007",
     "subtotal": 45000,
     "tax_amount": 4950,
     "total_amount": 49950,
     "cash_change": 50,
     "status": "completed",
-    "items": [ /* per-batch FEFO breakdown, see 7.1 */ ]
+    "items": [
+      {
+        "transaction_item_id": "uuid",
+        "product_id": "uuid",
+        "product_unit_id": "uuid",
+        "quantity": 1,
+        "quantity_in_base": 100,
+        "batch_allocations": [
+          { "batch_id": "uuid-a", "quantity_in_base": 30 },
+          { "batch_id": "uuid-b", "quantity_in_base": 70 }
+        ]
+      }
+    ]
   },
   "error": null
 }
 ```
-Special errors: `409 INSUFFICIENT_STOCK`, `422 PRESCRIPTION_REQUIRED`, `422 EXPIRED_BATCH_ONLY`.
 
-> **QRIS stock note**: stock is decremented at checkout creation (step 4 in 7.1), regardless of whether payment has been confirmed. `payment_confirmed_at` stays `NULL` until the cashier hits confirm. This prevents two cashiers from racing for the same stock while one is waiting for a customer to scan.
+Cash checkout returns `completed`. QRIS checkout returns `pending_payment` until manually confirmed.
 
-**Example — `POST /api/transactions/:id/void`**
-```jsonc
-// Request
+Special errors include:
+
+- `409 INSUFFICIENT_STOCK`
+- `409 CASH_DRAWER_NOT_OPEN`
+- `409 CASH_DRAWER_MISMATCH`
+- `409 STOCK_OPNAME_IN_PROGRESS`
+- `409 INVALID_TRANSACTION_STATE`
+- `422 PRESCRIPTION_REQUIRED`
+- `422 INVALID_PRODUCT_UNIT`
+- `422 INSUFFICIENT_CASH`
+
+The checkout RPC calculates authoritative totals first, creates the `transactions` header, and only then inserts `transaction_items` and batch allocations. This ordering is required by the transaction-item foreign key.
+
+### 5.3 Confirm QRIS
+
+`POST /api/transactions/:id/confirm-payment`
+
+No body required unless later audit notes are added. Only QRIS transactions in `pending_payment` may transition to `completed`.
+
+### 5.4 Void
+
+```json
 { "reason": "Wrong product entered" }
-// Response 200
-{ "data": { "transaction_id": "uuid", "status": "voided", "voided_at": "...", "stock_restored": true }, "error": null }
 ```
 
-### 6.4 Prescriptions & Storage
+Void is rejected when:
+
+- transaction already voided
+- transaction has customer returns
+- another conflicting state transition has already completed
+
+---
+
+## 6. Prescriptions & Storage
 
 | Method | Endpoint | Role | Description |
 |---|---|---|---|
-| POST | `/api/storage/prescription-upload-url` | kasir | Generate a signed upload URL to Supabase Storage (bucket `prescriptions`) so photos are uploaded directly from the client without going through the Next.js server (saves serverless execution) |
-| POST | `/api/storage/qris-upload-url` | owner_admin | Signed URL for uploading the static QRIS image |
+| POST | `/api/storage/prescription-upload-url` | kasir/owner_admin | Signed upload URL |
+| POST | `/api/storage/qris-upload-url` | owner_admin | Signed QRIS image upload URL |
 
-### 6.5 Returns
+The service-role key is never exposed to the browser.
+
+---
+
+## 7. Returns
 
 | Method | Endpoint | Role | Description |
 |---|---|---|---|
-| POST | `/api/returns` | owner_admin/kasir | Create a return (customer or supplier), see 7.4 |
-| GET | `/api/returns` | both | List returns, filter by `source`, `from`, `to` |
-| GET | `/api/returns/:id` | both | Return detail |
+| POST | `/api/returns` | kasir/owner_admin | Atomic customer/supplier return |
+| GET | `/api/returns` | both | List/filter returns |
+| GET | `/api/returns/:id` | both | Return + batch allocation detail |
 
-**Example — `POST /api/returns` (customer return)**
+### Customer return request
+
 ```jsonc
 {
   "source": "customer",
   "transaction_id": "uuid",
+  "refund_method": "cash",
+  "cash_drawer_session_id": "current-open-drawer-uuid",
   "reason": "Damaged product",
   "items": [
     { "transaction_item_id": "uuid", "quantity_in_base": 10 }
   ]
 }
 ```
-**Example — supplier return**
+
+The API computes cumulative returnability, refund snapshots, COGS reversal, and original-batch restoration. `refund_method` is required for customer returns. For `refund_method = cash`, `cash_drawer_session_id` is also required and must be the authenticated processor's currently-open drawer because that drawer physically pays the refund. For QRIS/manual non-cash refunds it must be omitted/null. Client-provided refund amounts/batch destinations are not authoritative.
+
+Possible errors:
+
+- `409 TRANSACTION_NOT_COMPLETED`
+- `409 RETURN_QUANTITY_EXCEEDED`
+- `409 TRANSACTION_ALREADY_VOIDED`
+- `409 CASH_DRAWER_NOT_OPEN`
+- `409 CASH_DRAWER_MISMATCH`
+- `409 STOCK_OPNAME_IN_PROGRESS`
+
+### Supplier return request
+
 ```jsonc
 {
   "source": "supplier",
   "reason": "expired",
-  "items": [ { "product_id": "uuid", "batch_id": "uuid", "quantity_in_base": 50 } ]
+  "items": [
+    { "product_id": "uuid", "batch_id": "uuid", "quantity_in_base": 50 }
+  ]
 }
 ```
 
-### 6.6 Stock Opname
+---
+
+## 8. Stock Opname
 
 | Method | Endpoint | Role | Description |
 |---|---|---|---|
-| POST | `/api/stock-opname` | owner_admin | Start a new session. Body: `storage_location_id?` → server auto-generates `stock_opname_items` snapshot for all products at that location (or all products if omitted) |
-| GET | `/api/stock-opname/:id` | owner_admin | Session detail + items |
-| PUT | `/api/stock-opname/:id/items/:itemId` | owner_admin | Enter `physical_quantity` for an item |
-| POST | `/api/stock-opname/:id/apply` | owner_admin | Apply all variances to `product_batches.quantity`, set `status='applied'` |
+| POST | `/api/stock-opname` | owner_admin | Start batch-level snapshot session |
+| GET | `/api/stock-opname/:id` | owner_admin | Session + count status |
+| PUT | `/api/stock-opname/:id/items/:itemId` | owner_admin | Enter physical batch quantity |
+| POST | `/api/stock-opname/:id/apply` | owner_admin | Atomic apply and release freeze |
+| POST | `/api/stock-opname/:id/cancel` | owner_admin | Cancel without stock changes and release freeze |
 
-### 6.7 Reports & Finance
+Start body:
 
-| Method | Endpoint | Role | Description |
-|---|---|---|---|
-| GET | `/api/reports/sales` | owner_admin | Query params: `period` (`daily`/`weekly`/`monthly`/`yearly`) or `from`/`to`, `cashier_id?`, `payment_method?`, `group_by` (`product`/`category`/`none`) |
-| GET | `/api/reports/profit-loss` | owner_admin | Query params: `from`, `to` → `{ total_sales, total_cogs, total_expenses, net_profit }` |
-| GET | `/api/reports/stock-value` | owner_admin | Current stock value (`sum(quantity * cost_price)` per active batch) |
-| GET/POST | `/api/expenses` | owner_admin | List/enter manual operational expenses |
-| GET | `/api/dashboard/summary` | both | Transaction count & revenue (today/month/year/all-time) + critical stock + near-expiry (5.2) |
+```json
+{ "storage_location_id": "optional-uuid" }
+```
 
-### 6.8 Employees & Operations
+Starting an opname snapshots and operationally freezes the batches in its scope. Pilot 1 permits only one `in_progress` opname session globally. Checkout, void, returns, and manual stock mutations that touch a frozen batch fail with `409 STOCK_OPNAME_IN_PROGRESS`.
 
-| Method | Endpoint | Role |
-|---|---|---|
-| GET/POST `/api/employees`, PUT/DELETE `/api/employees/:id` | owner_admin |
-| GET/POST `/api/shifts` | owner_admin |
-| POST `/api/attendances/check-in`, `/check-out` | kasir/owner_admin |
-| GET/PUT `/api/settings` | owner_admin (QRIS image, `expiry_alert_days`) |
+Apply fails with `409 OPNAME_INCOMPLETE` while any row has `physical_quantity = null`. Cancel performs no stock adjustment. Both apply and cancel end the freeze by moving the session out of `in_progress`.
 
 ---
+
+## 9. Reports & Finance
+
+| Method | Endpoint | Role | Description |
+|---|---|---|---|
+| GET | `/api/reports/sales` | owner_admin | Sales report, completed transactions only, net of customer refunds where requested |
+| GET | `/api/reports/profit-loss` | owner_admin | Gross sales, refunds, net sales, sale COGS, returned COGS, net COGS, expenses, net profit |
+| GET | `/api/reports/stock-value` | owner_admin | Current batch stock value |
+| GET/POST | `/api/expenses` | owner_admin | Expense list/create |
+| GET | `/api/dashboard/summary` | both | Operational summary |
+
+Period boundaries use Asia/Jakarta business dates.
+
+---
+
+## 10. Employees & Operations
+
+| Method | Endpoint | Role |
+|---|---|
+| GET/POST `/api/employees`, PUT/DELETE `/api/employees/:id` | owner_admin |
+| GET/POST `/api/shifts` | owner_admin |
+| POST `/api/attendances/check-in`, `/check-out` | both |
+| GET/PUT `/api/settings` | owner_admin |

@@ -1,116 +1,422 @@
 # Business Logic / Key Algorithms — Pharmacy POS (Pilot 1)
 
-> Pseudocode executed inside API Routes. See `api-contract.md` for related endpoints and `database-design.md` for the schema.
+> Critical stock-changing logic runs inside PostgreSQL functions/RPC so each workflow is atomic. Next.js Route Handlers authenticate, authorize, validate input, and call the appropriate function. See `architecture.md`, `api-contract.md`, and `database-design.md`.
 
-## 7. Key Business Algorithms (pseudocode, runs in API Routes)
+## 1. Global Rules
 
-### 7.1 Checkout — FEFO + Validation (core of `POST /api/transactions/checkout`)
-
-```
-BEGIN TRANSACTION (Postgres, via service-role Supabase client inside the request handler)
-
-1. Fetch all product_units & products for items in the request (single join, avoid N+1).
-2. Compute quantity_in_base for each item = qty_input * product_units.conversion_to_base.
-3. Check requires_prescription: if any item is true AND body.prescription is empty → return 422 PRESCRIPTION_REQUIRED.
-4. For each item:
-     a. SELECT batches WHERE product_id = X AND quantity > 0 AND expired_date >= CURRENT_DATE
-        ORDER BY expired_date ASC FOR UPDATE  -- row lock, prevents race condition across parallel transactions
-     b. If total batch quantity < quantity_in_base needed → ROLLBACK, return 409 INSUFFICIENT_STOCK
-     c. Allocate in order (FEFO):
-          remaining = quantity_in_base
-          for batch in batches:
-            taken = min(batch.quantity, remaining)
-            -> write transaction_item row { batch_id: batch.id, quantity_in_base: taken, cost_price_snapshot: batch.cost_price, ... }
-            UPDATE product_batches SET quantity = quantity - taken WHERE id = batch.id
-            remaining -= taken
-            if remaining == 0: break
-5. Compute subtotal, tax_amount (per item: subtotal_item * tax_rate if is_taxable), total_amount.
-6. If payment_method == 'cash':
-     - validate cash_received >= total_amount, compute cash_change.
-     - status = 'completed'
-   If payment_method == 'qris':
-     - status = 'completed' but payment_confirmed_at = NULL
-     - (stock IS decremented in step 4 -- design decision: stock is decremented when checkout is created,
-       not when payment is confirmed, so two cashiers don't race for the same stock while waiting for a customer to scan QRIS)
-7. INSERT transactions, transaction_items, transaction_prescriptions (if present).
-8. Do NOT touch cash_drawer_sessions here (balance is computed on-the-fly at session close, see 7.5).
-
-COMMIT TRANSACTION
-9. Return response with per-batch item breakdown.
-```
-
-> **Why `FOR UPDATE`**: two cashiers can check out the same product almost simultaneously; without a lock, both can read the same batch quantity before either commits, causing oversell. `FOR UPDATE` on the relevant `product_batches` rows prevents this at the database level.
-
-### 7.2 Void Transaction
-
-```
-1. Load transaction by id; if status != 'completed' -> 409 ALREADY_VOIDED.
-2. BEGIN TRANSACTION
-3. For each transaction_item on this transaction:
-     UPDATE product_batches SET quantity = quantity + quantity_in_base WHERE id = batch_id
-4. UPDATE transactions SET status='voided', voided_at=now(), voided_by=:employee_id, void_reason=:reason
-5. COMMIT
-   (No approval required — applied immediately, per PRD 4.2.7. Who and when are recorded for passive audit by Owner/Admin.)
-```
-
-### 7.3 Receipt Printing
-
-`GET /api/transactions/:id/receipt` returns structured JSON (not raw ESC/POS bytes) containing the store header, line items with unit/qty/price, subtotal, tax, total, payment method, and change. Conversion to ESC/POS commands is done **client-side** (browser, via Web Serial/WebUSB or a local print service) using a library like `escpos`/`node-thermal-printer` running from the cashier's local machine — the Next.js server does not communicate directly with the printer (per 2.1: print from the cashier's browser).
-
-### 7.4 Returns
-
-```
-CUSTOMER RETURN (source=customer):
-1. Load transaction_item_id -> get the ORIGINAL batch_id (where the item was drawn from at checkout).
-2. Validate quantity_in_base being returned <= quantity_in_base on that transaction_item (no over-return).
-3. BEGIN TRANSACTION
-   UPDATE product_batches SET quantity = quantity + qty WHERE id = original_batch_id
-   INSERT returns, return_items
-4. COMMIT
-   (Stock always goes back to the ORIGINAL batch, never a new one -- per PRD 5.9)
-
-SUPPLIER RETURN (source=supplier):
-1. Validate product_id+batch_id exist and batch has sufficient quantity.
-2. BEGIN TRANSACTION
-   UPDATE product_batches SET quantity = quantity - qty WHERE id = batch_id
-   INSERT returns, return_items
-3. COMMIT
-   (Does not affect sales reports -- stock reduction only)
-```
-
-### 7.5 Cash Drawer Close
-
-```
-closing_balance_expected = opening_balance
-                          + SUM(transactions.cash_received - transactions.cash_change)
-                            WHERE cash_drawer_session_id = :id AND payment_method='cash' AND status='completed'
-variance = closing_balance_actual (cashier input) - closing_balance_expected
-UPDATE cash_drawer_sessions SET closing_balance_expected=.., closing_balance_actual=.., variance=.., closed_at=now()
-```
-
-### 7.6 Profit & Loss Report
-
-```
-total_sales    = SUM(transactions.total_amount) WHERE status='completed' AND created_at BETWEEN from/to
-total_cogs     = SUM(transaction_items.quantity_in_base * transaction_items.cost_price_snapshot)
-                   JOIN transactions WHERE status='completed' AND created_at BETWEEN from/to
-total_expenses = SUM(operational_expenses.amount) WHERE expense_date BETWEEN from/to
-net_profit     = total_sales - total_cogs - total_expenses
-```
-
-(`total_sales` includes tax; to get pre-tax revenue, subtract `tax_amount` — confirm the definition with the Owner at implementation time, see Open Question 10.1 in the PRD regarding report granularity.)
-
-### 7.7 Stock Opname Apply
-
-```
-FOR each stock_opname_items WHERE session_id = :id:
-  IF batch_id IS NOT NULL:
-    UPDATE product_batches SET quantity = physical_quantity WHERE id = batch_id
-  ELSE:
-    -- not identified per-batch: apply the variance to the nearest-expiry FEFO batch for the product
-    -- simplest viable approach for Pilot 1
-    apply variance to the nearest-expiry active batch for that product
-UPDATE stock_opname_sessions SET status='applied', applied_at=now(), applied_by=:employee_id
-```
+1. All stock quantities are integers in the product's **base unit**.
+2. FEFO = earliest non-expired batch first.
+3. `transaction_items` represent what the customer bought; batch sourcing is stored separately in `transaction_item_batches`.
+4. Stock-changing workflows are database transactions. Do not emulate a transaction using several independent Supabase HTTP calls.
+5. Business dates use `Asia/Jakarta`; timestamps remain UTC.
+6. A cashier may only transact against their own currently-open cash drawer session.
+7. Database constraints protect structural integrity (product/unit/batch consistency and valid payment-state shapes); RPCs protect multi-row business rules and concurrency.
+8. A batch included in an `in_progress` stock-opname session is operationally frozen. Normal stock-changing workflows must reject mutations to that batch until the opname is applied or cancelled.
+9. When multiple batch rows may be locked, functions must use a deterministic ordering to reduce deadlock risk.
 
 ---
+
+## 2. Checkout — FEFO + Atomic Stock Deduction
+
+Core of `POST /api/transactions/checkout`.
+
+The transaction header **must exist before** any `transaction_items` rows are inserted because `transaction_items.transaction_id` is a foreign key to `transactions.id`.
+
+```text
+Route Handler
+  -> authenticate cashier
+  -> validate request schema
+  -> call checkout_transaction(...) RPC
+
+checkout_transaction RPC
+BEGIN
+  1. Resolve employee from authenticated user.
+  2. Validate cash_drawer_session:
+       - exists
+       - closed_at IS NULL
+       - belongs to current employee
+  3. Load requested products + product units.
+  4. Validate each product/unit relationship and active state.
+  5. Compute quantity_in_base = quantity_in_unit * conversion_to_base.
+  6. If a prescription-required product exists, require prescription data.
+  7. Resolve authoritative selling price/tax and calculate every line plus
+     subtotal/tax/total before inserting sale rows. Never trust client totals.
+  8. Lock all candidate batches required by the cart in deterministic order.
+     After each target batch is locked, re-check that it is not part of an
+     in_progress stock-opname session.
+
+     Eligible sale batches must satisfy:
+       product_id = requested product
+       quantity > 0
+       expired_date >= business_date
+
+     FEFO ordering:
+       product_id ASC, expired_date ASC, created_at ASC, id ASC
+
+     If a required batch is frozen:
+       RAISE STOCK_OPNAME_IN_PROGRESS
+
+     If total eligible quantity < requested base quantity:
+       RAISE INSUFFICIENT_STOCK
+
+     Build the FEFO allocation plan while the locks are held.
+  9. Generate transaction UUID and concurrency-safe invoice number inside
+     the same transaction using invoice_sequences.
+ 10. INSERT transaction header with already-calculated authoritative totals:
+       cash -> status='completed', payment_confirmed_at=now(),
+               payment_confirmed_by=current employee
+       qris -> status='pending_payment', payment_confirmed_at=NULL,
+               payment_confirmed_by=NULL
+ 11. For each cart line:
+       INSERT one transaction_items row.
+       For each planned FEFO allocation:
+         INSERT transaction_item_batches(
+           transaction_item_id,
+           product_id,
+           batch_id,
+           quantity_in_base,
+           cost_price_snapshot
+         )
+         UPDATE product_batches
+         SET quantity = quantity - allocated_quantity
+         WHERE id = batch_id;
+ 12. INSERT prescription row if required.
+COMMIT
+```
+
+If any validation, insert, or stock update fails, the entire PostgreSQL transaction rolls back, including the invoice-sequence increment.
+
+### Why batch allocation is separate
+
+Example: 1 Box = 100 tablets. Batch A has 30 tablets and Batch B has 200 tablets.
+
+Customer buys **1 Box**:
+
+```text
+transaction_items
+  quantity_in_unit = 1 Box
+  quantity_in_base = 100
+
+transaction_item_batches
+  Batch A = 30
+  Batch B = 70
+```
+
+This avoids fractional sell-unit values such as `0.3 Box` and keeps the receipt/cart model separate from inventory allocation.
+
+---
+
+## 3. Payment Lifecycle
+
+### 3.1 Cash
+
+Cash checkout is immediately completed.
+
+Required shape:
+
+```text
+payment_method = cash
+status = completed (or voided after a later void)
+cash_received >= total_amount
+cash_change = cash_received - total_amount
+payment_confirmed_at != NULL
+payment_confirmed_by != NULL
+```
+
+Cash may never be created as `pending_payment`.
+
+### 3.2 QRIS
+
+Static QRIS has no payment-gateway callback, so payment confirmation is manual.
+
+```text
+checkout with QRIS
+  -> stock deducted atomically
+  -> status = pending_payment
+  -> payment confirmation fields are NULL
+  -> QRIS image shown
+  -> cashier verifies merchant notification
+  -> POST /api/transactions/:id/confirm-payment
+  -> database transition pending_payment -> completed
+```
+
+Rules:
+
+- Only `pending_payment` QRIS transactions can be confirmed.
+- `payment_confirmed_at` and `payment_confirmed_by` are written together on confirmation.
+- Sales/revenue reports include only `completed` transactions.
+- A pending QRIS transaction may be voided to release stock if payment is abandoned.
+- Confirmation and void must lock/check the transaction row so both transitions cannot win.
+- QRIS never uses `cash_received` or `cash_change`.
+
+Database check constraints provide a second layer of protection against invalid payment/status combinations.
+
+---
+
+## 4. Void Transaction
+
+Void restores the stock that was allocated by the sale.
+
+```text
+BEGIN
+  1. SELECT transaction FOR UPDATE.
+  2. Reject if already voided.
+  3. Reject if customer returns already exist for the transaction.
+  4. Load original transaction_item_batches in deterministic batch order.
+  5. Lock every referenced product_batch.
+  6. Re-check each batch is not frozen by an in_progress stock opname.
+     If frozen: RAISE STOCK_OPNAME_IN_PROGRESS.
+  7. For every allocation:
+       UPDATE product_batches
+       SET quantity = quantity + allocation.quantity_in_base
+       WHERE id = allocation.batch_id;
+  8. Set status='voided', voided_at, voided_by, void_reason.
+COMMIT
+```
+
+A completed transaction that already has a customer return cannot be voided in Pilot 1. This prevents stock from being restored twice.
+
+---
+
+## 5. Customer Returns
+
+Customer returns are allowed only from a **completed** transaction. The return records a `refund_method` (`cash` or `qris`). A cash refund additionally records the **currently-open drawer that physically pays the refund**.
+
+### 5.1 Returnable quantity
+
+For each requested `transaction_item_id`:
+
+```text
+returnable_quantity = original transaction_item.quantity_in_base
+                    - SUM(previous customer return_items.quantity_in_base)
+```
+
+Reject if requested quantity exceeds `returnable_quantity`.
+
+Batch restoration follows the original sale allocations. If the original line came from multiple batches, the return is restored against those original allocations without exceeding the quantity originally drawn from each batch after accounting for previous returns.
+
+### 5.2 Cash refund drawer rule
+
+A refund is associated with the drawer that pays it **now**, not the drawer used by the original sale.
+
+```text
+customer return + refund_method=cash
+  -> cash_drawer_session_id REQUIRED
+  -> drawer must be open
+  -> drawer must belong to processed_by/current authenticated employee
+
+customer return + refund_method=qris
+  -> cash_drawer_session_id MUST be NULL
+
+supplier return
+  -> cash_drawer_session_id MUST be NULL
+```
+
+Example: a sale made yesterday may be returned today. The cash physically leaves today's drawer, so today's drawer must receive the refund entry.
+
+### 5.3 Atomic return
+
+```text
+BEGIN
+  1. Lock original transaction and requested transaction_items.
+  2. Validate transaction status='completed'.
+  3. For cash refund, validate the submitted current drawer ownership/open state.
+  4. Lock relevant original allocation rows / target product_batches.
+  5. Re-check each target batch is not frozen by stock opname.
+  6. Recompute previous customer returns while locks are held.
+  7. Reject if cumulative return would exceed sold quantity/allocation.
+  8. Allocate returned quantity back to original batches.
+  9. INSERT returns header, including refund_method and current refund drawer
+     when applicable.
+ 10. INSERT return_items and return_item_batches with original cost snapshots.
+ 11. Increment product_batches.quantity.
+ 12. Snapshot refund_subtotal / refund_tax / refund_total.
+COMMIT
+```
+
+Financial effect:
+
+- customer refund reduces net sales
+- returned batch cost reverses COGS
+- stock is added back to original batch(es)
+- cash refund reduces the expected balance of the drawer that paid the refund
+
+Refund values are stored as snapshots so historical reports do not change if product prices later change.
+
+---
+
+## 6. Supplier Returns
+
+Supplier returns are inventory movements, not customer sales refunds.
+
+```text
+BEGIN
+  1. Validate product/batch relationship.
+  2. Lock selected product_batch.
+  3. Re-check the batch is not frozen by stock opname.
+  4. Validate sufficient batch quantity.
+  5. Decrement product_batches.quantity.
+  6. INSERT returns(source='supplier').
+  7. INSERT return_items and return_item_batches.
+COMMIT
+```
+
+Supplier returns do not reduce sales revenue and never reference a cash drawer.
+
+---
+
+## 7. Cash Drawer
+
+### 7.1 Open
+
+Only one open drawer per employee is allowed by database constraint.
+
+### 7.2 Checkout validation
+
+Every checkout must verify that the submitted session belongs to the authenticated cashier and is still open.
+
+### 7.3 Cash-refund validation
+
+Every cash customer return must verify that `returns.cash_drawer_session_id` belongs to the authenticated processor and is still open at the time of the refund.
+
+### 7.4 Close
+
+```text
+cash_sales = SUM(total_amount)
+  WHERE cash_drawer_session_id = :id
+    AND payment_method = 'cash'
+    AND status = 'completed'
+
+customer_cash_refunds = SUM(returns.refund_total)
+  WHERE source = 'customer'
+    AND refund_method = 'cash'
+    AND cash_drawer_session_id = :id
+
+closing_balance_expected = opening_balance + cash_sales - customer_cash_refunds
+variance = closing_balance_actual - closing_balance_expected
+```
+
+**Do not** assign a refund to the original transaction's drawer. A historical drawer may already be closed and did not physically pay today's refund.
+
+For `refund_method = qris`, the refund is handled manually outside payment-gateway integration and does not reduce physical cash in the drawer.
+
+---
+
+## 8. Profit & Loss
+
+For a period using Asia/Jakarta business dates:
+
+```text
+gross_sales = SUM(completed transactions.total_amount)
+customer_refunds = SUM(customer returns.refund_total)
+net_sales = gross_sales - customer_refunds
+
+sale_cogs = SUM(transaction_item_batches.quantity_in_base * cost_price_snapshot)
+  for completed transactions
+
+returned_cogs = SUM(return_item_batches.quantity_in_base * cost_price_snapshot)
+  for customer returns
+
+net_cogs = sale_cogs - returned_cogs
+operational_expenses = SUM(operational_expenses.amount)
+
+net_profit = net_sales - net_cogs - operational_expenses
+```
+
+Tax presentation (tax-inclusive vs pre-tax revenue) remains a reporting decision and must be explicit in the report response.
+
+---
+
+## 9. Stock Opname — Batch Freeze Policy
+
+Pilot 1 uses **batch-level stock opname with operational freeze**. This deliberately favors auditability and implementation simplicity over allowing continuous sales on a batch while it is being counted.
+
+### 9.1 Start session
+
+Only one `in_progress` stock-opname session is allowed globally in Pilot 1.
+
+```text
+BEGIN
+  1. Create stock_opname_session(status='in_progress').
+  2. Resolve all batches in scope (optionally by storage location).
+  3. Lock those product_batches in deterministic order.
+  4. Snapshot each batch:
+       system_quantity = current batch quantity
+       physical_quantity = NULL
+  5. The created stock_opname_items now mark those batches as frozen.
+COMMIT
+```
+
+### 9.2 Freeze rule for other stock mutations
+
+Checkout, void, customer return, supplier return, and manual batch-stock changes that touch a frozen batch must reject with:
+
+```text
+STOCK_OPNAME_IN_PROGRESS
+```
+
+To close the race between a new mutation and a newly-started opname, a stock-changing RPC must:
+
+```text
+lock target product_batch
+-> re-check whether that batch belongs to an in_progress stock_opname_session
+-> only then mutate stock
+```
+
+This ensures:
+
+- if a sale gets the batch lock first, it completes before the opname snapshot is taken;
+- if the opname gets the lock first, the later sale sees the committed freeze and is rejected.
+
+### 9.3 Counting
+
+- User enters `physical_quantity` per batch.
+- UI may group rows by product for convenience.
+- An item is not considered counted while `physical_quantity IS NULL`.
+- Counting changes only the opname item, never live batch stock.
+
+### 9.4 Apply
+
+```text
+BEGIN
+  1. Lock stock_opname_session.
+  2. Reject if status != in_progress.
+  3. Reject if any item has physical_quantity IS NULL.
+  4. Lock all referenced product_batches in deterministic order.
+  5. Verify all items still belong to this active session.
+  6. SET each batch.quantity = item.physical_quantity.
+     This assignment is safe because those batches were frozen from snapshot
+     through apply; no normal stock mutation was allowed in between.
+  7. Set session status='applied', applied_at, applied_by.
+COMMIT
+```
+
+### 9.5 Cancel
+
+An opname may be cancelled before apply:
+
+```text
+BEGIN
+  lock session
+  require status='in_progress'
+  set status='cancelled', cancelled_at, cancelled_by
+COMMIT
+```
+
+Cancellation performs **no stock adjustment** and releases the operational freeze because the session is no longer `in_progress`.
+
+Unknown/new physical stock that has no known batch should be entered through manual batch stock entry outside an active opname for that batch rather than silently assigned to an arbitrary batch.
+
+---
+
+## 10. Invoice Number Generation
+
+Invoice numbers are generated **inside the checkout database transaction**, not by reading the last invoice in application code.
+
+Format:
+
+```text
+INV-YYYYMMDD-XXXX
+```
+
+`YYYYMMDD` is the Asia/Jakarta business date. `invoice_sequences` stores the last sequence for each business date and is atomically incremented so concurrent cashiers cannot generate the same invoice number.
