@@ -80,6 +80,11 @@ Manual batch entry may increment an existing matching product+batch number+expir
 | POST | `/api/cash-drawer/:id/close` | kasir/owner_admin | Close own session and calculate variance |
 | GET | `/api/cash-drawer` | owner_admin | Session history |
 
+Open accepts `{ "opening_balance": 100000 }`. Close accepts
+`{ "actual_closing_cash": 125000 }`; expected cash and difference are always
+calculated by PostgreSQL. Employee identity is injected from the session, and
+`staf` cannot operate a cash drawer.
+
 A cashier cannot open a second active session and cannot transact against another employee's drawer session.
 
 ---

@@ -1,5 +1,5 @@
 import { requirePosOperator } from "@/modules/auth/application/auth-service";
-import { getOpenCashDrawer } from "@/modules/cash-drawer/data/cash-drawer-queries";
+import { getCurrentCashDrawer } from "@/modules/cash-drawer/application/cash-drawer-service";
 import { executeApi } from "@/modules/shared/api/response";
 
-export async function GET(){return executeApi(async()=>{const employee=await requirePosOperator();return getOpenCashDrawer(employee.employeeId);});}
+export async function GET(){return executeApi(async()=>{const employee=await requirePosOperator();return getCurrentCashDrawer(employee.employeeId);});}

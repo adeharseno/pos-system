@@ -5,6 +5,7 @@ import { withEmployeeIdentity } from "./auth/application/auth-policy";
 import { readJsonObject } from "./shared/api/input";
 import { executeApi } from "./shared/api/response";
 import { PosDomainError } from "./shared/errors/pos-domain-error";
+import { validateCloseCashDrawer,validateOpenCashDrawer } from "./cash-drawer/schemas";
 
 async function body(response:Response){return response.json() as Promise<Record<string,unknown>>;}
 test("unauthenticated mutation maps to 401",async()=>{const response=await executeApi(async()=>{throw new AuthApplicationError("UNAUTHENTICATED")});assert.equal(response.status,401);assert.equal((await body(response)).ok,false);});
@@ -24,3 +25,9 @@ test("cash refund drawer business failure maps safely",async()=>{const response=
 test("stock opname start and active conflict are mapped",async()=>{assert.equal((await executeApi(async()=>({sessionId:"session",status:"in_progress"}),201)).status,201);assert.equal((await executeApi(async()=>{throw new PosDomainError("STOCK_OPNAME_IN_PROGRESS")})).status,409);});
 test("transaction not found maps to 404",async()=>assert.equal((await executeApi(async()=>{throw new PosDomainError("TRANSACTION_NOT_FOUND")})).status,404));
 test("unexpected errors are sanitized",async()=>{const response=await executeApi(async()=>{throw new Error("secret SQL and service key")});const serialized=JSON.stringify(await body(response));assert.equal(response.status,500);assert.equal(serialized.includes("secret SQL"),false);assert.equal(serialized.includes("service key"),false);assert.equal(serialized.includes("INTERNAL_ERROR"),true);});
+test("cashier and admin drawer operations use successful API responses",async()=>{for(const role of ["kasir","owner_admin"]){const response=await executeApi(async()=>({role,sessionId:"drawer"}),201);assert.equal(response.status,201);}});
+test("staf drawer operation is forbidden",async()=>assert.equal((await executeApi(async()=>{throw new AuthApplicationError("FORBIDDEN")})).status,403));
+test("duplicate drawer open maps to conflict",async()=>assert.equal((await executeApi(async()=>{throw new PosDomainError("CASH_DRAWER_ALREADY_OPEN")})).status,409));
+test("repeated drawer close maps to conflict",async()=>assert.equal((await executeApi(async()=>{throw new PosDomainError("CASH_DRAWER_ALREADY_CLOSED")})).status,409));
+test("malformed drawer balances are rejected before RPC",()=>{assert.throws(()=>validateOpenCashDrawer({employeeId:"11111111-1111-4111-8111-111111111111",openingBalance:-1}));assert.throws(()=>validateCloseCashDrawer({employeeId:"11111111-1111-4111-8111-111111111111",sessionId:"22222222-2222-4222-8222-222222222222",actualClosingCash:-1}));});
+test("current drawer response is safe and structured",async()=>{const response=await executeApi(async()=>({id:"drawer",opening_balance:1000,is_open:true}));assert.deepEqual(await body(response),{ok:true,data:{id:"drawer",opening_balance:1000,is_open:true}});});

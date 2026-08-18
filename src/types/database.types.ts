@@ -1183,6 +1183,14 @@ export type Database = {
         }
         Returns: Json
       }
+      close_cash_drawer: {
+        Args: {
+          p_actual_closing_cash: number
+          p_employee_id: string
+          p_session_id: string
+        }
+        Returns: Json
+      }
       confirm_qris_payment: {
         Args: { p_employee_id: string; p_transaction_id: string }
         Returns: Json
@@ -1200,6 +1208,10 @@ export type Database = {
       }
       create_supplier_return: {
         Args: { p_employee_id: string; p_items: Json; p_reason: string }
+        Returns: Json
+      }
+      open_cash_drawer: {
+        Args: { p_employee_id: string; p_opening_balance: number }
         Returns: Json
       }
       show_limit: { Args: never; Returns: number }

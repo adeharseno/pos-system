@@ -46,7 +46,7 @@ M0 is considered complete only after the SQL migration and core RPC tests match 
 
 ## M3 — Cashier Core
 
-- Cash drawer open/current/close.
+- Cash drawer open/current/close. *(foundation completed in M2.3)*
 - Barcode lookup and cart.
 - Checkout UI.
 - Atomic FEFO checkout RPC integration.

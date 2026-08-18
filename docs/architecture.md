@@ -85,6 +85,11 @@ Checkout is atomic but is not idempotent when a successful response is lost to
 the network; automated checkout retry needs an explicit idempotency key in a
 future milestone.
 
+Cash-drawer open/close are also PostgreSQL RPCs. Checkout, cash refund, and
+drawer close serialize on the same drawer row, preventing a transaction from
+being committed to a closed drawer while being omitted from its closing cash
+snapshot.
+
 ### Supabase PostgreSQL
 
 Responsible for:

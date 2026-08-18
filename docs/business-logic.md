@@ -277,7 +277,10 @@ Supplier returns do not reduce sales revenue and never reference a cash drawer.
 
 ### 7.1 Open
 
-Only one open drawer per employee is allowed by database constraint.
+Only one open drawer per active `kasir`/`owner_admin` is allowed. The atomic
+`open_cash_drawer` RPC locks the employee row, rejects a second open session,
+validates a non-negative opening balance, and creates the session for the
+server-derived employee identity.
 
 ### 7.2 Checkout validation
 
@@ -288,6 +291,11 @@ Every checkout must verify that the submitted session belongs to the authenticat
 Every cash customer return must verify that `returns.cash_drawer_session_id` belongs to the authenticated processor and is still open at the time of the refund.
 
 ### 7.4 Close
+
+`close_cash_drawer` locks the drawer before calculating and persisting the
+closing snapshot. Checkout and cash-refund RPCs lock that same row, so a
+concurrent mutation either commits before the calculation or observes the
+closed drawer and fails.
 
 ```text
 cash_sales = SUM(total_amount)
@@ -307,6 +315,10 @@ variance = closing_balance_actual - closing_balance_expected
 **Do not** assign a refund to the original transaction's drawer. A historical drawer may already be closed and did not physically pay today's refund.
 
 For `refund_method = qris`, the refund is handled manually outside payment-gateway integration and does not reduce physical cash in the drawer.
+
+Cashier lifecycle is `login -> open drawer -> transact -> close drawer`.
+General checkout idempotency keys remain a production backlog item for safe
+network retries; they are not part of drawer lifecycle implementation.
 
 ---
 

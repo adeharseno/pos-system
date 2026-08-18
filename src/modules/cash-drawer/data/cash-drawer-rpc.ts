@@ -1,0 +1,6 @@
+import "server-only";
+import { callCoreRpc } from "@/modules/shared/data/core-rpc";
+import { requireResultObject,resultNumber,resultString } from "@/modules/shared/data/result";
+import type { CloseCashDrawerInput,CloseCashDrawerResult,OpenCashDrawerInput,OpenCashDrawerResult } from "../types";
+export async function openCashDrawerRpc(input:OpenCashDrawerInput):Promise<OpenCashDrawerResult>{const data=requireResultObject(await callCoreRpc("open_cash_drawer",{p_employee_id:input.employeeId,p_opening_balance:input.openingBalance}));return{sessionId:resultString(data,"session_id"),employeeId:resultString(data,"employee_id"),openingBalance:resultNumber(data,"opening_balance"),openedAt:resultString(data,"opened_at"),isOpen:true};}
+export async function closeCashDrawerRpc(input:CloseCashDrawerInput):Promise<CloseCashDrawerResult>{const data=requireResultObject(await callCoreRpc("close_cash_drawer",{p_employee_id:input.employeeId,p_session_id:input.sessionId,p_actual_closing_cash:input.actualClosingCash}));return{sessionId:resultString(data,"session_id"),openingBalance:resultNumber(data,"opening_balance"),cashSales:resultNumber(data,"cash_sales"),cashRefunds:resultNumber(data,"cash_refunds"),expectedCash:resultNumber(data,"expected_cash"),actualCash:resultNumber(data,"actual_cash"),difference:resultNumber(data,"difference"),isOpen:false};}
