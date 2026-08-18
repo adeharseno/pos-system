@@ -320,6 +320,13 @@ Cashier lifecycle is `login -> open drawer -> transact -> close drawer`.
 General checkout idempotency keys remain a production backlog item for safe
 network retries; they are not part of drawer lifecycle implementation.
 
+The cashier workspace is available only while the server-derived employee has
+an open drawer. Product search returns active products, sell units, and an
+informational aggregate of usable batch stock. Cart state remains browser
+memory only and stores product/unit display snapshots—not batches or FEFO
+allocations. Displayed stock, price, and subtotal are previews; the checkout
+RPC remains authoritative and may reject stock that changed concurrently.
+
 ---
 
 ## 8. Profit & Loss

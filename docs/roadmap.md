@@ -48,6 +48,7 @@ M0 is considered complete only after the SQL migration and core RPC tests match 
 
 - Cash drawer open/current/close. *(foundation completed in M2.3)*
 - Barcode lookup and cart.
+- Cashier product name/SKU search and in-memory multi-unit cart foundation. *(completed in M2.4; checkout submission intentionally pending)*
 - Checkout UI.
 - Atomic FEFO checkout RPC integration.
 - Cash payment.

@@ -90,6 +90,11 @@ drawer close serialize on the same drawer row, preventing a transaction from
 being committed to a closed drawer while being omitted from its closing cash
 snapshot.
 
+Cashier cart state is local React state and is intentionally cleared by a page
+refresh. Product stock and subtotal shown in the workspace are previews only;
+no unfinished cart or stock reservation is persisted. PostgreSQL checkout is
+the authority for FEFO, availability, prices, tax, and final totals.
+
 ### Supabase PostgreSQL
 
 Responsible for:

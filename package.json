@@ -17,6 +17,7 @@
     "test:data": "tsx --test src/modules/data-layer.test.ts",
     "test:auth": "tsx --test src/modules/auth/auth.test.ts",
     "test:api": "tsx --test src/modules/api.test.ts",
+    "test:cashier": "tsx --test src/modules/cashier-cart.test.ts",
     "db:types": "supabase gen types typescript --local --schema public > src/types/database.types.ts"
   },
   "dependencies": {

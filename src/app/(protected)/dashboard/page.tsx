@@ -8,6 +8,7 @@ export default async function DashboardPage() {
     <div><h1 className="text-2xl font-semibold">Pharmacy POS</h1><p>Masuk sebagai {employee.name} ({employee.role})</p></div>
     <p className="text-sm text-gray-600">Fondasi sesi pegawai aktif. Fitur operasional belum dibangun.</p>
     <Link className="underline" href="/cash-drawer">Kelola cash drawer</Link>
+    <Link className="underline" href="/cashier">Buka cashier workspace</Link>
     <form action={logoutAction}><button className="rounded border px-4 py-2" type="submit">Keluar</button></form>
   </main>;
 }

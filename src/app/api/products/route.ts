@@ -1,5 +1,6 @@
 import { requirePosOperator } from "@/modules/auth/application/auth-service";
-import { listActiveProducts } from "@/modules/catalog/data/catalog-queries";
+import { searchCashierProducts } from "@/modules/catalog/data/catalog-queries";
+import { parseProductSearchQuery } from "@/modules/catalog/search";
 import { executeApi } from "@/modules/shared/api/response";
 
-export async function GET(){return executeApi(async()=>{await requirePosOperator();return listActiveProducts();});}
+export async function GET(request:Request){return executeApi(async()=>{await requirePosOperator();const query=parseProductSearchQuery(new URL(request.url).searchParams.get("q"));return searchCashierProducts(query);});}

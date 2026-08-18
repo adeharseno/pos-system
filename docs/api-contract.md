@@ -39,6 +39,11 @@ Same-origin browser requests use the Supabase session cookie. Every Route Handle
 | POST | `/api/products` | owner_admin | Create product + units |
 | PUT | `/api/products/:id` | owner_admin | Update product + units |
 | DELETE | `/api/products/:id` | owner_admin | Deactivate product |
+
+`GET /api/products?q=...` is the cashier search read model. It searches active
+products by name or SKU, limits results, includes sell units, prescription
+requirement, and informational available base-unit stock. It does not reserve
+inventory.
 | GET/POST | `/api/categories` | GET both / POST owner_admin | Category list/create |
 | PUT/DELETE | `/api/categories/:id` | owner_admin | Update/deactivate |
 | POST | `/api/categories/:id/subcategories` | owner_admin | Create subcategory |

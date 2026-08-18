@@ -1,0 +1,12 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { requirePosOperator } from "@/modules/auth/application/auth-service";
+import { isAuthApplicationError } from "@/modules/auth/errors";
+import { getCurrentCashDrawer } from "@/modules/cash-drawer/application/cash-drawer-service";
+import { CashierWorkspace } from "@/modules/sales/components/cashier-workspace";
+import { cashierDrawerState } from "@/modules/sales/cashier-access";
+
+export default async function CashierPage(){let employee;try{employee=await requirePosOperator();}catch(error){redirect(`/login?error=${isAuthApplicationError(error)?error.code:"FORBIDDEN"}`);}const drawer=await getCurrentCashDrawer(employee.employeeId);
+  if(!drawer||cashierDrawerState(drawer)==="drawer_required")return <main className="grid min-h-[calc(100vh-57px)] place-content-center p-5"><section className="w-full max-w-md rounded-[var(--radius)] border border-[var(--border)] bg-white p-6 text-center"><span className="mx-auto mb-4 grid size-11 place-items-center rounded-full bg-[var(--warning-soft)] font-bold text-[var(--warning)]">!</span><h1 className="text-xl font-semibold tracking-tight">Open your cash drawer</h1><p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">A cash drawer session is required before you can start a new sale.</p><Link className="mt-5 inline-flex min-h-11 items-center justify-center rounded-[7px] bg-zinc-950 px-4 text-sm font-semibold text-white hover:bg-zinc-800" href="/cash-drawer">Open Cash Drawer</Link></section></main>;
+  return <main className="mx-auto max-w-[1500px] p-4 sm:p-5 lg:p-6"><header className="mb-5 flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--accent)]">Operations</p><h1 className="mt-1 text-2xl font-semibold tracking-tight">New Sale</h1><p className="mt-1 text-sm text-[var(--text-muted)]">Search products and prepare the current order.</p></div><div className="flex items-center gap-3 rounded-[var(--radius)] border border-[var(--border)] bg-white px-3 py-2"><span className="size-2 rounded-full bg-emerald-500"/><div><p className="text-xs font-semibold text-[var(--success)]">Drawer Open</p><p className="text-[11px] text-[var(--text-muted)]">{employee.name} · since {new Date(drawer.opened_at).toLocaleTimeString("id-ID",{timeZone:"Asia/Jakarta",hour:"2-digit",minute:"2-digit"})}</p></div></div></header><CashierWorkspace/></main>;
+}
