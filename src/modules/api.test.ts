@@ -1,0 +1,26 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { AuthApplicationError } from "./auth/errors";
+import { withEmployeeIdentity } from "./auth/application/auth-policy";
+import { readJsonObject } from "./shared/api/input";
+import { executeApi } from "./shared/api/response";
+import { PosDomainError } from "./shared/errors/pos-domain-error";
+
+async function body(response:Response){return response.json() as Promise<Record<string,unknown>>;}
+test("unauthenticated mutation maps to 401",async()=>{const response=await executeApi(async()=>{throw new AuthApplicationError("UNAUTHENTICATED")});assert.equal(response.status,401);assert.equal((await body(response)).ok,false);});
+test("inactive and unmapped employees are denied",async()=>{for(const code of ["EMPLOYEE_INACTIVE","EMPLOYEE_NOT_FOUND"] as const)assert.equal((await executeApi(async()=>{throw new AuthApplicationError(code)})).status,403);});
+test("valid employee request reaches application operation",async()=>{let reached=false;const response=await executeApi(async()=>{reached=true;return{status:"completed"}});assert.equal(response.status,200);assert.equal(reached,true);assert.deepEqual(await body(response),{ok:true,data:{status:"completed"}});});
+test("wrong role maps to 403",async()=>assert.equal((await executeApi(async()=>{throw new AuthApplicationError("FORBIDDEN")})).status,403));
+test("valid checkout response uses success contract",async()=>{const response=await executeApi(async()=>({transactionId:"tx",invoiceNumber:"INV-1",totalAmount:100}),201);assert.equal(response.status,201);assert.equal((await body(response)).ok,true);});
+test("malformed JSON becomes controlled 400",async()=>{const request=new Request("http://local/api",{method:"POST",headers:{"content-type":"application/json"},body:"{"});const response=await executeApi(()=>readJsonObject(request));assert.equal(response.status,400);assert.equal(((await body(response)).error as {code:string}).code,"INVALID_REQUEST");});
+test("wrong content type becomes controlled 400",async()=>{const request=new Request("http://local/api",{method:"POST",body:"{}"});assert.equal((await executeApi(()=>readJsonObject(request))).status,400);});
+test("insufficient checkout stock maps to 409",async()=>assert.equal((await executeApi(async()=>{throw new PosDomainError("INSUFFICIENT_STOCK")})).status,409));
+test("client employee ID cannot spoof acting employee",()=>{const result=withEmployeeIdentity({employeeId:"server-employee",authUserId:"auth",name:"Cashier",role:"kasir"},{employeeId:"forged",items:[]});assert.equal(result.employeeId,"server-employee");});
+test("QRIS confirmation success is returned safely",async()=>assert.deepEqual(await body(await executeApi(async()=>({transactionId:"tx",status:"completed"}))),{ok:true,data:{transactionId:"tx",status:"completed"}}));
+test("already-confirmed QRIS maps to conflict",async()=>assert.equal((await executeApi(async()=>{throw new PosDomainError("QRIS_ALREADY_CONFIRMED")})).status,409));
+test("paid QRIS void maps to conflict",async()=>assert.equal((await executeApi(async()=>{throw new PosDomainError("PAID_TRANSACTION_REQUIRES_RETURN")})).status,409));
+test("customer return success and quantity conflict are mapped",async()=>{assert.equal((await executeApi(async()=>({returnId:"return"}),201)).status,201);assert.equal((await executeApi(async()=>{throw new PosDomainError("RETURN_QUANTITY_EXCEEDED")})).status,409);});
+test("cash refund drawer business failure maps safely",async()=>{const response=await executeApi(async()=>{throw new PosDomainError("NO_ACTIVE_CASH_DRAWER")});assert.equal(response.status,409);assert.equal(JSON.stringify(await body(response)).includes("PostgreSQL"),false);});
+test("stock opname start and active conflict are mapped",async()=>{assert.equal((await executeApi(async()=>({sessionId:"session",status:"in_progress"}),201)).status,201);assert.equal((await executeApi(async()=>{throw new PosDomainError("STOCK_OPNAME_IN_PROGRESS")})).status,409);});
+test("transaction not found maps to 404",async()=>assert.equal((await executeApi(async()=>{throw new PosDomainError("TRANSACTION_NOT_FOUND")})).status,404));
+test("unexpected errors are sanitized",async()=>{const response=await executeApi(async()=>{throw new Error("secret SQL and service key")});const serialized=JSON.stringify(await body(response));assert.equal(response.status,500);assert.equal(serialized.includes("secret SQL"),false);assert.equal(serialized.includes("service key"),false);assert.equal(serialized.includes("INTERNAL_ERROR"),true);});

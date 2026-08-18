@@ -12,7 +12,7 @@ export async function listActiveProducts() {
 
 export async function listProductInventory(productId:string) {
   const {data,error}=await createAdminSupabaseClient().from("product_batches")
-    .select("id,product_id,batch_number,expired_date,quantity,cost_price,received_date")
+    .select("id,product_id,batch_number,expired_date,quantity,received_date")
     .eq("product_id",productId).order("expired_date").order("created_at");
   if(error) throw mapDatabaseError(error); return data;
 }

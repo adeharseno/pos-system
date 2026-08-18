@@ -15,4 +15,5 @@ export const getCurrentUser = () => getCurrentUserWith(defaultDependencies);
 export const getCurrentEmployee = () => getCurrentEmployeeWith(defaultDependencies);
 export const requireEmployee = () => requireEmployeeWith(defaultDependencies);
 export const requireRole = (allowedRoles: readonly EmployeeRole[]) => requireRoleWith(allowedRoles, defaultDependencies);
+export const requirePosOperator = () => requireRole(["owner_admin", "kasir"]);
 export const logout = () => logoutWith(defaultDependencies);

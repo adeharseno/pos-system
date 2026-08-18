@@ -9,14 +9,19 @@ Base path: `/api`.
 Success:
 
 ```json
-{ "data": {}, "error": null }
+{ "ok": true, "data": {} }
 ```
 
 Error:
 
 ```json
-{ "data": null, "error": { "code": "ERROR_CODE", "message": "Human readable message" } }
+{ "ok": false, "error": { "code": "ERROR_CODE", "message": "Safe message" } }
 ```
+
+Every implemented handler resolves the active employee from the verified
+server session. Browser-supplied employee, role, or auth-user identifiers are
+never authoritative, and browser roles cannot execute transactional RPCs
+directly.
 
 Typical HTTP statuses: `400`, `401`, `403`, `404`, `409`, `422`, `500`.
 
@@ -115,6 +120,7 @@ The client does **not** submit authoritative prices, tax, cost, invoice number, 
 
 ```jsonc
 {
+  "ok": true,
   "data": {
     "transaction_id": "uuid",
     "invoice_number": "INV-20260814-0007",
@@ -136,8 +142,7 @@ The client does **not** submit authoritative prices, tax, cost, invoice number, 
         ]
       }
     ]
-  },
-  "error": null
+  }
 }
 ```
 
@@ -192,7 +197,7 @@ The service-role key is never exposed to the browser.
 
 | Method | Endpoint | Role | Description |
 |---|---|---|---|
-| POST | `/api/returns` | kasir/owner_admin | Atomic customer/supplier return |
+| POST | `/api/returns` | customer: kasir/owner_admin; supplier: owner_admin | Atomic customer/supplier return |
 | GET | `/api/returns` | both | List/filter returns |
 | GET | `/api/returns/:id` | both | Return + batch allocation detail |
 

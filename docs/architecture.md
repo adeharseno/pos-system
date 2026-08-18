@@ -52,7 +52,7 @@ Responsible for:
 - UI and navigation.
 - Authentication/session boundary.
 - Authorization checks (`owner_admin` / `kasir`).
-- Request validation (Zod).
+- Request validation through the shared typed boundary validators.
 - Normal CRUD orchestration.
 - Calling database RPCs for critical transactional workflows.
 - Formatting API responses.
@@ -73,6 +73,17 @@ Critical mutations are exposed by the `sales`, `returns`, and `inventory`
 application services. Callers must not bypass these services with browser-side
 table writes or reimplement FEFO, invoice, returnability, restoration, or
 stock-opname algorithms in TypeScript.
+
+Route Handlers use a shared response/error boundary and remain HTTP adapters:
+they authenticate, parse external input, inject the server-derived employee ID,
+and call application services. Critical adapters and the service-role Supabase
+client remain `server-only`; browser roles retain no RPC/table mutation access.
+
+Lifecycle-protected operations such as QRIS confirmation, void, return limits,
+and opname transitions safely reject repeated/conflicting calls in PostgreSQL.
+Checkout is atomic but is not idempotent when a successful response is lost to
+the network; automated checkout retry needs an explicit idempotency key in a
+future milestone.
 
 ### Supabase PostgreSQL
 
