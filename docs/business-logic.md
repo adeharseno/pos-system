@@ -129,6 +129,11 @@ Cash may never be created as `pending_payment`.
 
 Static QRIS has no payment-gateway callback, so payment confirmation is manual.
 
+Pilot 1 does not generate a QR code or verify payment automatically. The
+customer pays using the pharmacy's externally available QRIS, and the cashier
+manually confirms the payment in the POS. Inventory is already deducted while
+the transaction is `pending_payment`.
+
 ```text
 checkout with QRIS
   -> stock deducted atomically
@@ -149,6 +154,8 @@ Rules:
 - Confirmation and void lock/check the same transaction row. The first transition wins.
 - A confirmed QRIS transaction cannot be voided. Reversal of a paid QRIS sale must use customer return/refund.
 - QRIS never uses `cash_received` or `cash_change`.
+- Pending, completed, and voided QRIS transactions never contribute to the
+  physical cash drawer expected balance.
 
 ```text
 pending_payment
@@ -439,6 +446,15 @@ Unknown/new physical stock that has no known batch should be entered through man
 ## 10. Invoice Number Generation
 
 Invoice numbers are generated **inside the checkout database transaction**, not by reading the last invoice in application code.
+
+The cash checkout UI shows estimated totals and change only as previews.
+`checkout_transaction()` remains authoritative, and the cart is cleared only
+after its successful result. Opening a cashier session redirects to
+`/cashier`.
+
+Checkout has no idempotency key in Pilot 1. The browser must never retry a
+submitted checkout automatically; an uncertain network response requires the
+cashier to verify recent transactions first.
 
 Format:
 

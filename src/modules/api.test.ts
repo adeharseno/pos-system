@@ -6,6 +6,7 @@ import { readJsonObject } from "./shared/api/input";
 import { executeApi } from "./shared/api/response";
 import { PosDomainError } from "./shared/errors/pos-domain-error";
 import { validateCloseCashDrawer,validateOpenCashDrawer } from "./cash-drawer/schemas";
+import { checkoutInputFromBody } from "./sales/checkout-request";
 
 async function body(response:Response){return response.json() as Promise<Record<string,unknown>>;}
 test("unauthenticated mutation maps to 401",async()=>{const response=await executeApi(async()=>{throw new AuthApplicationError("UNAUTHENTICATED")});assert.equal(response.status,401);assert.equal((await body(response)).ok,false);});
@@ -13,6 +14,8 @@ test("inactive and unmapped employees are denied",async()=>{for(const code of ["
 test("valid employee request reaches application operation",async()=>{let reached=false;const response=await executeApi(async()=>{reached=true;return{status:"completed"}});assert.equal(response.status,200);assert.equal(reached,true);assert.deepEqual(await body(response),{ok:true,data:{status:"completed"}});});
 test("wrong role maps to 403",async()=>assert.equal((await executeApi(async()=>{throw new AuthApplicationError("FORBIDDEN")})).status,403));
 test("valid checkout response uses success contract",async()=>{const response=await executeApi(async()=>({transactionId:"tx",invoiceNumber:"INV-1",totalAmount:100}),201);assert.equal(response.status,201);assert.equal((await body(response)).ok,true);});
+test("cash checkout browser payload maps through server-owned identities",()=>{const input=checkoutInputFromBody({payment_method:"cash",cash_received:100000,items:[{product_unit_id:"11111111-1111-4111-8111-111111111111",quantity:2}],employee_id:"forged",cash_drawer_session_id:"forged"},"trusted-employee","trusted-drawer");assert.equal(input.paymentMethod,"cash");assert.equal(input.cashReceived,100000);assert.equal(input.items[0].quantity,2);assert.equal(input.employeeId,"trusted-employee");assert.equal(input.cashDrawerSessionId,"trusted-drawer");});
+test("QRIS checkout payload omits cash tender and keeps server identity",()=>{const input=checkoutInputFromBody({payment_method:"qris",items:[{product_unit_id:"11111111-1111-4111-8111-111111111111",quantity:1}],employee_id:"forged"},"trusted-employee","trusted-drawer");assert.equal(input.paymentMethod,"qris");assert.equal(input.cashReceived,undefined);assert.equal(input.employeeId,"trusted-employee");});
 test("malformed JSON becomes controlled 400",async()=>{const request=new Request("http://local/api",{method:"POST",headers:{"content-type":"application/json"},body:"{"});const response=await executeApi(()=>readJsonObject(request));assert.equal(response.status,400);assert.equal(((await body(response)).error as {code:string}).code,"INVALID_REQUEST");});
 test("wrong content type becomes controlled 400",async()=>{const request=new Request("http://local/api",{method:"POST",body:"{}"});assert.equal((await executeApi(()=>readJsonObject(request))).status,400);});
 test("insufficient checkout stock maps to 409",async()=>assert.equal((await executeApi(async()=>{throw new PosDomainError("INSUFFICIENT_STOCK")})).status,409));

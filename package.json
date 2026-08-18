@@ -18,6 +18,8 @@
     "test:auth": "tsx --test src/modules/auth/auth.test.ts",
     "test:api": "tsx --test src/modules/api.test.ts",
     "test:cashier": "tsx --test src/modules/cashier-cart.test.ts",
+    "test:checkout": "tsx --test src/modules/checkout-payment.test.ts",
+    "test:qris": "tsx --test src/modules/qris-payment.test.ts",
     "db:types": "supabase gen types typescript --local --schema public > src/types/database.types.ts"
   },
   "dependencies": {

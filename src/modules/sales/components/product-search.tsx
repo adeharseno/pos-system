@@ -1,9 +1,10 @@
 "use client";
 import type { CashierProductResult } from "@/modules/catalog/types";
 import { SearchIcon } from "@/modules/ui/icons";
+import { formatRupiah } from "@/modules/ui/currency";
 
 type Props={query:string;onQueryChange:(value:string)=>void;products:CashierProductResult[];loading:boolean;error:boolean;onRetry:()=>void;onAdd:(product:CashierProductResult,unit:CashierProductResult["units"][number])=>void};
-const rupiah=(value:number)=>`Rp ${value.toLocaleString("id-ID")}`;
+const rupiah=formatRupiah;
 function StockBadge({stock}:{stock:number}){const state=stock<=0?"Out of stock":stock<=5?`Low stock · ${stock}`:`In stock · ${stock}`;const tone=stock<=0?"bg-[var(--danger-soft)] text-[var(--danger)]":stock<=5?"bg-[var(--warning-soft)] text-[var(--warning)]":"bg-[var(--success-soft)] text-[var(--success)]";return <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${tone}`}>{state}</span>}
 
 export function ProductSearch({query,onQueryChange,products,loading,error,onRetry,onAdd}:Props){

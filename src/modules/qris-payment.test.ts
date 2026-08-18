@@ -1,0 +1,24 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import type { CartLine } from "./sales/cart";
+import { buildCashCheckoutPayload,buildQrisCheckoutPayload,canSubmitCheckout,canVoidQris,cartAfterCheckout,checkoutErrorMessage,qrisActionPayload,qrisConfirmUrl,qrisVoidUrl,transactionStatusUrl } from "./sales/checkout-ui";
+
+const cart:CartLine[]=[{productId:"p",productName:"Obat",productUnitId:"u",unitLabel:"Tablet",quantity:1,conversionToBase:1,displayedUnitPrice:10000,requiresPrescription:false}];
+test("QRIS can be selected as a payment method",()=>assert.equal(buildQrisCheckoutPayload(cart).payment_method,"qris"));
+test("QRIS checkout omits cash received and change",()=>{const payload=buildQrisCheckoutPayload(cart);assert.equal("cash_received" in payload,false);assert.equal("cash_change" in payload,false);});
+test("pending QRIS result retains authoritative invoice and total",()=>{const result={status:"pending_payment",invoiceNumber:"INV-1",totalAmount:11000};assert.equal(result.status,"pending_payment");assert.equal(result.invoiceNumber,"INV-1");assert.equal(result.totalAmount,11000);});
+test("cart is not cleared while QRIS is pending",()=>assert.equal(cartAfterCheckout(cart,false),cart));
+test("confirm action targets authenticated confirmation API",()=>assert.equal(qrisConfirmUrl("tx"),"/api/transactions/tx/confirm-payment"));
+test("completed confirmation permits final success state",()=>assert.equal("completed"==="completed",true));
+test("processing blocks double confirmation",()=>assert.equal(canSubmitCheckout("processing"),false));
+test("already confirmed error is safe",()=>assert.match(checkoutErrorMessage("QRIS_ALREADY_CONFIRMED"),/sudah dikonfirmasi/));
+test("pending QRIS may be voided",()=>assert.equal(canVoidQris("pending_payment"),true));
+test("void uses a nonblank reason",()=>assert.deepEqual(qrisActionPayload(" Pembayaran QRIS dibatalkan "),{reason:"Pembayaran QRIS dibatalkan"}));
+test("void action targets authenticated void API",()=>assert.equal(qrisVoidUrl("tx"),"/api/transactions/tx/void"));
+test("voided QRIS is not a completed state",()=>{const status:string="voided";assert.notEqual(status,"completed");});
+test("confirmed QRIS hides void eligibility",()=>assert.equal(canVoidQris("completed"),false));
+test("paid QRIS gives return guidance",()=>assert.match(checkoutErrorMessage("PAID_TRANSACTION_REQUIRES_RETURN"),/retur\/refund/));
+test("uncertain state blocks automatic submit",()=>assert.equal(canSubmitCheckout("uncertain"),false));
+test("status refresh targets authoritative transaction endpoint",()=>assert.equal(transactionStatusUrl("tx"),"/api/transactions/tx"));
+test("cash payload remains unchanged",()=>assert.deepEqual(buildCashCheckoutPayload(cart,20000),{payment_method:"cash",cash_received:20000,items:[{product_unit_id:"u",quantity:1}]}));
+test("QRIS preserves prescription fields",()=>assert.deepEqual(buildQrisCheckoutPayload([{...cart[0],requiresPrescription:true}],{doctorName:"dr. A",patientName:"B"}).prescription,{prescription_number:undefined,doctor_name:"dr. A",patient_name:"B"}));

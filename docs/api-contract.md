@@ -109,7 +109,6 @@ A cashier cannot open a second active session and cannot transact against anothe
 
 ```jsonc
 {
-  "cash_drawer_session_id": "uuid",
   "items": [
     { "product_id": "uuid", "product_unit_id": "uuid", "quantity": 2 }
   ],
@@ -124,7 +123,10 @@ A cashier cannot open a second active session and cannot transact against anothe
 }
 ```
 
-The client does **not** submit authoritative prices, tax, cost, invoice number, or batch IDs. The server/database resolves those values.
+The client does **not** submit employee/drawer identity, authoritative prices,
+tax, cost, cash change, invoice number, or batch IDs. The server resolves the
+current employee's open drawer and PostgreSQL resolves transaction values.
+Checkout must not be retried automatically while no idempotency key exists.
 
 ### 5.2 Checkout response
 
@@ -157,6 +159,9 @@ The client does **not** submit authoritative prices, tax, cost, invoice number, 
 ```
 
 Cash checkout returns `completed`. QRIS checkout returns `pending_payment` until manually confirmed.
+QRIS checkout omits `cash_received`; its inventory is already deducted while
+pending. Pilot 1 confirmation is a deliberate cashier action after external
+verification, not a gateway callback.
 
 Special errors include:
 
@@ -176,6 +181,8 @@ The checkout RPC calculates authoritative totals first, creates the `transaction
 `POST /api/transactions/:id/confirm-payment`
 
 No body required unless later audit notes are added. Only QRIS transactions in `pending_payment` may transition to `completed`.
+Confirmed QRIS transactions cannot be voided and must use customer
+return/refund for reversal.
 
 ### 5.4 Void
 
