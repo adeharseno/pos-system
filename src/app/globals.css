@@ -46,3 +46,12 @@ button:disabled { cursor: not-allowed; }
 @media (max-width: 767px) {
   .app-main { padding-left: 0; padding-top: 57px; }
 }
+
+@media print {
+  @page { margin: 6mm; }
+  body { background: white !important; }
+  header.fixed, aside.fixed, .receipt-actions { display: none !important; }
+  .app-main { padding: 0 !important; }
+  .receipt-page { min-height: auto !important; padding: 0 !important; }
+  .receipt-document { width: 80mm !important; max-width: 100% !important; margin: 0 auto !important; padding: 3mm !important; color: black !important; box-shadow: none !important; }
+}

@@ -5,7 +5,7 @@ import { mapDatabaseError } from "@/modules/shared/errors/pos-domain-error";
 
 export async function getTransaction(transactionId:string) {
   const {data,error}=await createAdminSupabaseClient().from("transactions")
-    .select("*,transaction_items(*,transaction_item_batches(*)),transaction_prescriptions(*)")
+    .select("*,employees!transactions_cashier_id_fkey(full_name),transaction_items(*,products(name),product_units(unit_name),transaction_item_batches(*)),transaction_prescriptions(*)")
     .eq("id",transactionId).maybeSingle();
   if(error) throw mapDatabaseError(error); return data;
 }

@@ -105,6 +105,12 @@ A cashier cannot open a second active session and cannot transact against anothe
 | GET | `/api/transactions/:id` | both | Detail + item/batch allocations + prescription |
 | GET | `/api/transactions/:id/receipt` | both | Structured receipt payload |
 
+The protected UI receipt route is
+`/transactions/:id/receipt`. It loads the authoritative transaction
+server-side and exposes no batch allocation or FEFO details to the
+customer-facing document. Pending QRIS is marked non-final and voided
+transactions remain visibly voided.
+
 ### 5.1 Checkout request
 
 ```jsonc
