@@ -20,10 +20,11 @@
 | M2.6 QRIS manual payment | COMPLETE | External counter QRIS and manual cashier confirmation. |
 | M2.7 Receipt | COMPLETE | Authoritative, read-only receipt and browser printing. |
 | M2.7.1 Historical receipt snapshot hardening | COMPLETE | Transaction-time product/unit labels; legacy backfill has historical limits. |
+| M2.8 Transaction History, Search & Receipt Reprint | COMPLETE | Read-only paginated history, detail, filters, and receipt-route reuse. |
 
 ## Next milestone
 
-**M2.8 — Transaction History, Search & Receipt Reprint** is next. It should add the missing history/search/reprint experience without changing checkout authority or receipt financial/snapshot sources.
+The next milestone should be selected after validating the remaining operational priorities; returns UI, stock-opname UI, barcode workflow, and production hardening remain separate scope.
 
 ## Backend capability with UI still planned
 
@@ -42,4 +43,4 @@
 
 ## Current verification baseline
 
-The latest verified local baseline is 104 application tests passing (including 14 receipt tests), 117 database tests passing, and concurrency verification across 21 scenario groups / 210 runs with 486 invariant checks, 0 deadlocks, and 0 lock timeouts. These counts are a snapshot, not a release guarantee.
+The latest verified local baseline is 107 application tests passing (including 14 receipt tests and 3 history-filter tests), 117 database tests passing, and concurrency verification across 21 scenario groups / 210 runs with 486 invariant checks, 0 deadlocks, and 0 lock timeouts. These counts are a snapshot, not a release guarantee.

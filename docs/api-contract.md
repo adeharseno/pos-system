@@ -18,6 +18,7 @@ The server derives `auth.users -> user_profiles -> employees` and uses the activ
 | GET | `/api/cash-drawer/current` | owner_admin, kasir | Read the caller's open session. |
 | POST | `/api/cash-drawer/:id/close` | owner_admin, kasir | Close caller's session; PostgreSQL calculates expected cash and variance. |
 | POST | `/api/transactions/checkout` | owner_admin, kasir | Atomic cash or manual-QRIS checkout. |
+| — | `/transactions` | owner_admin, kasir | Server-rendered read-only history with validated URL filters and pagination; no duplicate list API. |
 | POST | `/api/transactions/:id/confirm-payment` | owner_admin, kasir | Confirm a pending QRIS payment manually. |
 | POST | `/api/transactions/:id/void` | owner_admin, kasir | Void an eligible transaction and restore stock atomically. |
 | GET | `/api/transactions/:id` | owner_admin, kasir | Read one transaction detail. |
@@ -61,7 +62,7 @@ Expected physical cash is `opening cash + completed cash sales - cash refunds pa
 
 ## Planned / not implemented API
 
-The following documented product scope is not an implemented HTTP contract: barcode lookup, product/category/supplier/master-data CRUD, drawer history, transaction list/search/reprint API, receipt API payload, prescription or QRIS-image upload, return list/detail, stock-opname count entry/session reads, stock-card/expiry/low-stock endpoints, reporting, employee/settings endpoints, and payment-provider callbacks/webhooks.
+The following documented product scope is not an implemented HTTP contract: barcode lookup, product/category/supplier/master-data CRUD, drawer history, receipt API payload, prescription or QRIS-image upload, return list/detail, stock-opname count entry/session reads, stock-card/expiry/low-stock endpoints, reporting, employee/settings endpoints, and payment-provider callbacks/webhooks. Transaction history is server-rendered rather than a duplicate list API.
 
 An app-hosted static QRIS image is optional future display UX only. Pilot 1 uses an external/physical QRIS displayed at the counter; it has no dynamic QRIS, gateway, webhook, or polling integration.
 

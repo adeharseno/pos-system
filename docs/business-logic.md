@@ -466,6 +466,16 @@ previews are never used to reconstruct a final receipt.
 Pilot 1 printing uses the browser print dialog; native thermal/ESC-POS
 integration remains a future enhancement.
 
+## 11. Transaction History & Receipt Reprint
+
+Transaction history is a read-only operational view. It lists newest stored
+transactions first with server-side pagination and validated invoice, date,
+payment-method, and status filters. Date boundaries use Asia/Jakarta. Detail
+and receipt displays use stored financial fields and immutable
+`product_name_snapshot` / `unit_name_snapshot` values, never current master
+labels. Reprint links reuse `/transactions/:id/receipt` and its browser-print
+implementation; history does not alter a transaction or expose status editing.
+
 Format:
 
 ```text
