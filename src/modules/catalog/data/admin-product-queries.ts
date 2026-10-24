@@ -1,0 +1,43 @@
+import "server-only";
+
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { mapDatabaseError } from "@/modules/shared/errors/pos-domain-error";
+import type { Database } from "@/types/database.types";
+import type { AdminProductFilters } from "../admin-product-filters";
+
+type Product=Database["public"]["Tables"]["products"]["Row"];
+type Unit=Database["public"]["Tables"]["product_units"]["Row"];
+type Batch=Database["public"]["Tables"]["product_batches"]["Row"];
+type Named={id:string;name:string};
+export type AdminProductListItem={id:string;sku:string;name:string;genericName:string|null;manufacturer:string|null;baseUnit:string;requiresPrescription:boolean;isActive:boolean;category:string;subcategory:string;defaultSupplier:string|null;storageLocation:string|null;unitCount:number;availableStock:number};
+export type AdminProductDetail=AdminProductListItem&{categoryId:string;subcategoryId:string;defaultSupplierId:string|null;storageLocationId:string|null;drugClassification:Product["drug_classification"];description:string|null;costPrice:number;taxRate:number;isTaxable:boolean;minimumStock:number;units:Unit[];batches:Batch[]};
+
+const businessDate=()=>new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Jakarta",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+const fail=<T>(error:{message:string}|null,data:T)=>{if(error)throw mapDatabaseError(error);return data;};
+const ids=<T extends {id:string}>(rows:T[])=>rows.map(row=>row.id);
+const byId=(rows:Named[])=>new Map(rows.map(row=>[row.id,row.name]));
+
+async function metadata(products:Product[]){
+  const admin=createAdminSupabaseClient();const productIds=ids(products);
+  const [unitsResult,batchesResult,categoriesResult,subcategoriesResult,suppliersResult,locationsResult]=await Promise.all([
+    admin.from("product_units").select("*").in("product_id",productIds),
+    admin.from("product_batches").select("*").in("product_id",productIds).gt("quantity",0).gte("expired_date",businessDate()).order("expired_date").order("created_at"),
+    admin.from("categories").select("id,name"),admin.from("subcategories").select("id,name"),admin.from("suppliers").select("id,name"),admin.from("storage_locations").select("id,full_code"),
+  ]);
+  const units=fail(unitsResult.error,unitsResult.data??[]);const batches=fail(batchesResult.error,batchesResult.data??[]);
+  const locations=fail(locationsResult.error,locationsResult.data??[]).map(location=>({id:location.id,name:location.full_code}));
+  return {units,batches,categories:byId(fail(categoriesResult.error,categoriesResult.data??[])),subcategories:byId(fail(subcategoriesResult.error,subcategoriesResult.data??[])),suppliers:byId(fail(suppliersResult.error,suppliersResult.data??[])),locations:byId(locations)};
+}
+function summary(product:Product, data:Awaited<ReturnType<typeof metadata>>):AdminProductListItem{
+  const productUnits=data.units.filter(unit=>unit.product_id===product.id);const stock=data.batches.filter(batch=>batch.product_id===product.id).reduce((total,batch)=>total+batch.quantity,0);
+  return {id:product.id,sku:product.sku,name:product.name,genericName:product.generic_name,manufacturer:product.manufacturer,baseUnit:product.base_unit,requiresPrescription:product.requires_prescription===true,isActive:product.is_active,category:data.categories.get(product.category_id)??"—",subcategory:data.subcategories.get(product.subcategory_id)??"—",defaultSupplier:product.default_supplier_id?data.suppliers.get(product.default_supplier_id)??"—":null,storageLocation:product.storage_location_id?data.locations.get(product.storage_location_id)??"—":null,unitCount:productUnits.length,availableStock:stock};
+}
+export async function listAdminProducts(filters:AdminProductFilters){
+  const admin=createAdminSupabaseClient();let query=admin.from("products").select("*",{count:"exact"}).order("name").order("id");
+  if(filters.status!=="all")query=query.eq("is_active",filters.status==="active");if(filters.prescription!=="all")query=query.eq("requires_prescription",filters.prescription==="required");if(filters.q)query=query.or(`name.ilike.%${filters.q.replace(/[%_]/g,"\\$&")}%,sku.ilike.%${filters.q.replace(/[%_]/g,"\\$&")}%`);
+  const from=(filters.page-1)*filters.limit;const result=await query.range(from,from+filters.limit-1);const products=fail(result.error,result.data??[]);if(products.length===0)return {rows:[] as AdminProductListItem[],total:result.count??0};const data=await metadata(products);return {rows:products.map(product=>summary(product,data)),total:result.count??0};
+}
+export async function getAdminProduct(id:string):Promise<AdminProductDetail|null>{
+  const admin=createAdminSupabaseClient();const result=await admin.from("products").select("*").eq("id",id).maybeSingle();const product=fail(result.error,result.data);if(!product)return null;const data=await metadata([product]);return {...summary(product,data),categoryId:product.category_id,subcategoryId:product.subcategory_id,defaultSupplierId:product.default_supplier_id,storageLocationId:product.storage_location_id,drugClassification:product.drug_classification,description:product.description,costPrice:product.cost_price,taxRate:product.tax_rate,isTaxable:product.is_taxable,minimumStock:product.minimum_stock,units:data.units.sort((a,b)=>a.unit_name.localeCompare(b.unit_name)),batches:data.batches};
+}
+export async function getProductCreateMasterData(){const admin=createAdminSupabaseClient();const [categories,subcategories,suppliers,locations]=await Promise.all([admin.from("categories").select("id,name").eq("is_active",true).order("name"),admin.from("subcategories").select("id,category_id,name").eq("is_active",true).order("name"),admin.from("suppliers").select("id,name").eq("is_active",true).order("name"),admin.from("storage_locations").select("id,full_code").order("full_code")]);return{categories:fail(categories.error,categories.data??[]),subcategories:fail(subcategories.error,subcategories.data??[]),suppliers:fail(suppliers.error,suppliers.data??[]),locations:fail(locations.error,locations.data??[])};}

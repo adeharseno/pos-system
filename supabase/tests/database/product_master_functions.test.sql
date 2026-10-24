@@ -1,0 +1,16 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+set local search_path=public,extensions;
+select plan(8);
+insert into categories(id,name) values('a1000000-0000-0000-0000-000000000001','Category');
+insert into subcategories(id,category_id,name) values('a2000000-0000-0000-0000-000000000001','a1000000-0000-0000-0000-000000000001','Subcategory');
+select lives_ok($$select public.create_product_with_base_unit(' NEW-001 ','New product','a1000000-0000-0000-0000-000000000001','a2000000-0000-0000-0000-000000000001','Tablet','Tablet',1000,null,null,null,null,null,null,0,0,false,'otc',0,true,'00123')$$,'creates product and base unit');
+select is((select sku from products where sku='NEW-001'),'NEW-001','SKU is trimmed');
+select is((select barcode from product_units u join products p on p.id=u.product_id where p.sku='NEW-001'),'00123','leading zero barcode is preserved');
+select ok((select conversion_to_base=1 and is_base_unit from product_units u join products p on p.id=u.product_id where p.sku='NEW-001'),'initial unit is base unit');
+select throws_ok($$select public.create_product_with_base_unit(' NEW-001 ','Duplicate','a1000000-0000-0000-0000-000000000001','a2000000-0000-0000-0000-000000000001','Tablet','Tablet',1000)$$,'P0001','DUPLICATE_SKU','duplicate SKU rejected');
+select throws_ok($$select public.create_product_with_base_unit('NEW-002','Duplicate barcode','a1000000-0000-0000-0000-000000000001','a2000000-0000-0000-0000-000000000001','Tablet','Tablet',1000,null,null,null,null,null,null,0,0,false,'otc',0,true,'00123')$$,'P0001','DUPLICATE_BARCODE','duplicate barcode rejected');
+select is((select count(*)::integer from products where sku='NEW-002'),0,'duplicate barcode leaves no orphan product');
+select throws_ok($$select public.create_product_with_base_unit('NEW-003','Bad category','a1000000-0000-0000-0000-000000000001','a2000000-0000-0000-0000-000000000099','Tablet','Tablet',-1)$$,'P0001','INVALID_PRODUCT_INPUT','invalid numeric rejected');
+select * from finish();
+rollback;

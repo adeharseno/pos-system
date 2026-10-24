@@ -1212,6 +1212,10 @@ export type Database = {
         }
         Returns: Json
       }
+      create_product_with_base_unit: {
+        Args: { p_sku: string; p_name: string; p_category_id: string; p_subcategory_id: string; p_base_unit: string; p_unit_name: string; p_selling_price: number; p_generic_name?: string | null; p_description?: string | null; p_manufacturer?: string | null; p_image_url?: string | null; p_storage_location_id?: string | null; p_default_supplier_id?: string | null; p_cost_price?: number; p_tax_rate?: number; p_is_taxable?: boolean; p_drug_classification?: Database["public"]["Enums"]["drug_classification"]; p_minimum_stock?: number; p_is_active?: boolean; p_barcode?: string | null }
+        Returns: Json
+      }
       create_supplier_return: {
         Args: { p_employee_id: string; p_items: Json; p_reason: string }
         Returns: Json

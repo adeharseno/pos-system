@@ -200,6 +200,16 @@ A completed transaction that already has a customer return cannot be voided in P
 
 Customer returns are allowed only from a **completed** transaction. The return records a `refund_method` (`cash` or `qris`). A cash refund additionally records the **currently-open drawer that physically pays the refund**.
 
+---
+
+## 6. Product Master Data
+
+Owner admins manage product master records, including manual creation, non-destructive deactivation, and selling units. Product creation and every successful bulk-import row call `create_product_with_base_unit`, so the product and its initial base selling unit are one atomic database operation. Additional selling units may have their own conversion, selling price, and barcode. The base unit's name and conversion are protected to avoid desynchronizing the existing base unit.
+
+Bulk import accepts CSV/XLSX, previews validation before commit, and maps uploaded category, subcategory, supplier, and storage text to existing master records only. It never creates master data, batches, quantities, or expiry records. Duplicate SKU/barcode values are detected before commit, while the RPC remains final authority for database races. Rows may partially succeed; each result is explicit and a failed row cannot leave an orphan product.
+
+Product and unit master edits do not rewrite `transaction_items`, transaction-time unit/product snapshots, returns, or inventory batches. Inactive products remain readable in product administration and history but are excluded from the normal cashier product search/sale flow.
+
 Customer Return UI is COMPLETE: completed Cash and completed QRIS sales begin at transaction detail and support partial, repeated/cumulative, and multi-item returns. Pending QRIS, voided sales, and fully returned transactions are not returnable. Mutation uses `quantity_in_base`; sold-unit display uses `conversion_to_base_snapshot`, and non-divisible historical values are not rounded. Product/unit labels use transaction snapshots. `Perkiraan Refund` uses stored sale values only and is not authoritative; PostgreSQL owns final refund, cumulative limits, and original-batch restoration. For cash, the server resolves the authenticated employee's open drawer; the browser cannot choose it. QRIS uses no physical drawer and no gateway refund. Stock-opname freeze applies. Uncertain submissions are not automatically retried; return idempotency remains backlog.
 
 ### 5.1 Returnable quantity

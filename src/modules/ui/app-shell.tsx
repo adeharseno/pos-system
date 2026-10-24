@@ -8,7 +8,7 @@ import { BoxIcon,ChartIcon,CloseIcon,MenuIcon,SaleIcon,UsersIcon } from "./icons
 type NavItem={label:string;href:string;icon:ComponentType<SVGProps<SVGSVGElement>>;admin?:boolean};
 const groups:Array<{label:string;items:NavItem[]}>= [
   {label:"Operations",items:[{label:"New Sale",href:"/cashier",icon:SaleIcon},{label:"Transactions",href:"/transactions",icon:ChartIcon},{label:"Returns",href:"#",icon:BoxIcon}]},
-  {label:"Inventory",items:[{label:"Products",href:"#",icon:BoxIcon,admin:true},{label:"Inventory",href:"#",icon:BoxIcon},{label:"Stock Opname",href:"#",icon:ChartIcon,admin:true}]},
+  {label:"Inventory",items:[{label:"Products",href:"/products",icon:BoxIcon},{label:"Inventory",href:"#",icon:BoxIcon},{label:"Stock Opname",href:"#",icon:ChartIcon,admin:true}]},
   {label:"Management",items:[{label:"Reports",href:"#",icon:ChartIcon,admin:true},{label:"Employees",href:"#",icon:UsersIcon,admin:true}]},
 ];
 

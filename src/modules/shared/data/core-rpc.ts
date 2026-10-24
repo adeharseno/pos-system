@@ -10,6 +10,7 @@ export type CoreRpcName = Extract<keyof Functions,
   | "confirm_qris_payment"
   | "void_transaction"
   | "create_customer_return"
+  | "create_product_with_base_unit"
   | "create_supplier_return"
   | "start_stock_opname"
   | "apply_stock_opname"

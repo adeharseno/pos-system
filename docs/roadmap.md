@@ -24,9 +24,24 @@
 | M2.8 Transaction History, Search & Receipt Reprint | COMPLETE | Read-only paginated history, detail, filters, and receipt-route reuse. |
 | M2.9 Customer Return Operational Workflow | COMPLETE | Transaction-detail return UI; partial/cumulative multi-item returns, Cash/QRIS support, snapshots, server-owned Cash drawer, and refund preview. |
 
-## Next milestone
+## Product master milestone
 
-**M2.10 — Stock Opname Operational UI** is next.
+**M2.10 — Product Master Data — COMPLETE**
+
+| Slice | Status | Notes |
+|---|---|---|
+| M2.10A Product List / Read-only Admin UI | COMPLETE | Server-side list/detail, search, filters, pagination, and stock summary. |
+| M2.10B Manual Product Create | COMPLETE | Owner-only form uses the atomic product + base-unit RPC; no inventory is created. |
+| M2.10C Selling Units / Barcode Management | COMPLETE | Owner-only add/edit of selling units and per-unit barcodes; the base unit cannot be renamed or have its conversion changed. |
+| M2.10D Product Edit / Deactivate | COMPLETE | Owner-only master-data edit and non-destructive deactivate; inactive products remain available to admin/history reads but not normal cashier selling flow. |
+| M2.10E Bulk Import | COMPLETE | Owner-only XLSX/CSV preview, server-backed master-data mapping, and per-row atomic import with partial-success reporting; import creates no inventory or batches. |
+| M2.10F Hardening | COMPLETE | Product request normalization and import parser tests added; full application/database/static regression completed. |
+
+Residual test debt: browser-level form-state preservation, navigation/redirect behavior, and route/service integration for product and selling-unit mutations still require a UI or dependency-injection harness. Current `tsx --test` coverage exercises pure request/parser logic, authorization policy, and safe API error mapping.
+
+Manual M2.10B smoke check: login as owner_admin; open `/products`; confirm **Tambah Produk**; create a product with a leading-zero barcode; confirm redirect/detail, initial base unit, and stock `0`; confirm it appears in the list; then confirm kasir has no create action.
+
+**Next: M2.11 — Inventory / Stock Receiving.**
 
 ## Backend capability with UI still planned
 
@@ -46,4 +61,4 @@
 
 ## Current verification baseline
 
-The latest verified local baseline is 112/112 application tests passing, 117/117 database tests passing, and concurrency verification across 21 scenario groups / 210 runs with 486 invariant checks, 0 failures, 0 deadlocks, and 0 lock timeouts. Lint, typecheck, and build pass. These counts are a snapshot, not a release guarantee.
+The latest verified local baseline includes the full configured application suites, 125/125 database tests passing, and the preserved concurrency baseline of 23 scenario groups / 230 runs / 529 invariant checks with 0 failures, 0 deadlocks, and 0 lock timeouts. Lint, typecheck, and build pass. These counts are a snapshot, not a release guarantee.

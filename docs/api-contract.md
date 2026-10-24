@@ -14,6 +14,12 @@ The server derives `auth.users -> user_profiles -> employees` and uses the activ
 |---|---|---|---|
 | GET | `/api/products?q=` | owner_admin, kasir | Cashier search by product name or SKU; includes sell units and stock preview. |
 | GET | `/api/products?barcode=` | owner_admin, kasir | Exact keyboard-wedge/manual barcode lookup. Barcode belongs to `product_units`, so the selected sell unit is returned. |
+| POST | `/api/products` | owner_admin | Create one product and its base selling unit through `create_product_with_base_unit`. |
+| PATCH | `/api/products/:id` | owner_admin | Edit supported product master fields or set `is_active=false`; never deletes product. |
+| POST | `/api/products/:id/units` | owner_admin | Add a non-base selling unit. |
+| PATCH | `/api/products/:id/units/:unitId` | owner_admin | Edit a selling unit; base-unit name/conversion are protected. |
+| POST | `/api/products/import/preview` | owner_admin | Parse XLSX/CSV and return validation/master-data resolution preview; no writes. |
+| POST | `/api/products/import/commit` | owner_admin | Import validated mapped rows through the atomic product + base-unit RPC; results are reported per row. |
 | GET | `/api/inventory?product_id=` | owner_admin, kasir | Read inventory/batches for one product. |
 | POST | `/api/cash-drawer/open` | owner_admin, kasir | Open the caller's cash-drawer session. |
 | GET | `/api/cash-drawer/current` | owner_admin, kasir | Read the caller's open session. |
@@ -65,9 +71,13 @@ Expected physical cash is `opening cash + completed cash sales - cash refunds pa
 
 Customer UI submits `source: "customer"`, `transaction_id`, `refund_method`, `reason`, and `items` containing `transaction_item_id` plus `quantity_in_base`. It does not submit employee identity, drawer identity, refund total, batch/allocation data, snapshots, or cumulative quantities. For cash, the server resolves the authenticated employee's open drawer and passes that trusted value internally; QRIS uses no physical drawer. Final refund, lifecycle, cumulative quantity, batch restoration, and freeze checks remain PostgreSQL authority. Relevant safe failures include `INVALID_TRANSACTION_STATE`, `RETURN_QUANTITY_EXCEEDED`, `NO_ACTIVE_CASH_DRAWER`, and `STOCK_OPNAME_IN_PROGRESS`. Customer Return UI is complete; Supplier Return UI is deferred.
 
+## Product-master import rules
+
+The import UI maps uploaded category, subcategory, supplier, and storage text to existing master records on the server. It never creates master data. Every committed row creates only a product and its base selling unit; no batch, stock quantity, or expiry data is created. Duplicate SKU/barcode values are detected in-file and preflighted against current records; the RPC remains the concurrency-safe authority. Row-level partial success is explicit, and transaction history remains protected by transaction-time snapshots.
+
 ## Planned / not implemented API
 
-The following documented product scope is not an implemented HTTP contract: barcode lookup, product/category/supplier/master-data CRUD, drawer history, receipt API payload, prescription or QRIS-image upload, return list/detail, stock-opname count entry/session reads, stock-card/expiry/low-stock endpoints, reporting, employee/settings endpoints, and payment-provider callbacks/webhooks. Transaction history is server-rendered rather than a duplicate list API.
+The following documented scope is not an implemented HTTP contract: category/supplier/master-data CRUD, drawer history, receipt API payload, prescription or QRIS-image upload, return list/detail, stock-opname count entry/session reads, stock-card/expiry/low-stock endpoints, reporting, employee/settings endpoints, and payment-provider callbacks/webhooks. Transaction history is server-rendered rather than a duplicate list API.
 
 An app-hosted static QRIS image is optional future display UX only. Pilot 1 uses an external/physical QRIS displayed at the counter; it has no dynamic QRIS, gateway, webhook, or polling integration.
 

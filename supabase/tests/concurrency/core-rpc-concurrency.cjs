@@ -156,7 +156,25 @@ function returnCall(ids, quantity) {
     values:[ids.cashier,ids.transaction,JSON.stringify([{transaction_item_id:ids.item,quantity_in_base:quantity}])] };
 }
 
+function productCreateCall(ids, sku, barcode, name) {
+  return {text:`select public.create_product_with_base_unit(p_sku=>$1,p_name=>$2,p_category_id=>$3,p_subcategory_id=>$4,p_base_unit=>'tablet',p_unit_name=>'tablet',p_selling_price=>100,p_barcode=>$5)`,values:[sku,name,ids.category,ids.subcategory,barcode]};
+}
+
 async function main() {
+  await run('product create same SKU', async (client,index) => {
+    const ids=await seed(client,{stock1:10}); const sku=`RACE-SKU-${index}`;
+    const results=await race([productCreateCall(ids,sku,`SKU-A-${index}`,'SKU A'),productCreateCall(ids,sku,`SKU-B-${index}`,'SKU B')]);
+    assert(successes(results).length===1&&failures(results).length===1,'same SKU winner/loser count');
+    const counts=(await client.query('select count(*) filter(where sku=$1)::int products,count(u.id)::int units from products p left join product_units u on u.product_id=p.id where p.sku=$1',[sku])).rows[0];
+    assert(counts.products===1&&counts.units===1,'same SKU uniqueness or orphan invariant');
+  });
+  await run('product create same barcode', async (client,index) => {
+    const ids=await seed(client,{stock1:10}); const barcode=`RACE-BARCODE-${index}`;
+    const results=await race([productCreateCall(ids,`RACE-BAR-A-${index}`,barcode,'Barcode A'),productCreateCall(ids,`RACE-BAR-B-${index}`,barcode,'Barcode B')]);
+    assert(successes(results).length===1&&failures(results).length===1,'same barcode winner/loser count');
+    const counts=(await client.query('select count(*) filter(where p.sku in ($1,$2))::int products,count(u.id) filter(where u.barcode=$3)::int units from products p left join product_units u on u.product_id=p.id',[`RACE-BAR-A-${index}`,`RACE-BAR-B-${index}`,barcode])).rows[0];
+    assert(counts.products===1&&counts.units===1,'same barcode rollback or uniqueness invariant');
+  });
   await run('checkout vs checkout (10/10 stock)', (c) => checkoutRace(c,10,1,0));
   await run('partial checkout (15 stock)', (c) => checkoutRace(c,15,1,5));
   await run('partial checkout (20 stock)', (c) => checkoutRace(c,20,2,0));

@@ -23,6 +23,7 @@ test("inactive employee is rejected",async()=>expectCode(()=>requireEmployeeWith
 test("active cashier resolves to a minimal employee session",async()=>assert.deepEqual(await getCurrentEmployeeWith(dependencies()),{employeeId:activeCashier.employeeId,authUserId:user.id,name:"Cashier",role:"kasir"}));
 test("active admin satisfies admin role guard",async()=>assert.equal((await requireRoleWith(["owner_admin"],dependencies(user,activeAdmin))).role,"owner_admin"));
 test("cashier cannot satisfy admin role guard",async()=>expectCode(()=>requireRoleWith(["owner_admin"],dependencies()),"FORBIDDEN"));
+test("staf cannot satisfy admin role guard",async()=>expectCode(()=>requireRoleWith(["owner_admin"],dependencies(user,{...activeCashier,role:"staf"})),"FORBIDDEN"));
 test("logout removes subsequent session access",async()=>{
   let currentUser:typeof user|null=user;
   const deps:AuthDependencies={getUser:async()=>currentUser,findEmployee:async()=>activeCashier,signOut:async()=>{currentUser=null;}};
