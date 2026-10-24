@@ -930,6 +930,7 @@ export type Database = {
           created_at: string
           id: string
           product_id: string
+          product_name_snapshot: string
           product_unit_id: string
           quantity_in_base: number
           quantity_in_unit: number
@@ -938,6 +939,7 @@ export type Database = {
           tax_rate_snapshot: number
           total_amount: number
           transaction_id: string
+          unit_name_snapshot: string
           unit_price: number
         }
         Insert: {
@@ -945,6 +947,7 @@ export type Database = {
           created_at?: string
           id?: string
           product_id: string
+          product_name_snapshot: string
           product_unit_id: string
           quantity_in_base: number
           quantity_in_unit: number
@@ -953,6 +956,7 @@ export type Database = {
           tax_rate_snapshot?: number
           total_amount: number
           transaction_id: string
+          unit_name_snapshot: string
           unit_price: number
         }
         Update: {
@@ -960,6 +964,7 @@ export type Database = {
           created_at?: string
           id?: string
           product_id?: string
+          product_name_snapshot?: string
           product_unit_id?: string
           quantity_in_base?: number
           quantity_in_unit?: number
@@ -968,6 +973,7 @@ export type Database = {
           tax_rate_snapshot?: number
           total_amount?: number
           transaction_id?: string
+          unit_name_snapshot?: string
           unit_price?: number
         }
         Relationships: [

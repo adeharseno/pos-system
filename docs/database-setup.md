@@ -17,6 +17,9 @@ npm run db:lint
 
 1. `supabase/migrations/0001_init.sql`
 2. `supabase/migrations/0002_rls_policies.sql`
+3. `supabase/migrations/0003_core_functions.sql`
+4. `supabase/migrations/0004_cash_drawer_functions.sql`
+5. `supabase/migrations/0005_transaction_item_receipt_snapshots.sql`
 
 Seeding is disabled for M1.2 because seed data belongs to a later milestone.
 

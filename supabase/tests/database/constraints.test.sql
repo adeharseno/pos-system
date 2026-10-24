@@ -48,12 +48,12 @@ select lives_ok(
 );
 
 select lives_ok(
-  $$insert into transaction_items (id, transaction_id, product_id, product_unit_id, quantity_in_unit, conversion_to_base_snapshot, quantity_in_base, unit_price, subtotal, total_amount) values ('80000000-0000-0000-0000-000000000001', '70000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', 1, 1, 1, 100, 100, 100)$$,
+  $$insert into transaction_items (id, transaction_id, product_id, product_unit_id, product_name_snapshot, unit_name_snapshot, quantity_in_unit, conversion_to_base_snapshot, quantity_in_base, unit_price, subtotal, total_amount) values ('80000000-0000-0000-0000-000000000001', '70000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', 'Product A', 'Tablet A', 1, 1, 1, 100, 100, 100)$$,
   'Product A with Unit A is accepted'
 );
 
 select throws_ok(
-  $$insert into transaction_items (transaction_id, product_id, product_unit_id, quantity_in_unit, conversion_to_base_snapshot, quantity_in_base, unit_price, subtotal, total_amount) values ('70000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000002', 1, 1, 1, 100, 100, 100)$$,
+  $$insert into transaction_items (transaction_id, product_id, product_unit_id, product_name_snapshot, unit_name_snapshot, quantity_in_unit, conversion_to_base_snapshot, quantity_in_base, unit_price, subtotal, total_amount) values ('70000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000002', 'Product A', 'Tablet B', 1, 1, 1, 100, 100, 100)$$,
   23503
 );
 
@@ -238,12 +238,12 @@ select throws_ok(
 );
 
 select throws_ok(
-  $$insert into transaction_items (transaction_id, product_id, product_unit_id, quantity_in_unit, conversion_to_base_snapshot, quantity_in_base, unit_price, subtotal, total_amount) values ('70000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', 0, 1, 1, 100, 100, 100)$$,
+  $$insert into transaction_items (transaction_id, product_id, product_unit_id, product_name_snapshot, unit_name_snapshot, quantity_in_unit, conversion_to_base_snapshot, quantity_in_base, unit_price, subtotal, total_amount) values ('70000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', 'Product A', 'Tablet A', 0, 1, 1, 100, 100, 100)$$,
   23514
 );
 
 select throws_ok(
-  $$insert into transaction_items (transaction_id, product_id, product_unit_id, quantity_in_unit, conversion_to_base_snapshot, quantity_in_base, unit_price, subtotal, total_amount) values ('70000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', 1, 1, 1, -1, 100, 100)$$,
+  $$insert into transaction_items (transaction_id, product_id, product_unit_id, product_name_snapshot, unit_name_snapshot, quantity_in_unit, conversion_to_base_snapshot, quantity_in_base, unit_price, subtotal, total_amount) values ('70000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', 'Product A', 'Tablet A', 1, 1, 1, -1, 100, 100)$$,
   23514
 );
 

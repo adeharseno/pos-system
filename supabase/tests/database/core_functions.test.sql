@@ -1,5 +1,5 @@
 begin;
-select plan(48);
+select plan(52);
 
 insert into public.categories(id,name) values ('10000000-0000-0000-0000-000000000001','Test');
 insert into public.subcategories(id,category_id,name) values ('10000000-0000-0000-0000-000000000002','10000000-0000-0000-0000-000000000001','Test');
@@ -35,6 +35,12 @@ select is((select cash_change from public.transactions where id=(select id from 
 select is((select count(*)::integer from public.transaction_item_batches tib join public.transaction_items ti on ti.id=tib.transaction_item_id where ti.transaction_id=(select id from rpc_state where key='cash_tx')),2,'FEFO can split one receipt line');
 select is((select quantity from public.product_batches where id='40000000-0000-0000-0000-000000000001'),0,'earliest batch consumed first');
 select is((select quantity from public.product_batches where id='40000000-0000-0000-0000-000000000002'),130,'split remainder consumed from next batch');
+select is((select product_name_snapshot from public.transaction_items where transaction_id=(select id from rpc_state where key='cash_tx')),'Product A','checkout stores authoritative product label snapshot');
+select is((select unit_name_snapshot from public.transaction_items where transaction_id=(select id from rpc_state where key='cash_tx')),'box','checkout stores authoritative unit label snapshot');
+update public.products set name='Product A Renamed' where id='20000000-0000-0000-0000-000000000001';
+update public.product_units set unit_name='carton' where id='30000000-0000-0000-0000-000000000001';
+select is((select product_name_snapshot from public.transaction_items where transaction_id=(select id from rpc_state where key='cash_tx')),'Product A','product rename does not alter historical receipt label');
+select is((select unit_name_snapshot from public.transaction_items where transaction_id=(select id from rpc_state where key='cash_tx')),'box','unit rename does not alter historical receipt label');
 
 insert into rpc_state values ('qris_tx',(
   public.checkout_transaction('50000000-0000-0000-0000-000000000001','60000000-0000-0000-0000-000000000001','qris',

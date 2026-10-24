@@ -68,7 +68,8 @@ BEGIN
        qris -> status='pending_payment', payment_confirmed_at=NULL,
                payment_confirmed_by=NULL
  11. For each cart line:
-       INSERT one transaction_items row.
+       INSERT one transaction_items row, including authoritative
+       `product_name_snapshot` and `unit_name_snapshot` for the receipt.
        For each planned FEFO allocation:
          INSERT transaction_item_batches(
            transaction_item_id,
@@ -457,7 +458,9 @@ submitted checkout automatically; an uncertain network response requires the
 cashier to verify recent transactions first.
 
 Customer receipts are read-only projections of the stored transaction and
-transaction items. Cart previews are never used to reconstruct a final receipt.
+transaction items. Product and unit labels come from their transaction-time
+snapshots, so later master-data renames cannot alter an old receipt. Cart
+previews are never used to reconstruct a final receipt.
 Pilot 1 printing uses the browser print dialog; native thermal/ESC-POS
 integration remains a future enhancement.
 

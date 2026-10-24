@@ -287,6 +287,8 @@ One row per customer-facing sale line:
 - `transaction_id`
 - `product_id`
 - `product_unit_id`
+- `product_name_snapshot`
+- `unit_name_snapshot`
 - `quantity_in_unit`
 - `conversion_to_base_snapshot`
 - `quantity_in_base`
@@ -297,6 +299,12 @@ One row per customer-facing sale line:
 - `total_amount`
 
 The composite FK `(product_unit_id, product_id)` guarantees the chosen sell unit belongs to the item product.
+
+Customer-facing product and unit labels are copied from the authoritative master
+records by the checkout RPC and are immutable receipt snapshots. Migration
+`0005_transaction_item_receipt_snapshots.sql` backfills older rows with the
+best labels available at migration time; the original labels cannot be
+reconstructed if master data had already changed before that migration.
 
 No `batch_id` lives here.
 
