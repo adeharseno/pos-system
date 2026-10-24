@@ -23,7 +23,7 @@ The server derives `auth.users -> user_profiles -> employees` and uses the activ
 | POST | `/api/transactions/:id/confirm-payment` | owner_admin, kasir | Confirm a pending QRIS payment manually. |
 | POST | `/api/transactions/:id/void` | owner_admin, kasir | Void an eligible transaction and restore stock atomically. |
 | GET | `/api/transactions/:id` | owner_admin, kasir | Read one transaction detail. |
-| POST | `/api/returns` | customer: owner_admin/kasir; supplier: owner_admin | Create an atomic return. Backend capability; no full return UI yet. |
+| POST | `/api/returns` | customer: owner_admin/kasir; supplier: owner_admin | Create an atomic return. Customer UI is complete; Supplier UI is deferred. |
 | POST | `/api/stock-opname` | owner_admin | Start and freeze an opname session. |
 | POST | `/api/stock-opname/:id/apply` | owner_admin | Apply an eligible opname and release its freeze. |
 | POST | `/api/stock-opname/:id/cancel` | owner_admin | Cancel an opname without adjustment and release its freeze. |
@@ -61,6 +61,10 @@ start session -> starting cash -> cashier transactions -> close session -> expec
 
 Expected physical cash is `opening cash + completed cash sales - cash refunds paid from drawer`. QRIS is excluded.
 
+### POST /api/returns — Customer Return
+
+Customer UI submits `source: "customer"`, `transaction_id`, `refund_method`, `reason`, and `items` containing `transaction_item_id` plus `quantity_in_base`. It does not submit employee identity, drawer identity, refund total, batch/allocation data, snapshots, or cumulative quantities. For cash, the server resolves the authenticated employee's open drawer and passes that trusted value internally; QRIS uses no physical drawer. Final refund, lifecycle, cumulative quantity, batch restoration, and freeze checks remain PostgreSQL authority. Relevant safe failures include `INVALID_TRANSACTION_STATE`, `RETURN_QUANTITY_EXCEEDED`, `NO_ACTIVE_CASH_DRAWER`, and `STOCK_OPNAME_IN_PROGRESS`. Customer Return UI is complete; Supplier Return UI is deferred.
+
 ## Planned / not implemented API
 
 The following documented product scope is not an implemented HTTP contract: barcode lookup, product/category/supplier/master-data CRUD, drawer history, receipt API payload, prescription or QRIS-image upload, return list/detail, stock-opname count entry/session reads, stock-card/expiry/low-stock endpoints, reporting, employee/settings endpoints, and payment-provider callbacks/webhooks. Transaction history is server-rendered rather than a duplicate list API.
@@ -72,4 +76,4 @@ An app-hosted static QRIS image is optional future display UX only. Pilot 1 uses
 - Critical stock and financial mutations run in PostgreSQL RPCs; browser clients cannot call protected RPCs or mutate operational tables directly.
 - Checkout has no idempotency key. Do not automatically retry an uncertain submission.
 - Stock-opname backend supports start, freeze, apply, and cancel. Full counting/admin UI is still planned.
-- Return backend supports customer and supplier flows. Full cashier/admin return UI is still planned.
+- Customer Return UI is complete. Supplier Return Backend exists; Supplier Return UI remains deferred.

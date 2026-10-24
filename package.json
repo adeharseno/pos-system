@@ -22,6 +22,7 @@
     "test:qris": "tsx --test src/modules/qris-payment.test.ts",
     "test:receipt": "tsx --test src/modules/receipt.test.ts",
     "test:history": "tsx --test src/modules/transaction-history.test.ts",
+    "test:returns": "tsx --test src/modules/returns/return-quantity.test.ts",
     "db:types": "supabase gen types typescript --local --schema public > src/types/database.types.ts"
   },
   "dependencies": {

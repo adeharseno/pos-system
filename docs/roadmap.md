@@ -22,14 +22,15 @@
 | M2.7 Receipt | COMPLETE | Authoritative, read-only receipt and browser printing. |
 | M2.7.1 Historical receipt snapshot hardening | COMPLETE | Transaction-time product/unit labels; legacy backfill has historical limits. |
 | M2.8 Transaction History, Search & Receipt Reprint | COMPLETE | Read-only paginated history, detail, filters, and receipt-route reuse. |
+| M2.9 Customer Return Operational Workflow | COMPLETE | Transaction-detail return UI; partial/cumulative multi-item returns, Cash/QRIS support, snapshots, server-owned Cash drawer, and refund preview. |
 
 ## Next milestone
 
-The next milestone should be selected after validating the remaining operational priorities; returns UI, stock-opname UI, barcode workflow, and production hardening remain separate scope.
+**M2.10 — Stock Opname Operational UI** is next.
 
 ## Backend capability with UI still planned
 
-- Customer and supplier returns are supported through RPC/application/API layers; cashier/admin return UI is not complete.
+- Customer Return Backend: COMPLETE. Customer Return UI: COMPLETE. Supplier Return Backend: COMPLETE. Supplier Return UI: DEFERRED.
 - Stock opname supports start, operational freeze, apply, and cancel; a complete count-entry/admin workflow is not complete.
 
 ## Production backlog
@@ -37,6 +38,7 @@ The next milestone should be selected after validating the remaining operational
 - Checkout idempotency key and safe recovery for uncertain submissions.
 - Remote migration/deployment verification, backup/restore, and monitoring.
 - Native thermal printer integration (browser print is current behavior).
+- Return idempotency, Supplier Return UI, and Stock Opname Operational UI.
 - Barcode workflow.
 - Master-data management, reporting, and operational administration UI.
 - Optional app-hosted static QRIS display UX; it is not a Pilot 1 blocker.
@@ -44,4 +46,4 @@ The next milestone should be selected after validating the remaining operational
 
 ## Current verification baseline
 
-The latest verified local baseline is 107 application tests passing (including 14 receipt tests and 3 history-filter tests), 117 database tests passing, and concurrency verification across 21 scenario groups / 210 runs with 486 invariant checks, 0 deadlocks, and 0 lock timeouts. These counts are a snapshot, not a release guarantee.
+The latest verified local baseline is 112/112 application tests passing, 117/117 database tests passing, and concurrency verification across 21 scenario groups / 210 runs with 486 invariant checks, 0 failures, 0 deadlocks, and 0 lock timeouts. Lint, typecheck, and build pass. These counts are a snapshot, not a release guarantee.

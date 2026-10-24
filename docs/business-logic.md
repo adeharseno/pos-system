@@ -200,6 +200,8 @@ A completed transaction that already has a customer return cannot be voided in P
 
 Customer returns are allowed only from a **completed** transaction. The return records a `refund_method` (`cash` or `qris`). A cash refund additionally records the **currently-open drawer that physically pays the refund**.
 
+Customer Return UI is COMPLETE: completed Cash and completed QRIS sales begin at transaction detail and support partial, repeated/cumulative, and multi-item returns. Pending QRIS, voided sales, and fully returned transactions are not returnable. Mutation uses `quantity_in_base`; sold-unit display uses `conversion_to_base_snapshot`, and non-divisible historical values are not rounded. Product/unit labels use transaction snapshots. `Perkiraan Refund` uses stored sale values only and is not authoritative; PostgreSQL owns final refund, cumulative limits, and original-batch restoration. For cash, the server resolves the authenticated employee's open drawer; the browser cannot choose it. QRIS uses no physical drawer and no gateway refund. Stock-opname freeze applies. Uncertain submissions are not automatically retried; return idempotency remains backlog.
+
 ### 5.1 Returnable quantity
 
 For each requested `transaction_item_id`:
@@ -264,6 +266,8 @@ Refund values are stored as snapshots so historical reports do not change if pro
 ---
 
 ## 6. Supplier Returns
+
+Supplier Return Backend is implemented; Supplier Return UI is deferred.
 
 Supplier returns are inventory movements, not customer sales refunds.
 
