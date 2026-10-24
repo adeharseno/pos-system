@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildCashierProductResults,parseProductSearchQuery } from "./catalog/search";
+import { buildCashierProductResults,parseBarcode,parseProductSearchQuery } from "./catalog/search";
 import { addCartItem,cartSubtotalPreview,decreaseCartQuantity,increaseCartQuantity,removeCartItem,setCartQuantity,type CartCandidate } from "./sales/cart";
 import { cashierDrawerState } from "./sales/cashier-access";
 
@@ -12,9 +12,12 @@ test("open drawer makes cashier workspace available",()=>assert.equal(cashierDra
 test("successful product search mapping includes units and aggregate stock",()=>{const result=buildCashierProductResults([product],[{product_id:"p1",quantity:4},{product_id:"p1",quantity:6}]);assert.equal(result[0].availableStockBase,10);assert.equal(result[0].units.length,2);});
 test("empty product search result stays empty",()=>assert.deepEqual(buildCashierProductResults([],[]),[]));
 test("malformed search query is rejected safely",()=>assert.throws(()=>parseProductSearchQuery("bad,(query)")));
+test("barcode keeps leading zeroes and trims scanner terminators",()=>assert.equal(parseBarcode(" 0012345678905\r\n"),"0012345678905"));
+test("empty or overlong barcode is rejected",()=>{assert.throws(()=>parseBarcode("\n"));assert.throws(()=>parseBarcode("x".repeat(129)));});
 test("add item creates a cart line",()=>assert.equal(addCartItem([],tablet).length,1));
 test("same product and unit increments existing line",()=>assert.equal(addCartItem(addCartItem([],tablet),tablet)[0].quantity,2));
 test("different units remain separate lines",()=>assert.equal(addCartItem(addCartItem([],tablet),box).length,2));
+test("rapid mixed scans preserve cart quantities",()=>{const result=addCartItem(addCartItem(addCartItem([],tablet),box),tablet);assert.deepEqual(result.map(item=>item.quantity),[2,1]);});
 test("increase quantity works",()=>assert.equal(increaseCartQuantity(addCartItem([],tablet),"p1","u1")[0].quantity,2));
 test("decrease quantity never goes below one",()=>assert.equal(decreaseCartQuantity(addCartItem([],tablet),"p1","u1")[0].quantity,1));
 test("direct quantity and invalid quantity handling",()=>{assert.equal(setCartQuantity(addCartItem([],tablet),"p1","u1",5)[0].quantity,5);assert.throws(()=>setCartQuantity(addCartItem([],tablet),"p1","u1",0));});

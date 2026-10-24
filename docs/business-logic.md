@@ -476,6 +476,17 @@ and receipt displays use stored financial fields and immutable
 labels. Reprint links reuse `/transactions/:id/receipt` and its browser-print
 implementation; history does not alter a transaction or expose status editing.
 
+## 12. Barcode Lookup
+
+Pilot 1 barcode scanning is keyboard-wedge/manual input: barcode text followed
+by Enter calls an exact authenticated lookup. Barcode is stored on
+`product_units`, so a scan selects that exact sell unit rather than a product
+default. Input remains a string (leading zeroes are preserved) and only outer
+whitespace/CR/LF is trimmed. The UI adds the resulting `product_unit_id` through
+the existing cart action; it neither reserves stock nor changes FEFO or
+checkout authority. Camera scanning and barcode assignment/editing UI are not
+part of this milestone.
+
 Format:
 
 ```text

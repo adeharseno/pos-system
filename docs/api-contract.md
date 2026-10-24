@@ -12,7 +12,8 @@ The server derives `auth.users -> user_profiles -> employees` and uses the activ
 
 | Method | Endpoint | Access | Behavior |
 |---|---|---|---|
-| GET | `/api/products?q=` | owner_admin, kasir | Cashier search by product name or SKU; includes sell units and stock preview. No barcode lookup. |
+| GET | `/api/products?q=` | owner_admin, kasir | Cashier search by product name or SKU; includes sell units and stock preview. |
+| GET | `/api/products?barcode=` | owner_admin, kasir | Exact keyboard-wedge/manual barcode lookup. Barcode belongs to `product_units`, so the selected sell unit is returned. |
 | GET | `/api/inventory?product_id=` | owner_admin, kasir | Read inventory/batches for one product. |
 | POST | `/api/cash-drawer/open` | owner_admin, kasir | Open the caller's cash-drawer session. |
 | GET | `/api/cash-drawer/current` | owner_admin, kasir | Read the caller's open session. |

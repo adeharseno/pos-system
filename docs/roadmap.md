@@ -15,6 +15,7 @@
 | M2.2 Authenticated business API foundation | COMPLETE | Implemented Pilot 1 routes only; see API contract. |
 | M2.3 Cash drawer workflow | COMPLETE | Open/current/close and drawer-aware checkout. |
 | M2.4 Product search/cart | PARTIAL | Name/SKU search and multi-unit cart complete; barcode workflow remains backlog. |
+| M2.4.2 Barcode lookup workflow | COMPLETE | Keyboard-wedge/manual exact unit-barcode lookup into the existing cart. |
 | M2.4.1 Responsive UI foundation | COMPLETE | Responsive cashier workspace. |
 | M2.5 Cash checkout | COMPLETE | Authoritative cash checkout. |
 | M2.6 QRIS manual payment | COMPLETE | External counter QRIS and manual cashier confirmation. |
