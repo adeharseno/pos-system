@@ -1,10 +1,64 @@
 import Link from "next/link";
-import {requirePosOperator} from "@/modules/auth/application/auth-service";
-import {parseAdminProductFilters} from "@/modules/catalog/admin-product-filters";
-import {listAdminProducts} from "@/modules/catalog/data/admin-product-queries";
-const status=(value:boolean)=>value?"Aktif":"Nonaktif";const prescription=(value:boolean)=>value?"Resep":"Non-resep";
-export default async function ProductsPage({searchParams}:{searchParams:Promise<Record<string,string|undefined>>}){
- const employee=await requirePosOperator();const filters=parseAdminProductFilters(await searchParams);const {rows,total}=await listAdminProducts(filters);const pages=Math.max(1,Math.ceil(total/filters.limit));
- const href=(page:number)=>{const p=new URLSearchParams();if(filters.q)p.set("q",filters.q);if(filters.status!=="active")p.set("status",filters.status);if(filters.prescription!=="all")p.set("prescription",filters.prescription);if(page>1)p.set("page",String(page));return `/products${p.size?`?${p}`:""}`;};
- return <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6"><header className="mb-6 flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-2xl font-bold">Produk</h1><p className="mt-1 text-sm text-[var(--text-muted)]">Master produk dan ketersediaan stok saat ini. Tampilan hanya-baca.</p></div>{employee.role==="owner_admin"?<div className="flex flex-wrap gap-2"><Link href="/products/import" className="min-h-11 rounded border border-zinc-300 px-4 py-3 text-sm font-semibold">Import Produk</Link><Link href="/products/new" className="min-h-11 rounded bg-zinc-950 px-4 py-3 text-sm font-semibold text-white">Tambah Produk</Link></div>:null}</header><form action="/products" className="mb-5 grid gap-3 rounded-[8px] border border-[var(--border)] bg-white p-3 md:grid-cols-[minmax(0,1fr)_180px_210px_auto]"><input name="q" defaultValue={filters.q} placeholder="Cari nama atau SKU" className="min-h-11 rounded border px-3"/><select name="status" defaultValue={filters.status}><option value="active">Aktif</option><option value="inactive">Nonaktif</option><option value="all">Semua status</option></select><select name="prescription" defaultValue={filters.prescription}><option value="all">Semua klasifikasi</option><option value="required">Perlu resep</option><option value="non_prescription">Non-resep</option></select><button>Terapkan</button></form>{rows.length===0?<section className="rounded border border-dashed p-8 text-center"><h2>{total===0?"Belum ada produk.":"Tidak ada produk yang cocok dengan filter."}</h2><p>Produk akan muncul di sini setelah ditambahkan secara manual atau melalui bulk import.</p></section>:<><div className="hidden overflow-hidden rounded border bg-white md:block"><table className="w-full text-left text-sm"><thead><tr><th>SKU / Produk</th><th>Kategori</th><th>Unit dasar</th><th>Resep</th><th>Status</th><th>Unit jual</th><th>Stok</th></tr></thead><tbody>{rows.map(row=><tr key={row.id}><td><Link href={`/products/${row.id}`}>{row.name}</Link><p>{row.sku}{row.genericName?` · ${row.genericName}`:""}</p></td><td>{row.category}<p>{row.subcategory}</p></td><td>{row.baseUnit}</td><td>{prescription(row.requiresPrescription)}</td><td>{status(row.isActive)}</td><td>{row.unitCount}</td><td>{row.availableStock}</td></tr>)}</tbody></table></div><div className="grid gap-2 md:hidden">{rows.map(row=><Link key={row.id} href={`/products/${row.id}`} className="block rounded border bg-white p-4"><strong>{row.name}</strong><p>{row.sku} · {row.baseUnit}</p><p>{row.unitCount} unit jual · Stok {row.availableStock}</p><p>{row.category} · {prescription(row.requiresPrescription)}</p></Link>)}</div><nav className="mt-5 flex justify-between"><span>{total} produk · Halaman {filters.page} dari {pages}</span><div><Link href={href(filters.page-1)}>Sebelumnya</Link><Link href={href(filters.page+1)}>Berikutnya</Link></div></nav></>}</main>;
+import { requirePosOperator } from "@/modules/auth/application/auth-service";
+import { parseAdminProductFilters } from "@/modules/catalog/admin-product-filters";
+import { listAdminProducts } from "@/modules/catalog/data/admin-product-queries";
+import { Button, Card, CardContent, Container, FormActions, Input, Select } from "@/modules/ui/components";
+
+const status = (value: boolean) => (value ? "Aktif" : "Nonaktif");
+const prescription = (value: boolean) => (value ? "Resep" : "Non-resep");
+
+export default async function ProductsPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  const employee = await requirePosOperator();
+  const filters = parseAdminProductFilters(await searchParams);
+  const { rows, total } = await listAdminProducts(filters);
+  const pages = Math.max(1, Math.ceil(total / filters.limit));
+  const href = (page: number) => {
+    const params = new URLSearchParams();
+    if (filters.q) params.set("q", filters.q);
+    if (filters.status !== "active") params.set("status", filters.status);
+    if (filters.prescription !== "all") params.set("prescription", filters.prescription);
+    if (page > 1) params.set("page", String(page));
+    return `/products${params.size ? `?${params}` : ""}`;
+  };
+
+  return (
+    <Container size="xl">
+      <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Produk</h1>
+          <p className="mt-1 text-sm text-[var(--text-muted)]">Master produk dan ketersediaan stok saat ini. Tampilan hanya-baca.</p>
+        </div>
+        {employee.role === "owner_admin" ? (
+          <div className="flex flex-wrap gap-2">
+            <Link href="/products/categories" className="inline-flex min-h-11 items-center justify-center rounded-[var(--radius)] border border-[var(--border-strong)] bg-[var(--surface)] px-4 py-2 text-sm font-medium">Kelola Kategori</Link>
+            <Link href="/products/subcategories" className="inline-flex min-h-11 items-center justify-center rounded-[var(--radius)] border border-[var(--border-strong)] bg-[var(--surface)] px-4 py-2 text-sm font-medium">Kelola Subkategori</Link>
+            <Link href="/products/taxes" className="inline-flex min-h-11 items-center justify-center rounded-[var(--radius)] border border-[var(--border-strong)] bg-[var(--surface)] px-4 py-2 text-sm font-medium">Kelola Pajak</Link>
+            <Link href="/products/import" className="inline-flex min-h-11 items-center justify-center rounded-[var(--radius)] border border-[var(--border-strong)] bg-[var(--surface)] px-4 py-2 text-sm font-medium">Import Produk</Link>
+            <Link href="/products/new" className="inline-flex min-h-11 items-center justify-center rounded-[var(--radius)] border border-[var(--accent)] bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white">Tambah Produk</Link>
+          </div>
+        ) : null}
+      </header>
+
+      <Card className="mb-5">
+        <CardContent>
+          <form action="/products" className="grid gap-3 md:grid-cols-[minmax(0,1fr)_180px_210px_auto]">
+            <Input name="q" defaultValue={filters.q} placeholder="Cari nama atau SKU" />
+            <Select name="status" defaultValue={filters.status}><option value="active">Aktif</option><option value="inactive">Nonaktif</option><option value="all">Semua status</option></Select>
+            <Select name="prescription" defaultValue={filters.prescription}><option value="all">Semua klasifikasi</option><option value="required">Perlu resep</option><option value="non_prescription">Non-resep</option></Select>
+            <Button type="submit">Terapkan</Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      {rows.length === 0 ? (
+        <Card><CardContent className="p-8 text-center"><h2>{total === 0 ? "Belum ada produk." : "Tidak ada produk yang cocok dengan filter."}</h2><p className="mt-2 text-sm text-[var(--text-muted)]">Produk akan muncul di sini setelah ditambahkan secara manual atau melalui bulk import.</p></CardContent></Card>
+      ) : (
+        <>
+          <Card className="hidden md:block"><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-[var(--surface-subtle)]"><tr><th className="p-4">SKU / Produk</th><th className="p-4">Kategori</th><th className="p-4">Unit dasar</th><th className="p-4">Resep</th><th className="p-4">Status</th><th className="p-4">Unit jual</th><th className="p-4">Stok</th></tr></thead><tbody>{rows.map((row) => <tr key={row.id} className="border-t border-[var(--border)]"><td className="p-4"><Link href={`/products/${row.id}`} className="font-medium hover:underline">{row.name}</Link><p className="mt-1 text-[var(--text-muted)]">{row.sku}{row.genericName ? ` · ${row.genericName}` : ""}</p></td><td className="p-4">{row.category}<p className="mt-1 text-[var(--text-muted)]">{row.subcategory}</p></td><td className="p-4">{row.baseUnit}</td><td className="p-4">{prescription(row.requiresPrescription)}</td><td className="p-4">{status(row.isActive)}</td><td className="p-4">{row.unitCount}</td><td className="p-4">{row.availableStock}</td></tr>)}</tbody></table></div></Card>
+          <div className="grid gap-3 md:hidden">{rows.map((row) => <Link key={row.id} href={`/products/${row.id}`}><Card><CardContent><strong>{row.name}</strong><p className="mt-1 text-sm text-[var(--text-muted)]">{row.sku} · {row.baseUnit}</p><p className="mt-1 text-sm">{row.unitCount} unit jual · Stok {row.availableStock}</p><p className="mt-1 text-sm">{row.category} · {prescription(row.requiresPrescription)}</p></CardContent></Card></Link>)}</div>
+          <nav className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm"><span>{total} produk · Halaman {filters.page} dari {pages}</span><FormActions className="border-0 pt-0"><Link href={href(filters.page - 1)} className="text-sm font-medium underline">Sebelumnya</Link><Link href={href(filters.page + 1)} className="text-sm font-medium underline">Berikutnya</Link></FormActions></nav>
+        </>
+      )}
+    </Container>
+  );
 }

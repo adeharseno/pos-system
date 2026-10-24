@@ -1,0 +1,10 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+set local search_path=public,extensions;
+select plan(4);
+select lives_ok($$insert into categories(id,name) values ('c1000000-0000-0000-0000-000000000001',' Obat Bebas ')$$,'normalized category name is accepted once');
+select throws_ok($$insert into categories(id,name) values ('c1000000-0000-0000-0000-000000000002','Obat Bebas')$$,23505,'duplicate key value violates unique constraint "uq_categories_normalized_name"','exact duplicate category rejected');
+select throws_ok($$insert into categories(id,name) values ('c1000000-0000-0000-0000-000000000003','obat bebas')$$,23505,'duplicate key value violates unique constraint "uq_categories_normalized_name"','case-only duplicate category rejected');
+select throws_ok($$insert into categories(id,name) values ('c1000000-0000-0000-0000-000000000004','  OBAT BEBAS  ')$$,23505,'duplicate key value violates unique constraint "uq_categories_normalized_name"','whitespace-equivalent category rejected');
+select * from finish();
+rollback;

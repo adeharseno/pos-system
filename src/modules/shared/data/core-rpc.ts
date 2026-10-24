@@ -11,7 +11,9 @@ export type CoreRpcName = Extract<keyof Functions,
   | "void_transaction"
   | "create_customer_return"
   | "create_product_with_base_unit"
+  | "create_product_with_base_unit_and_initial_stock"
   | "create_supplier_return"
+  | "receive_product_stock"
   | "start_stock_opname"
   | "apply_stock_opname"
   | "cancel_stock_opname">;

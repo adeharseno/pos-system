@@ -9,3 +9,10 @@ test("product create request normalizes text, numbers, booleans, nullable IDs, a
   assert.equal(request.barcode, "001234567890"); assert.equal(typeof request.selling_price, "number"); assert.equal(request.is_taxable, true); assert.equal(request.default_supplier_id, null); assert.equal(request.storage_location_id, "storage-id"); assert.equal(request.drug_classification, "prescription_required");
 });
 test("product create request preserves invalid numeric input for server validation", () => assert.equal(Number.isNaN(createProductRequest(form({ selling_price: "invalid" }), "category", "subcategory").selling_price), true));
+
+test("product create request omits initial stock unless explicitly enabled", () => {
+  const withoutStock = createProductRequest(form({ selling_price: "1000", cost_price: "500", tax_rate: "0", minimum_stock: "0" }), "category", "subcategory");
+  assert.equal(withoutStock.initial_stock, undefined);
+  const withStock = createProductRequest(form({ add_initial_stock: "on", initial_expired_date: "2030-01-01", initial_quantity: "100", selling_price: "1000", cost_price: "500", tax_rate: "0", minimum_stock: "0" }), "category", "subcategory");
+  assert.deepEqual(withStock.initial_stock, { expired_date: "2030-01-01", quantity: 100 });
+});

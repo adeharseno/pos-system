@@ -1,0 +1,11 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+set local search_path=public,extensions;
+select plan(5);
+select ok(exists(select 1 from tax_rates where name='Tanpa Pajak' and rate=0 and is_active),'zero-rate tax is seeded');
+select ok(exists(select 1 from tax_rates where name='PPN 11%' and rate=11 and is_active),'11-percent tax is seeded');
+select throws_ok($$insert into tax_rates(name,rate) values(' ppn 11% ',12)$$,23505,'duplicate key value violates unique constraint "uq_tax_rates_normalized_name"','normalized tax name is unique');
+select throws_ok($$insert into tax_rates(name,rate) values('Duplicate rate',11)$$,23505,'duplicate key value violates unique constraint "uq_active_tax_rates_rate"','active tax rate is unique');
+select lives_ok($$update tax_rates set is_active=false where name='PPN 15%'; insert into tax_rates(name,rate) values('Tarif Pengganti',15)$$,'inactive rate can be replaced without changing historical products');
+select * from finish();
+rollback;

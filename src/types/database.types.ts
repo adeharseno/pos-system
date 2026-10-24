@@ -805,6 +805,33 @@ export type Database = {
         }
         Relationships: []
       }
+      tax_rates: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          rate: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          rate: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          rate?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       subcategories: {
         Row: {
           category_id: string
@@ -1213,7 +1240,54 @@ export type Database = {
         Returns: Json
       }
       create_product_with_base_unit: {
-        Args: { p_sku: string; p_name: string; p_category_id: string; p_subcategory_id: string; p_base_unit: string; p_unit_name: string; p_selling_price: number; p_generic_name?: string | null; p_description?: string | null; p_manufacturer?: string | null; p_image_url?: string | null; p_storage_location_id?: string | null; p_default_supplier_id?: string | null; p_cost_price?: number; p_tax_rate?: number; p_is_taxable?: boolean; p_drug_classification?: Database["public"]["Enums"]["drug_classification"]; p_minimum_stock?: number; p_is_active?: boolean; p_barcode?: string | null }
+        Args: {
+          p_barcode?: string
+          p_base_unit: string
+          p_category_id: string
+          p_cost_price?: number
+          p_default_supplier_id?: string
+          p_description?: string
+          p_drug_classification?: Database["public"]["Enums"]["drug_classification"]
+          p_generic_name?: string
+          p_image_url?: string
+          p_is_active?: boolean
+          p_is_taxable?: boolean
+          p_manufacturer?: string
+          p_minimum_stock?: number
+          p_name: string
+          p_selling_price: number
+          p_sku: string
+          p_storage_location_id?: string
+          p_subcategory_id: string
+          p_tax_rate?: number
+          p_unit_name: string
+        }
+        Returns: Json
+      }
+      create_product_with_base_unit_and_initial_stock: {
+        Args: {
+          p_barcode?: string
+          p_base_unit: string
+          p_category_id: string
+          p_cost_price?: number
+          p_default_supplier_id?: string
+          p_description?: string
+          p_drug_classification?: Database["public"]["Enums"]["drug_classification"]
+          p_generic_name?: string
+          p_image_url?: string
+          p_initial_batch?: Json
+          p_is_active?: boolean
+          p_is_taxable?: boolean
+          p_manufacturer?: string
+          p_minimum_stock?: number
+          p_name: string
+          p_selling_price: number
+          p_sku: string
+          p_storage_location_id?: string
+          p_subcategory_id: string
+          p_tax_rate?: number
+          p_unit_name: string
+        }
         Returns: Json
       }
       create_supplier_return: {
@@ -1222,6 +1296,10 @@ export type Database = {
       }
       open_cash_drawer: {
         Args: { p_employee_id: string; p_opening_balance: number }
+        Returns: Json
+      }
+      receive_product_stock: {
+        Args: { p_batches: Json; p_employee_id: string; p_product_id: string }
         Returns: Json
       }
       show_limit: { Args: never; Returns: number }

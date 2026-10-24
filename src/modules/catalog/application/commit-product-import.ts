@@ -127,7 +127,7 @@ export async function commitProductImport(payload: unknown): Promise<ProductImpo
       const productId = await createProduct({
         sku: row.sku, name: row.name, categoryId: row.categoryId!, subcategoryId: row.subcategoryId!, baseUnit: row.baseUnit,
         sellingPrice: row.sellingPrice, genericName: row.genericName || undefined, manufacturer: row.manufacturer || undefined,
-        classification: row.drugClassification as Database["public"]["Enums"]["drug_classification"], costPrice: row.costPrice, taxRate: 0,
+        classification: row.drugClassification as Database["public"]["Enums"]["drug_classification"], costPrice: row.costPrice, taxRate: 0, isTaxable: false,
         minimumStock: row.minimumStock, supplierId: row.defaultSupplierId || undefined, storageId: row.storageLocationId || undefined,
         barcode: row.barcode || undefined, isActive: true,
       });
