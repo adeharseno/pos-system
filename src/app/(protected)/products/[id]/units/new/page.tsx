@@ -11,7 +11,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const { id } = await params;
   let productId: string;
   try { productId = requireUuid(id, "productId"); } catch { notFound(); }
-  const product = await getAdminProduct(productId);
+  const product = await getAdminProduct(productId, true);
   if (!product) notFound();
   return <Container size="md"><Link href={`/products/${productId}`} className="text-sm font-semibold underline">← Kembali ke Produk</Link><h1 className="mt-4 text-2xl font-bold">Tambah Unit · {product.name}</h1><AddUnitForm productId={productId} /></Container>;
 }

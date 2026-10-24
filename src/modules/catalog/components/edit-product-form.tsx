@@ -19,7 +19,8 @@ export function EditProductForm({ id, product, master }: { id: string; product: 
     if (busy) return;
     setBusy(true); setError("");
     const text = (key: string) => String(form.get(key) ?? "").trim();
-    const payload = { sku: text("sku"), name: text("name"), generic_name: text("generic_name"), description: text("description"), manufacturer: text("manufacturer"), category_id: category, subcategory_id: subcategory, storage_location_id: text("storage_location_id"), default_supplier_id: text("default_supplier_id"), cost_price: Number(form.get("cost_price")), tax_rate: Number(form.get("tax_rate")), is_taxable: form.get("is_taxable") === "on", drug_classification: text("drug_classification"), minimum_stock: Number(form.get("minimum_stock")) };
+    const taxRate = Number(form.get("tax_rate"));
+    const payload = { sku: text("sku"), name: text("name"), generic_name: text("generic_name"), description: text("description"), manufacturer: text("manufacturer"), category_id: category, subcategory_id: subcategory, storage_location_id: text("storage_location_id"), default_supplier_id: text("default_supplier_id"), cost_price: Number(form.get("cost_price")), tax_rate: taxRate, is_taxable: taxRate > 0, drug_classification: text("drug_classification"), minimum_stock: Number(form.get("minimum_stock")) };
     try {
       const response = await fetch(`/api/products/${id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
       if (!response.ok) { setError("Produk gagal diperbarui."); return; }
