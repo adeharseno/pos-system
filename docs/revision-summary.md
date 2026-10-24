@@ -1,44 +1,39 @@
-# Revision Summary — M0 Architecture & Schema Hardening (Round 2)
+# Revision Summary — Current Pilot 1 State
 
-Date: 14 August 2026
+## Architecture and database hardening
 
-This revision was completed before application implementation or database deployment.
+Pilot 1 is a Next.js modular monolith with Supabase PostgreSQL/Auth/Storage.
+Critical checkout, payment, void, return, stock-opname, and cash-drawer
+changes are atomic PostgreSQL RPC workflows; the browser has no direct
+operational-table or protected-RPC authority.
 
-## Main Changes
+The checked-in local schema consists of migrations `0001` through `0005`.
+Migration `0005_transaction_item_receipt_snapshots.sql` adds immutable
+transaction-time product and unit labels. It backfills legacy rows from the
+master-data labels available when the migration runs, so it cannot recreate
+labels that had already been renamed.
 
-1. Architecture explicitly defined as **modular monolith**.
-2. Deployment target clarified: Next.js on Vercel, Supabase for PostgreSQL/Auth/Storage, no custom domain/VPS required for development/demo.
-3. Critical stock-changing workflows moved conceptually to atomic PostgreSQL RPC/functions.
-4. Fixed `pg_trgm` migration ordering before trigram index creation.
-5. Replaced one-row-per-batch `transaction_items` design with:
-   - `transaction_items` = customer-facing sale line
-   - `transaction_item_batches` = FEFO allocation
-6. Added QRIS lifecycle `pending_payment -> completed`.
-7. Added DB-side invoice sequence table for concurrency-safe invoice numbers.
-8. Hardened cash-drawer ownership validation.
-9. Redesigned returns with:
-   - cumulative partial-return validation
-   - original batch restoration
-   - refund snapshots
-   - refund method
-   - COGS reversal snapshots
-   - return batch allocation table
-10. Defined void/return conflict rule: transactions with customer returns cannot be voided in Pilot 1.
-11. Changed stock opname to batch-level counting with nullable `physical_quantity` until counted.
-12. Added Asia/Jakarta business-date convention while retaining UTC timestamps.
-13. Added category/subcategory DB integrity, tax/min-stock checks, and `updated_at` triggers.
-14. Reworked implementation roadmap to include architecture/database hardening and concurrency tests before cashier UI work.
-15. Corrected checkout pseudocode so the `transactions` header is inserted before FK-dependent `transaction_items`.
-16. Added `returns.cash_drawer_session_id` for customer cash refunds; drawer reconciliation now uses the drawer that physically paid the refund.
-17. Added composite foreign keys for product/unit/batch consistency across transaction, return, and stock-opname rows.
-18. Added database payment/confirmation/void lifecycle check constraints.
-19. Added stock-opname operational freeze, a single in-progress Pilot 1 session, cancel lifecycle, and race-safe batch lock/re-check rules.
+## Implemented Pilot 1 flow
 
-## Current Implementation Status
+- Server authorization resolves `auth.users -> user_profiles -> employees` and
+  uses `employees.position` (`owner_admin`, `kasir`, `staf`).
+- Cashier product search is name/SKU based, with multi-unit cart, stock preview,
+  prescription checks, cash checkout, and manual QRIS confirmation.
+- QRIS means the pharmacy's external/physical counter QRIS. It is manual,
+  gateway-free, webhook-free, and does not require an in-app QRIS image.
+- Receipts read stored financial fields and label snapshots, show pending/void
+  status clearly, and use the browser print dialog. Native thermal printing is
+  deferred.
+- Return and stock-opname backend workflows exist, while their full operational
+  UI workflows remain planned.
 
-- Documentation: revised.
-- `0001_init.sql`: revised again to match round-2 integrity/lifecycle rules.
-- `0002_rls_policies.sql`: revised for new tables.
-- `0003_core_functions.sql`: not yet implemented.
-- Supabase migrations: not yet applied.
-- Next.js application: not yet scaffolded.
+## Verification and remaining operational work
+
+The latest local baseline recorded 104 passing application tests, 117 passing
+database tests, and 21 concurrency scenario groups / 210 runs with 486
+invariant checks, zero deadlocks, and zero lock timeouts.
+
+Remote migration/deployment verification, backup/restore, monitoring,
+idempotent checkout recovery, barcode workflow, native printer integration,
+master-data UI, and reporting remain backlog rather than evidence of a broken
+implemented flow.

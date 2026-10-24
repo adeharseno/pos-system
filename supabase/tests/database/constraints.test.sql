@@ -123,7 +123,7 @@ select throws_ok(
   23503
 );
 
--- Stock opname structure only; operational freeze remains future RPC work.
+-- Stock-opname structural constraints; operational freeze behavior is covered by core RPC tests.
 select lives_ok(
   $$insert into stock_opname_sessions (id, status, created_by) values ('a0000000-0000-0000-0000-000000000001', 'in_progress', '50000000-0000-0000-0000-000000000002')$$,
   'valid in-progress stock opname is accepted'

@@ -128,7 +128,9 @@ Cash may never be created as `pending_payment`.
 
 ### 3.2 QRIS
 
-Static QRIS has no payment-gateway callback, so payment confirmation is manual.
+Pilot 1 QRIS is the pharmacy's external/physical static QRIS at the counter.
+It has no payment-gateway callback, app-hosted QRIS image, polling, or
+automatic verification, so payment confirmation is manual.
 
 Pilot 1 does not generate a QR code or verify payment automatically. The
 customer pays using the pharmacy's externally available QRIS, and the cashier
@@ -140,8 +142,8 @@ checkout with QRIS
   -> stock deducted atomically
   -> status = pending_payment
   -> payment confirmation fields are NULL
-  -> QRIS image shown
-  -> cashier verifies merchant notification
+  -> customer scans the external counter QRIS
+  -> cashier verifies payment externally
   -> POST /api/transactions/:id/confirm-payment
   -> database transition pending_payment -> completed
 ```

@@ -1,126 +1,45 @@
 # Implementation Roadmap & Scope Boundaries — Pharmacy POS (Pilot 1)
 
-## M0 — Architecture & Schema Hardening
+## Verified milestone status
 
-**Status: architecture/schema hardening round 2 documented; database RPC implementation not started.**
+| Milestone | Status | Verified scope |
+|---|---|---|
+| M1.1 Foundation | COMPLETE | Next.js, TypeScript, lint/build setup, Supabase clients. |
+| M1.2 Local schema/migration setup | COMPLETE locally | Migrations `0001`–`0005` reproduce the local schema. Remote migration/deployment verification remains backlog. |
+| M1.3 Constraint verification | COMPLETE locally | pgTAP integrity/RLS/lifecycle checks. |
+| M1.4 Core atomic RPC | COMPLETE | Checkout, QRIS lifecycle, void, returns, and opname RPCs. |
+| M1.5 Concurrency verification | COMPLETE | Deterministic concurrent workflow verification. |
+| M1.5.1 QRIS lifecycle hardening | COMPLETE | Pending/confirm/void state rules are database protected. |
+| M1.6 Application data layer | COMPLETE | Server-only adapters and typed application services. |
+| M2.1 Authentication | COMPLETE | Active employee mapping and position-based authorization. |
+| M2.2 Authenticated business API foundation | COMPLETE | Implemented Pilot 1 routes only; see API contract. |
+| M2.3 Cash drawer workflow | COMPLETE | Open/current/close and drawer-aware checkout. |
+| M2.4 Product search/cart | PARTIAL | Name/SKU search and multi-unit cart complete; barcode workflow remains backlog. |
+| M2.4.1 Responsive UI foundation | COMPLETE | Responsive cashier workspace. |
+| M2.5 Cash checkout | COMPLETE | Authoritative cash checkout. |
+| M2.6 QRIS manual payment | COMPLETE | External counter QRIS and manual cashier confirmation. |
+| M2.7 Receipt | COMPLETE | Authoritative, read-only receipt and browser printing. |
+| M2.7.1 Historical receipt snapshot hardening | COMPLETE | Transaction-time product/unit labels; legacy backfill has historical limits. |
 
-| Item | Decision |
-|---|---|
-| Architecture | Modular monolith: Next.js + Vercel + Supabase |
-| Transaction atomicity | Critical stock mutations move to PostgreSQL RPC/functions |
-| Checkout model | `transaction_items` separated from `transaction_item_batches` |
-| QRIS | `pending_payment -> completed` manual confirmation or `pending_payment -> voided`; confirmed QRIS uses return/refund |
-| Void | Restore allocation stock; reject if customer return exists |
-| Customer return | Cumulative return validation + original-batch restoration + refund/COGS snapshots |
-| Stock opname | Batch-level operational freeze; nullable physical count; apply/cancel releases freeze |
-| Invoice | DB-side daily sequence, Asia/Jakarta business date |
-| Cash drawer | Validate active session ownership during checkout and current-drawer ownership for cash refunds |
-| Structural integrity | Composite FKs enforce product/unit/batch consistency |
-| Payment lifecycle | DB checks reject invalid cash/QRIS/status/void combinations |
-| Timezone | UTC timestamps + Asia/Jakarta business-day semantics |
-| Deployment | Vercel + Supabase; no custom domain required for pilot/demo |
+## Next milestone
 
-M0 is considered complete only after the SQL migration and core RPC tests match these documents.
+**M2.8 — Transaction History, Search & Receipt Reprint** is next. It should add the missing history/search/reprint experience without changing checkout authority or receipt financial/snapshot sources.
 
----
+## Backend capability with UI still planned
 
-## M1 — Foundation & Database
+- Customer and supplier returns are supported through RPC/application/API layers; cashier/admin return UI is not complete.
+- Stock opname supports start, operational freeze, apply, and cancel; a complete count-entry/admin workflow is not complete.
 
-- Scaffold Next.js App Router + TypeScript project.
-- Configure Supabase Auth, server/admin/browser clients.
-- Apply and test `0001_init.sql`, including composite FKs and lifecycle constraints.
-- Apply and test `0002_rls_policies.sql`.
-- Implement `0003_core_functions.sql` for atomic workflows.
-- Add seed migration.
-- Generate Supabase TypeScript database types.
-- Add automated DB tests for concurrent checkout, invoice sequencing, return limits, void conflicts, refund-drawer attribution, payment lifecycle constraints, and stock-opname freeze races.
+## Production backlog
 
-## M2 — Auth, Master Data & Inventory Basics
+- Checkout idempotency key and safe recovery for uncertain submissions.
+- Remote migration/deployment verification, backup/restore, and monitoring.
+- Native thermal printer integration (browser print is current behavior).
+- Barcode workflow.
+- Master-data management, reporting, and operational administration UI.
+- Optional app-hosted static QRIS display UX; it is not a Pilot 1 blocker.
+- Payment gateway, webhooks/polling, multi-outlet, offline sync, and granular RBAC are future scope.
 
-- Login/session/role guards.
-- Categories/subcategories.
-- Products and units.
-- Suppliers and storage locations.
-- Manual batch stock entry.
-- Expiry/low-stock queries.
+## Current verification baseline
 
-## M3 — Cashier Core
-
-- Cash drawer open/current/close. *(foundation completed in M2.3)*
-- Barcode lookup and cart.
-- Cashier product name/SKU search and in-memory multi-unit cart foundation. *(completed in M2.4)*
-- Cash review, tender entry, authoritative checkout, and transaction success flow. *(completed in M2.5; receipt intentionally pending)*
-- Manual QRIS pending, cashier confirmation, safe status refresh, and pending void flow. *(completed in M2.6; no gateway or generated QR code)*
-- Authoritative receipt route and browser-print completion experience. *(completed in M2.7; native thermal printing intentionally pending)*
-- Historical receipt label snapshots at checkout. *(completed in M2.7.1; legacy rows are backfilled with labels available at migration time)*
-- Checkout UI.
-- Atomic FEFO checkout RPC integration.
-- Cash payment.
-- Receipt payload/printing integration.
-- Transaction history/detail.
-- Void.
-
-## M4 — QRIS
-
-- QRIS image settings/upload.
-- QRIS payment modal.
-- `pending_payment` state UI.
-- Manual confirm-payment flow.
-- Abandoned QRIS -> void/release stock workflow.
-
-## M5 — Returns & Stock Opname
-
-- Customer return with cumulative quantity validation.
-- Supplier return.
-- Refund snapshots + COGS reversal.
-- Batch-level stock opname session/count/apply/cancel with operational freeze.
-- Stock card.
-
-## M6 — Reporting & Operations
-
-- Sales report.
-- Profit & loss including refunds and COGS reversal.
-- Stock valuation.
-- Dashboard summary.
-- Operational expenses.
-- Employees, shifts, attendance.
-
----
-
-## Definition of Done for Critical Workflows
-
-Before calling Pilot 1 transaction logic complete, test at least:
-
-1. Two concurrent cashiers selling the last units of the same batch cannot oversell.
-2. One sell unit split across multiple batches produces one receipt line and multiple batch allocations.
-3. Two concurrent checkouts cannot get the same invoice number.
-4. QRIS pending transactions do not appear as completed revenue.
-5. QRIS confirmation vs void cannot produce `voided` with confirmation metadata; confirmed QRIS cannot be voided.
-6. Multiple partial returns cannot exceed the originally sold quantity.
-7. Voiding a transaction with an existing customer return is rejected.
-8. Customer returns reduce net sales and reverse the appropriate COGS.
-9. Stock opname cannot apply with uncounted rows.
-10. A cashier cannot use another cashier's drawer session.
-11. A cash refund is attributed to the currently-open drawer that pays it, not the original sale drawer.
-12. Invalid product/unit/batch combinations are rejected by database foreign keys.
-13. Invalid cash/QRIS/payment/void lifecycle combinations are rejected by database constraints.
-14. A checkout/return/void cannot mutate a batch frozen by an in-progress stock opname.
-15. A sale racing with opname start either completes before the snapshot or is rejected after the freeze; it cannot be silently overwritten on apply.
-
----
-
-## Intentionally Out of Scope
-
-Pilot 1 does not add:
-
-- microservices
-- payment gateway/webhook integration
-- multi-branch/outlet model
-- granular RBAC/permission matrix
-- formal approval workflows
-- purchase order/goods receipt workflow
-- offline sync
-- payroll
-- loyalty/CRM
-
-Do not introduce these without an explicit Pilot 2 requirement.
+The latest verified local baseline is 104 application tests passing (including 14 receipt tests), 117 database tests passing, and concurrency verification across 21 scenario groups / 210 runs with 486 invariant checks, 0 deadlocks, and 0 lock timeouts. These counts are a snapshot, not a release guarantee.

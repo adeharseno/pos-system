@@ -12,7 +12,7 @@
 - **Stock quantity**: integer in the product's base unit.
 - **Transactions are immutable history**: no hard delete of sales, returns, or stock-opname history.
 - **Master data deactivation**: use `is_active` rather than deleting referenced records.
-- **Auth roles**: Supabase Auth `app_metadata.role` (`owner_admin` | `kasir`).
+- **Authorization roles**: `employees.position` (`owner_admin` | `kasir` | `staf`) after resolving `auth.users -> user_profiles -> employees`; Auth `app_metadata` is not the role authority.
 - **Critical stock mutations**: performed in PostgreSQL functions/RPC with row locking and a single DB transaction.
 - **Defense in depth**: RPCs enforce multi-row/concurrency business rules; foreign keys/check constraints reject structurally impossible row combinations even if application code is wrong.
 

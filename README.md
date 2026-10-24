@@ -4,10 +4,11 @@ Low-cost pharmacy Point of Sale pilot using a **Next.js modular monolith + Supab
 
 ## Current Status
 
-M1.1 application foundation, M1.2 Supabase/database foundation, and M1.3
-database integrity verification are complete. The remote project is linked and
-migrations `0001`/`0002` are synchronized. Business features/database RPCs are
-not implemented yet.
+The local implementation is complete through M2.7.1: atomic checkout/payment/
+void/return/opname RPCs, employee-position authorization, cashier checkout,
+manual QRIS confirmation, and authoritative browser-print receipts. Local
+migrations `0001`–`0005` and their tests are verified. Remote migration and
+deployment verification remain separate backlog work.
 
 ## Local Development
 
@@ -48,7 +49,7 @@ or the generated temporary state.
 - [`docs/business-logic.md`](docs/business-logic.md) — checkout, FEFO, QRIS, void, returns, stock opname, reports
 - [`docs/authentication.md`](docs/authentication.md) — Supabase Auth, employee mapping, authorization, and provisioning
 - [`docs/api-contract.md`](docs/api-contract.md) — HTTP API contract
-- [`docs/folder-structure.md`](docs/folder-structure.md) — proposed Next.js/domain module structure
+- [`docs/folder-structure.md`](docs/folder-structure.md) — current and planned Next.js/domain module structure
 - [`docs/roadmap.md`](docs/roadmap.md) — implementation order and test gates
 - [`docs/revision-summary.md`](docs/revision-summary.md) — M0 hardening changes
 - [`docs/database-setup.md`](docs/database-setup.md) — local/remote migration workflow
@@ -72,3 +73,7 @@ A custom domain or VPS is not required for development/demo Pilot 1. Hosting pla
 Critical inventory/financial workflows are designed to run atomically in PostgreSQL RPC/functions. Do not implement checkout/void/returns/opname as unrelated database calls from the Next.js API layer. Stock opname freezes affected batches while in progress; cash refunds belong to the drawer that pays the refund; composite FKs and lifecycle checks are part of the base schema.
 
 QRIS lifecycle is deliberately strict: an unconfirmed `pending_payment` transaction may be confirmed or voided, while a confirmed `completed` QRIS transaction can only be reversed through customer return/refund.
+
+Pilot 1 QRIS is manually confirmed against the pharmacy's external/physical
+counter QRIS. It has no dynamic QRIS, gateway, webhook/polling, or required
+app-hosted QRIS image.

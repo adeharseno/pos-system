@@ -9,6 +9,11 @@ Email matching is never used as the authorization relationship.
 auth.users.id -> user_profiles.id -> employees.id
 ```
 
+The authorization authority is `employees.position`, not Auth
+`app_metadata`. Current positions are `owner_admin`, `kasir`, and `staf`.
+Operational POS access is granted only to the role required by the server-side
+guard; `staf` has no cashier/transactional authority.
+
 `src/proxy.ts` refreshes SSR auth cookies. Business authorization is performed
 again in server layouts/actions with `requireEmployee()` or `requireRole()`.
 Future business actions must overwrite any caller identity with the returned

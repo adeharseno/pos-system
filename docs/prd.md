@@ -38,7 +38,7 @@ This approach is a deliberate choice to validate the concept as quickly and chea
 
 Pilot 1 covers three feature modules:
 
-- **Cashier (Point of Sale)** — multi-unit, prescription validation, automatic FEFO, cash & static QRIS payment (manual confirmation), receipt printing, and simple transaction void.
+- **Cashier (Point of Sale)** — multi-unit, prescription validation, automatic FEFO, cash & external/physical static QRIS payment (manual confirmation), browser receipt printing, and simple transaction void.
 
 - **Product & Stock Management** — hierarchical categories, multi-batch tracking, shelf storage locations, simple stock opname, and per-batch returns.
 
@@ -50,7 +50,7 @@ Plus basic operational capabilities: simple employee management and two access r
 
 The following are intentionally excluded from Pilot 1, including their schemas — not just their implementation — because they add complexity that hasn't been proven necessary at this validation stage:
 
-- **Payment gateway integration** (Midtrans or otherwise) — QRIS in Pilot 1 is a static image, manually confirmed by the cashier. See Section 4.2.5 and Section 9 for Pilot 2 migration considerations.
+- **Payment gateway integration** (Midtrans or otherwise) — QRIS in Pilot 1 is the pharmacy's external/physical static counter QRIS and is manually confirmed by the cashier. See Section 9 for future migration considerations.
 
 - **Approval workflows** for void, returns, and stock opname — in Pilot 1, these actions are recorded with a reason and actor, without a formal submit-review-decide mechanism.
 
@@ -80,8 +80,8 @@ The following are intentionally excluded from Pilot 1, including their schemas �
 | Auth | Supabase Auth | Cashier/admin login, long-lived sessions with automatic token refresh |
 | File Storage | Supabase Storage | Prescription photos and product images |
 | Hosting | Vercel | Single Next.js deployment; `*.vercel.app` is sufficient during development/demo so a custom domain is not required |
-| Receipt Printing | Thermal printer (ESC/POS) via WebUSB/local service | Print from the cashier's browser |
-| Barcode Scanner | USB/Bluetooth HID scanner | Reads as keyboard input, no special driver needed |
+| Receipt Printing | Browser print dialog | Native thermal (ESC/POS/WebUSB/local service) integration is future scope |
+| Barcode Scanner | Future USB/Bluetooth HID workflow | Planned; no barcode lookup/scanner flow is implemented in Pilot 1 current scope |
 
 ## 2.2 Key Architecture Decisions
 
@@ -100,16 +100,16 @@ Pilot 1 is a **modular monolith**, not a microservice system. There is one Next.
 
 - **Database**: managed PostgreSQL. Normal reads/CRUD are orchestrated from server-side domain services. Checkout, void, returns, QRIS state transitions, and stock-opname apply use PostgreSQL functions/RPC so locking and writes occur inside one ACID transaction.
 - **Auth**: Supabase Auth handles login for Owner/Admin and Cashier.
-- **Storage**: used for prescription photos, product images, and the static QRIS image.
+- **Storage**: used for prescription photos and product images. An optional app-hosted QRIS display asset is future UX, not a Pilot 1 requirement.
 
 > The browser must never receive the Supabase `service_role` key. Transactional tables are not queried directly from client components. Server-side privileged database access occurs only after the incoming request has been authenticated and authorized.
 
 ### 2.2.3 Static QRIS with Manual Confirmation
 
-Unlike dynamic QRIS via a payment gateway, Pilot 1 uses static QRIS:
+Unlike dynamic QRIS via a payment gateway, Pilot 1 uses the pharmacy's existing external/physical static QRIS at the counter:
 
-- The pharmacy owner uploads a single static QRIS image (obtained from their merchant QRIS account) via the settings page; it's stored in Supabase Storage.
-- When QRIS checkout is submitted, the atomic checkout transaction allocates/deducts stock and creates the sale as `pending_payment`; the system then shows the static QRIS image in a popup/modal for the customer to scan.
+- The QRIS is managed outside this application; no upload or app-hosted image is required.
+- When QRIS checkout is submitted, the atomic checkout transaction allocates/deducts stock and creates the sale as `pending_payment`. The customer scans the counter QRIS, and the cashier verifies payment externally before confirming it in POS.
 - Since there's no automatic integration with the QRIS provider, the cashier must manually confirm payment (e.g. after seeing a payment notification in the QRIS merchant app) by pressing "Confirm Payment Received". Only then does the transaction transition from `pending_payment` to `completed`.
 
 > This shifts payment verification responsibility from the system to the cashier manually. Risk: a cashier can complete a transaction before payment is actually received (by mistake or fraud). Mitigation: record confirmation time on every QRIS transaction for audit purposes, and perform periodic reconciliation between QRIS transaction records in the system and actual merchant account transactions. Pilot 2 can replace this with dynamic QRIS via a payment gateway for automatic confirmation — see Section 9.
@@ -275,9 +275,8 @@ Provide a fast and accurate cashier interface for processing sales transactions,
 
 ### 4.2.1 Barcode Scanning
 
-- The cashier can scan product barcodes using a USB/Bluetooth scanner (reads as keyboard input).
-- The system matches the barcode against `product_units` — because a single product can have different barcodes for each unit level (box vs strip).
-- If the barcode is not found, the system shows a manual search option by name/SKU.
+- The implemented cashier search is by product name or SKU.
+- Barcode lookup/scanner workflow is planned production backlog; product-unit barcode fields do not mean a lookup UI currently exists.
 
 ### 4.2.2 Sell Unit Selection
 
@@ -303,15 +302,15 @@ Provide a fast and accurate cashier interface for processing sales transactions,
 | Method | Mechanism |
 | --- | --- |
 | Cash | Cashier enters amount received, system calculates change automatically |
-| QRIS (Static) | System shows a popup with the static QRIS image uploaded by Owner/Admin. Cashier waits for the customer to scan and pay, then manually presses "Confirm Payment Received" after verifying payment arrived (e.g. via notification in the pharmacy's QRIS merchant app) |
+| QRIS (manual) | Customer scans the pharmacy's external/physical counter QRIS. Cashier manually presses "Confirm Payment Received" after verifying payment externally (for example in the merchant app). |
 
 - Bank transfer and automatic e-wallets are not included in Pilot 1 — see Section 1.4 and Section 9 for plans to add more payment methods in a later phase.
 - QRIS transactions record the confirmation time (`payment_confirmed_at`) and confirming cashier. Pending QRIS transactions are excluded from completed-sales revenue and can be voided to release stock if payment is abandoned.
 
 ### 4.2.6 Receipt Printing
 
-- A receipt is printed automatically via a thermal printer after a successful transaction, showing item details, unit, price, tax, and payment method.
-- Receipt reprint is available from transaction history.
+- A receipt can be opened after a successful transaction and printed through the browser print dialog, showing stored item labels, unit, price, tax, and payment method. Native thermal printing is future scope.
+- Receipt reprint from transaction history is planned for M2.8; the current receipt route is available immediately after checkout.
 
 ### 4.2.7 Void & Cancel Transaction
 
@@ -330,13 +329,13 @@ Provide a fast and accurate cashier interface for processing sales transactions,
 ## 4.3 Happy Path Flow
 
 1. Cashier logs in via Supabase Auth and opens a cash drawer session at the start of shift.
-2. Cashier scans a product barcode or searches manually.
+2. Cashier searches a product by name or SKU.
 3. System shows the product and available units; cashier selects the sell unit.
 4. If the product requires a prescription, the system requests prescription data before the item can be added to the cart.
 5. Cashier repeats steps 2–4 for all items.
 6. Cashier selects payment method (Cash or QRIS) and submits checkout.
 7. The checkout database RPC validates the cashier's open drawer, locks eligible batches, performs FEFO allocation, deducts stock, generates the invoice number, and records the transaction atomically. Cash becomes `completed`; QRIS becomes `pending_payment`.
-8. For QRIS, the system shows the static QRIS popup; after verifying payment in the merchant app, the cashier confirms the payment and the transaction transitions to `completed`.
+8. For QRIS, the customer scans the external counter QRIS; after verifying payment in the merchant app, the cashier confirms the payment and the transaction transitions to `completed`.
 9. The receipt can be printed for the completed transaction.
 10. Cashier closes the cash drawer session at the end of shift with reconciliation.
 
@@ -471,7 +470,7 @@ Pilot 1 uses two fixed roles, managed through Supabase Auth, without a granular 
 
 | Role | Access |
 | --- | --- |
-| Owner/Admin | Full access to all modules: cashier, product & stock management, reports & finance, employee management, and settings (including static QRIS image upload) |
+| Owner/Admin | Current access includes protected operational workflows; master-data management, reports, employee management, and optional QRIS display settings remain planned where no UI/API is implemented. |
 | Cashier | Access to the cashier module (transactions, cash drawer) and read-only access to product data for search during transactions |
 
 - All significant actions (transactions, void, returns, stock adjustments) record the actor's identity (logged-in cashier/admin), regardless of the absence of an approval mechanism — so history remains traceable by Owner/Admin.
@@ -484,8 +483,8 @@ Pilot 1 uses two fixed roles, managed through Supabase Auth, without a granular 
 
 ## 8.1 Performance
 
-- Barcode scan to product appearing in the cart must be under 1 second.
-- The static QRIS image popup must appear instantly (under 1 second) since the image is already stored, not dynamically generated.
+- If the planned barcode workflow is added, barcode scan to product appearing in the cart should be under 1 second.
+- If optional app-hosted QRIS display UX is added later, it should appear promptly; it is not a Pilot 1 blocker.
 - API requests must remain short-running and compatible with the limits of the currently selected Vercel plan; potentially slow reports use database-side aggregation and pagination. Hosting limits must be re-checked before deployment because provider quotas can change.
 
 ## 8.2 Reliability & Data Integrity
@@ -528,8 +527,8 @@ Unlike the earlier approach of pre-designing schemas for deferred features, Pilo
 | M0 | Architecture/schema hardening: modular-monolith boundaries, transaction/batch allocation, composite FKs, payment lifecycle constraints, refund-drawer attribution, stock-opname freeze, return/void rules, invoice sequencing, timezone |
 | M1 | Next.js + Supabase setup, schema/RLS, atomic PostgreSQL RPC/functions, database tests |
 | M2 | Auth, master data, product/unit/batch inventory basics |
-| M3 | Cashier core: drawer, barcode/cart, atomic FEFO checkout, cash, receipt, void |
-| M4 | Static QRIS: image upload, `pending_payment`, manual confirmation |
+| M3 | Cashier core: drawer, name/SKU cart, atomic FEFO checkout, cash, browser receipt, void |
+| M4 | Future optional QRIS display UX; manual external-counter QRIS is already the Pilot 1 payment model |
 | M5 | Customer/supplier returns, batch stock opname, stock card |
 | M6 | Reports/finance and employee operations |
 
@@ -573,6 +572,6 @@ Several Pilot 1 decisions need to be specifically revisited when moving to Pilot
 
 - Pilot 1 operates at a single physical location with one or a few cashiers, where Owner/Admin can directly supervise operations, so a multi-level approval mechanism is not yet needed.
 - The cashier device has a stable internet connection throughout operations, as the serverless architecture does not support offline mode.
-- The pharmacy has an active QRIS merchant account independent of this system; the system only displays the static QRIS image that was uploaded, with no integration with any QRIS provider.
-- The thermal printer is ESC/POS compatible.
+- The pharmacy has an active QRIS merchant account independent of this system; Pilot 1 relies on its external/physical static QRIS with no provider integration.
+- Browser printing is the implemented receipt output. ESC/POS compatibility matters only for future native-printer work.
 - Prescription management in Pilot 1 is administrative record-keeping (prescription number, doctor, patient), not automatic medical verification.

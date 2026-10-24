@@ -62,7 +62,7 @@ Route Handlers must stay thin. They should not contain large FEFO/stock mutation
 Application code follows one-way dependency flow:
 
 ```text
-presentation / future Route Handler
+presentation / Route Handler
   -> domain application service
   -> domain data adapter
   -> server-only Supabase client
@@ -118,10 +118,12 @@ Multiple independent `supabase.from(...).insert/update/select()` calls from a Ro
 
 ### Supabase Auth
 
-Responsible for login and session management. Application roles remain in Auth `app_metadata.role`:
+Responsible for login and session management. Application authorization is
+derived from the linked employee record's `employees.position`:
 
 - `owner_admin`
 - `kasir`
+- `staf`
 
 An authenticated user receives business access only after the server resolves
 the stable `auth.users -> user_profiles -> employees` UUID relationship and
@@ -135,7 +137,7 @@ Used for:
 
 - prescription images
 - product images
-- static QRIS image
+- optional future QRIS display asset (not required for Pilot 1)
 
 ---
 
