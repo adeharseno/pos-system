@@ -12,7 +12,7 @@ test("receipt item maps quantity unit price and stored line total",()=>assert.de
 test("receipt uses immutable transaction-time labels",()=>{const renamedMaster={name:"Paracetamol Generic",unit:"Kaplet"};const model=buildReceiptViewModel(base);assert.deepEqual(model.items[0],{productName:"Paracetamol",unitName:"Tablet",quantity:2,unitPrice:5000,lineTotal:11000});assert.notEqual(model.items[0].productName,renamedMaster.name);assert.notEqual(model.items[0].unitName,renamedMaster.unit);});
 test("completed QRIS receipt has no cash fields and retains snapshots",()=>{const model=buildReceiptViewModel({...base,payment_method:"qris",cash_received:null,cash_change:null});assert.equal(model.paymentMethod,"qris");assert.equal("cashReceived" in model,false);assert.equal(model.items[0].productName,"Paracetamol");assert.equal(model.items[0].unitName,"Tablet");assert.equal(receiptStatusLabel(model.status),"LUNAS");});
 test("pending QRIS is explicitly non-final",()=>assert.equal(receiptStatusLabel("pending_payment"),"PEMBAYARAN BELUM DIKONFIRMASI"));
-test("voided transaction is explicitly marked",()=>assert.equal(receiptStatusLabel("voided"),"VOID / DIBATALKAN"));
+test("voided transaction is explicitly marked",()=>assert.equal(receiptStatusLabel("voided"),"DIBATALKAN"));
 test("cashier and invoice come from stored read model",()=>{const model=buildReceiptViewModel(base);assert.equal(model.cashierName,"Ayu");assert.equal(model.invoiceNumber,"INV-1");});
 test("Asia Jakarta receipt date formatting is stable",()=>{const value=formatReceiptDate(base.created_at);assert.match(value,/18/);assert.match(value,/13[.:]42/);});
 test("receipt reuses shared Rupiah formatter",()=>assert.equal(formatRupiah(buildReceiptViewModel(base).total),"Rp 11.000"));

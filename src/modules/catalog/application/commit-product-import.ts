@@ -38,7 +38,7 @@ const safeMessages: Record<string, string> = {
   DUPLICATE_SKU: "SKU sudah digunakan oleh produk lain.",
   DUPLICATE_BARCODE: "Barcode sudah digunakan oleh unit produk lain.",
   INVALID_CATEGORY_SUBCATEGORY: "Kombinasi kategori dan subkategori tidak valid.",
-  INVALID_SUPPLIER: "Supplier tidak valid.",
+  INVALID_SUPPLIER: "Pemasok tidak valid. Periksa kembali pilihan pemasok.",
   INVALID_STORAGE_LOCATION: "Lokasi penyimpanan tidak valid.",
   INVALID_PRODUCT_INPUT: "Data produk tidak valid.",
   DATABASE_OPERATION_FAILED: "Produk gagal diimpor.",

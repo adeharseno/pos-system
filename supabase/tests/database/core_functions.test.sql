@@ -1,5 +1,5 @@
 begin;
-select plan(52);
+select plan(57);
 
 insert into public.categories(id,name) values ('10000000-0000-0000-0000-000000000001','Test');
 insert into public.subcategories(id,category_id,name) values ('10000000-0000-0000-0000-000000000002','10000000-0000-0000-0000-000000000001','Test');
@@ -48,7 +48,7 @@ insert into rpc_state values ('qris_tx',(
 select is((select status::text from public.transactions where id=(select id from rpc_state where key='qris_tx')),'pending_payment','QRIS checkout is pending');
 select ok((select payment_confirmed_at is null from public.transactions where id=(select id from rpc_state where key='qris_tx')),'pending QRIS is unconfirmed');
 select is((select count(*)::integer from public.transaction_item_batches tib join public.transaction_items ti on ti.id=tib.transaction_item_id where ti.transaction_id=(select id from rpc_state where key='qris_tx')),1,'FEFO supports a single eligible batch');
-select is((select count(distinct invoice_number)::integer from public.transactions),2,'generated invoices are unique');
+select is((select count(distinct invoice_number)::integer from public.transactions where id in (select id from rpc_state where key in ('cash_tx', 'qris_tx'))),2,'generated invoices are unique');
 select throws_ok($$select public.checkout_transaction('50000000-0000-0000-0000-000000000001','60000000-0000-0000-0000-000000000001','cash','[{"product_unit_id":"30000000-0000-0000-0000-000000000003","quantity":100}]',999999,null)$$,'P0001','INSUFFICIENT_STOCK','insufficient stock rejected');
 select throws_ok($$select public.checkout_transaction('50000000-0000-0000-0000-000000000001','60000000-0000-0000-0000-000000000001','cash','[{"product_unit_id":"39999999-0000-0000-0000-000000000099","quantity":1}]',1000,null)$$,'P0001','INVALID_PRODUCT_UNIT','invalid product unit rejected');
 
@@ -82,6 +82,12 @@ select lives_ok(format('select public.void_transaction(%L,%L,%L)',(select id fro
 select is((select quantity from public.product_batches where id='40000000-0000-0000-0000-000000000003'),46,'cash void restores stock');
 
 insert into rpc_state values ('source_item',(select id from public.transaction_items where transaction_id=(select id from rpc_state where key='cash_tx')));
+select throws_ok(format('select public.create_customer_return(%L,%L,%L,null,%L,jsonb_build_array(jsonb_build_object(%L,%L,%L,1)))',
+  '50000000-0000-0000-0000-000000000001',(select id from rpc_state where key='cash_tx'),'cash','no drawer','transaction_item_id',(select id from rpc_state where key='source_item'),'quantity_in_base'),'P0001','NO_ACTIVE_CASH_DRAWER','cash return without an open drawer is rejected');
+select throws_ok(format('select public.create_customer_return(%L,%L,%L,null,%L,jsonb_build_array(jsonb_build_object(%L,%L,%L,0)))',
+  '50000000-0000-0000-0000-000000000001',(select id from rpc_state where key='cash_tx'),'qris','zero','transaction_item_id',(select id from rpc_state where key='source_item'),'quantity_in_base'),'P0001','INVALID_RETURN_ITEMS','zero return quantity is rejected');
+select throws_ok(format('select public.create_customer_return(%L,%L,%L,null,%L,jsonb_build_array(jsonb_build_object(%L,%L,%L,1)))',
+  '50000000-0000-0000-0000-000000000001',(select id from rpc_state where key='pending_void_tx'),'qris','voided','transaction_item_id',(select id from rpc_state where key='source_item'),'quantity_in_base'),'P0001','INVALID_TRANSACTION_STATE','voided sale cannot be returned');
 insert into rpc_state values ('return1',(
   public.create_customer_return('50000000-0000-0000-0000-000000000001',(select id from rpc_state where key='cash_tx'),'cash','60000000-0000-0000-0000-000000000001','partial',
     jsonb_build_array(jsonb_build_object('transaction_item_id',(select id from rpc_state where key='source_item'),'quantity_in_base',40)))->>'return_id')::uuid);
@@ -92,6 +98,10 @@ select is((select quantity from public.product_batches where id='40000000-0000-0
 select lives_ok(format('select public.create_customer_return(%L,%L,%L,null,%L,jsonb_build_array(jsonb_build_object(%L,%L,%L,60)))',
   '50000000-0000-0000-0000-000000000001',(select id from rpc_state where key='cash_tx'),'qris','full','transaction_item_id',(select id from rpc_state where key='source_item'),'quantity_in_base'),'full remaining return succeeds');
 select is((select coalesce(sum(ri.quantity_in_base),0)::integer from public.return_items ri join public.returns r on r.id=ri.return_id where ri.transaction_item_id=(select id from rpc_state where key='source_item') and r.source='customer'),100,'full cumulative quantity recorded');
+select is((select sum(refund_subtotal) from public.return_items where transaction_item_id=(select id from rpc_state where key='source_item')),
+  (select subtotal from public.transaction_items where id=(select id from rpc_state where key='source_item')),'partial returns refund the exact original subtotal');
+select is((select sum(refund_tax_amount) from public.return_items where transaction_item_id=(select id from rpc_state where key='source_item')),
+  (select tax_amount from public.transaction_items where id=(select id from rpc_state where key='source_item')),'partial returns refund the exact original tax');
 select throws_ok(format('select public.create_customer_return(%L,%L,%L,null,%L,jsonb_build_array(jsonb_build_object(%L,%L,%L,1)))',
   '50000000-0000-0000-0000-000000000001',(select id from rpc_state where key='cash_tx'),'qris','too much','transaction_item_id',(select id from rpc_state where key='source_item'),'quantity_in_base'),'P0001','RETURN_QUANTITY_EXCEEDED','cumulative return limit enforced');
 select throws_ok(format('select public.void_transaction(%L,%L,%L)',(select id from rpc_state where key='cash_tx'),'50000000-0000-0000-0000-000000000001','invalid'),'P0001','TRANSACTION_HAS_RETURNS','returned transaction cannot be voided');

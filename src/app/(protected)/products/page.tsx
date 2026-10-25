@@ -27,14 +27,14 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
       <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Produk</h1>
-          <p className="mt-1 text-sm text-[var(--text-muted)]">Master produk dan ketersediaan stok saat ini. Tampilan hanya-baca.</p>
+          <p className="mt-1 text-sm text-[var(--text-muted)]">Lihat daftar produk dan stok yang tersedia.</p>
         </div>
         {employee.role === "owner_admin" ? (
           <div className="flex flex-wrap gap-2">
             <Link href="/products/categories" className="inline-flex min-h-11 items-center justify-center rounded-[var(--radius)] border border-[var(--border-strong)] bg-[var(--surface)] px-4 py-2 text-sm font-medium">Kelola Kategori</Link>
             <Link href="/products/subcategories" className="inline-flex min-h-11 items-center justify-center rounded-[var(--radius)] border border-[var(--border-strong)] bg-[var(--surface)] px-4 py-2 text-sm font-medium">Kelola Subkategori</Link>
             <Link href="/products/taxes" className="inline-flex min-h-11 items-center justify-center rounded-[var(--radius)] border border-[var(--border-strong)] bg-[var(--surface)] px-4 py-2 text-sm font-medium">Kelola Pajak</Link>
-            <Link href="/products/import" className="inline-flex min-h-11 items-center justify-center rounded-[var(--radius)] border border-[var(--border-strong)] bg-[var(--surface)] px-4 py-2 text-sm font-medium">Import Produk</Link>
+            <Link href="/products/import" className="inline-flex min-h-11 items-center justify-center rounded-[var(--radius)] border border-[var(--border-strong)] bg-[var(--surface)] px-4 py-2 text-sm font-medium">Impor Produk</Link>
             <Link href="/products/new" className="inline-flex min-h-11 items-center justify-center rounded-[var(--radius)] border border-[var(--accent)] bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white">Tambah Produk</Link>
           </div>
         ) : null}
@@ -52,7 +52,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
       </Card>
 
       {rows.length === 0 ? (
-        <Card><CardContent className="p-8 text-center"><h2>{total === 0 ? "Belum ada produk." : "Tidak ada produk yang cocok dengan filter."}</h2><p className="mt-2 text-sm text-[var(--text-muted)]">Produk akan muncul di sini setelah ditambahkan secara manual atau melalui bulk import.</p></CardContent></Card>
+        <Card><CardContent className="p-8 text-center"><h2>{total === 0 ? "Belum ada produk." : "Tidak ada produk yang cocok dengan filter."}</h2><p className="mt-2 text-sm text-[var(--text-muted)]">Produk akan muncul di sini setelah ditambahkan secara manual atau melalui impor massal.</p></CardContent></Card>
       ) : (
         <>
           <Card className="hidden md:block"><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-[var(--surface-subtle)]"><tr><th className="p-4">SKU / Produk</th><th className="p-4">Kategori</th><th className="p-4">Unit dasar</th><th className="p-4">Harga Jual</th><th className="p-4">Resep</th><th className="p-4">Status</th><th className="p-4">Unit jual</th><th className="p-4">Stok</th></tr></thead><tbody>{rows.map((row) => <tr key={row.id} className="border-t border-[var(--border)]"><td className="p-4"><Link href={`/products/${row.id}`} className="font-medium hover:underline">{row.name}</Link><p className="mt-1 text-[var(--text-muted)]">{row.sku}{row.genericName ? ` · ${row.genericName}` : ""}</p></td><td className="p-4">{row.category}<p className="mt-1 text-[var(--text-muted)]">{row.subcategory}</p></td><td className="p-4">{row.baseUnit}</td><td className="p-4">{row.baseSellingPrice===null?"—":formatRupiah(row.baseSellingPrice)}</td><td className="p-4">{prescription(row.requiresPrescription)}</td><td className="p-4">{status(row.isActive)}</td><td className="p-4">{row.unitCount}</td><td className="p-4">{row.availableStock}</td></tr>)}</tbody></table></div></Card>

@@ -13,5 +13,5 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const product = await getAdminProduct(productId, true);
   if (!product) notFound();
   const master = await getProductCreateMasterData();
-  return <Container size="lg"><h1 className="text-2xl font-bold">Edit Produk</h1><p className="mt-1 text-sm text-[var(--text-muted)]">Perbarui informasi master produk tanpa mengubah unit dasar atau inventori.</p><EditProductForm id={productId} product={product} master={master} /></Container>;
+  return <Container size="lg"><h1 className="text-2xl font-bold">Ubah Produk</h1><p className="mt-1 text-sm text-[var(--text-muted)]">Perbarui informasi produk tanpa mengubah unit dasar atau persediaan.</p><EditProductForm id={productId} product={product} master={master} /></Container>;
 }

@@ -81,28 +81,28 @@ export function CategoryManagement({ categories, subcategories }: { categories: 
     <section className="mt-6 grid gap-5">
       <div className="flex justify-end">
         <Button type="button" onClick={() => { setModal({ mode: "create", name: "" }); setModalError(""); }} disabled={busy}>
-          Tambah Category
+          Tambah Kategori
         </Button>
       </div>
       <Card>
-        <CardHeader><h2 className="font-semibold">Daftar Category</h2></CardHeader>
+        <CardHeader><h2 className="font-semibold">Daftar Kategori</h2></CardHeader>
         <CardContent className="p-0">
           {tableError ? <p className="m-5 rounded-[var(--radius)] bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger)]" role="alert">{tableError}</p> : null}
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="bg-[var(--surface-subtle)]"><tr><th className="p-4">Category Name</th><th className="p-4">Subcategory Count</th><th className="p-4">Actions</th></tr></thead>
-              <tbody>{categories.map((category) => <tr key={category.id} className="border-t border-[var(--border)]"><td className="p-4">{category.name}</td><td className="p-4">{subcategories.filter((subcategory) => subcategory.category_id === category.id).length}</td><td className="p-4"><div className="flex flex-wrap gap-2"><Button type="button" variant="secondary" onClick={() => { setModal({ mode: "edit", id: category.id, name: category.name }); setModalError(""); }} disabled={busy}>Edit</Button><Button type="button" variant="danger" onClick={() => remove(category.id)} disabled={busy}>Hapus</Button></div></td></tr>)}</tbody>
+              <thead className="bg-[var(--surface-subtle)]"><tr><th className="p-4">Nama Kategori</th><th className="p-4">Jumlah Subkategori</th><th className="p-4">Tindakan</th></tr></thead>
+              <tbody>{categories.map((category) => <tr key={category.id} className="border-t border-[var(--border)]"><td className="p-4">{category.name}</td><td className="p-4">{subcategories.filter((subcategory) => subcategory.category_id === category.id).length}</td><td className="p-4"><div className="flex flex-wrap gap-2"><Button type="button" variant="secondary" onClick={() => { setModal({ mode: "edit", id: category.id, name: category.name }); setModalError(""); }} disabled={busy}>Ubah</Button><Button type="button" variant="danger" onClick={() => remove(category.id)} disabled={busy}>Hapus</Button></div></td></tr>)}</tbody>
             </table>
           </div>
-          {categories.length === 0 ? <p className="p-5 text-sm text-[var(--text-muted)]">Belum ada category.</p> : null}
+          {categories.length === 0 ? <p className="p-5 text-sm text-[var(--text-muted)]">Belum ada kategori.</p> : null}
         </CardContent>
       </Card>
 
       <Modal open={modal !== null} labelledBy="category-modal-title" onClose={closeModal}>
-        <ModalHeader id="category-modal-title" onClose={closeModal}>{modal?.mode === "edit" ? "Edit Category" : "Tambah Category"}</ModalHeader>
+        <ModalHeader id="category-modal-title" onClose={closeModal}>{modal?.mode === "edit" ? "Ubah Kategori" : "Tambah Kategori"}</ModalHeader>
         <ModalContent>
           <FormField error={modalError}>
-            <Label htmlFor="category-name">Nama Category</Label>
+            <Label htmlFor="category-name">Nama Kategori</Label>
             <Input id="category-name" value={modal?.name ?? ""} onChange={(event) => setModal((current) => current ? { ...current, name: event.target.value } : current)} error={Boolean(modalError)} autoFocus />
           </FormField>
         </ModalContent>

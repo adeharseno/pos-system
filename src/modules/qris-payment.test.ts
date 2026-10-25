@@ -17,7 +17,7 @@ test("void uses a nonblank reason",()=>assert.deepEqual(qrisActionPayload(" Pemb
 test("void action targets authenticated void API",()=>assert.equal(qrisVoidUrl("tx"),"/api/transactions/tx/void"));
 test("voided QRIS is not a completed state",()=>{const status:string="voided";assert.notEqual(status,"completed");});
 test("confirmed QRIS hides void eligibility",()=>assert.equal(canVoidQris("completed"),false));
-test("paid QRIS gives return guidance",()=>assert.match(checkoutErrorMessage("PAID_TRANSACTION_REQUIRES_RETURN"),/retur\/refund/));
+test("paid QRIS gives return guidance",()=>assert.match(checkoutErrorMessage("PAID_TRANSACTION_REQUIRES_RETURN"),/retur dan pengembalian uang/));
 test("uncertain state blocks automatic submit",()=>assert.equal(canSubmitCheckout("uncertain"),false));
 test("status refresh targets authoritative transaction endpoint",()=>assert.equal(transactionStatusUrl("tx"),"/api/transactions/tx"));
 test("cash payload remains unchanged",()=>assert.deepEqual(buildCashCheckoutPayload(cart,20000),{payment_method:"cash",cash_received:20000,items:[{product_unit_id:"u",quantity:1}]}));

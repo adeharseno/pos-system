@@ -1197,6 +1197,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      profit_loss_report: {
+        Args: { p_from: string; p_to: string }
+        Returns: Json
+      }
+      payment_refund_report: {
+        Args: { p_from: string; p_to: string }
+        Returns: Json
+      }
+      product_performance_report: {
+        Args: { p_from: string; p_to: string; p_sort?: string }
+        Returns: Json
+      }
+      sales_gross_profit_report: {
+        Args: { p_from: string; p_to: string }
+        Returns: Json
+      }
       apply_stock_opname: {
         Args: { p_employee_id: string; p_session_id: string }
         Returns: Json

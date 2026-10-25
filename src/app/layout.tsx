@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Pharmacy POS Pilot 1",
-  description: "Pharmacy point-of-sale pilot application",
+  description: "Aplikasi kasir apotek",
 };
 
 export default function RootLayout({

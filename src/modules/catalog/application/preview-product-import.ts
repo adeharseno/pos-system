@@ -66,13 +66,13 @@ function invalidNumber(value: string, required: boolean) {
 
 function parseRows(bytes: ArrayBuffer, fileName: string) {
   const extension = fileName.toLocaleLowerCase("id-ID").split(".").pop();
-  if (extension !== "xlsx" && extension !== "csv") throw new Error("Format file harus .xlsx atau .csv.");
+  if (extension !== "xlsx" && extension !== "csv") throw new Error("Format berkas harus .xlsx atau .csv.");
   const workbook = XLSX.read(bytes, { type: "array", raw: false });
   const firstSheet = workbook.SheetNames[0];
-  if (!firstSheet) throw new Error("File tidak memiliki sheet.");
+  if (!firstSheet) throw new Error("Berkas tidak memiliki lembar kerja.");
   const values = XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[firstSheet], { header: 1, defval: "", raw: false });
   const [headers = [], ...rows] = values;
-  if (headers.length === 0) throw new Error("File tidak memiliki header.");
+  if (headers.length === 0) throw new Error("Berkas tidak memiliki judul kolom.");
   return { headers: headers.map(text), rows };
 }
 
@@ -117,18 +117,18 @@ export function buildProductImportPreview(bytes: ArrayBuffer, fileName: string, 
     if (invalidNumber(costPrice, false)) baseErrors.push("Harga modal tidak valid.");
     if (invalidNumber(minimumStock, false)) baseErrors.push("Minimum stok tidak valid.");
     if (!["otc", "otc_limited", "prescription_required"].includes(drugClassification)) baseErrors.push("Klasifikasi obat tidak valid.");
-    if (sku && (skuCounts.get(sku.toLocaleLowerCase("id-ID")) ?? 0) > 1) baseErrors.push("SKU duplikat di dalam file.");
-    if (barcode && (barcodeCounts.get(barcode) ?? 0) > 1) baseErrors.push("Barcode duplikat di dalam file.");
+    if (sku && (skuCounts.get(sku.toLocaleLowerCase("id-ID")) ?? 0) > 1) baseErrors.push("SKU duplikat di dalam berkas.");
+    if (barcode && (barcodeCounts.get(barcode) ?? 0) > 1) baseErrors.push("Barcode duplikat di dalam berkas.");
     const categoryId = resolvedCategory?.id ?? null;
     const subcategoryId = resolvedSubcategory?.id ?? null;
     const defaultSupplierId = supplier ? lookup(master.suppliers, supplier)?.id ?? null : null;
     const storageLocationId = storageLocation ? master.locations.find((location) => location.full_code.trim().toLocaleLowerCase("id-ID") === storageLocation.toLocaleLowerCase("id-ID"))?.id ?? null : null;
     const errors = [...baseErrors];
-    if (category && !categoryId) errors.push("Kategori tidak ditemukan pada master data.");
-    if (subcategory && !subcategoryId) errors.push("Subkategori tidak ditemukan pada master data.");
+    if (category && !categoryId) errors.push("Kategori tidak ditemukan pada data acuan.");
+    if (subcategory && !subcategoryId) errors.push("Subkategori tidak ditemukan pada data acuan.");
     if (categoryId && subcategoryId && resolvedSubcategory?.category_id !== categoryId) errors.push("Subkategori tidak sesuai dengan kategori.");
-    if (supplier && !defaultSupplierId) errors.push("Supplier tidak ditemukan pada master data.");
-    if (storageLocation && !storageLocationId) errors.push("Lokasi penyimpanan tidak ditemukan pada master data.");
+    if (supplier && !defaultSupplierId) errors.push("Pemasok tidak ditemukan pada data acuan.");
+    if (storageLocation && !storageLocationId) errors.push("Lokasi penyimpanan tidak ditemukan pada data acuan.");
 
     return {
       rowNumber, sku, name,

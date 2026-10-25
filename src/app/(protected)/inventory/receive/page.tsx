@@ -9,5 +9,5 @@ export default async function ReceiveStockPage({ searchParams }: { searchParams:
   const products = await listActiveProductsForReceiving();
   const { product_id: initialProductId } = await searchParams;
   if (initialProductId && !products.some((product) => product.id === initialProductId)) notFound();
-  return <Container size="lg"><header><h1 className="text-2xl font-bold">Terima Stok</h1><p className="mt-1 text-sm text-[var(--text-muted)]">Penerimaan stok membuat batch baru dan tidak mengubah harga modal produk master.</p></header><ReceiveStockForm products={products} initialProductId={initialProductId}/></Container>;
+  return <Container size="lg"><header><h1 className="text-2xl font-bold">Terima Stok</h1><p className="mt-1 text-sm text-[var(--text-muted)]">Penerimaan stok menambah batch baru tanpa mengubah harga modal produk.</p></header><ReceiveStockForm products={products} initialProductId={initialProductId}/></Container>;
 }
