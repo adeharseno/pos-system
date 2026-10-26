@@ -16,6 +16,18 @@ deployment verification remain separate backlog work.
 2. Install dependencies with `npm install`.
 3. Start the application with `npm run dev`.
 
+### Karyawan dan aktivasi akun (M2.16D)
+
+Owner Admin dapat membuka `/employees` melalui menu **Karyawan** untuk mengelola
+data, undangan akun, dan pengaturan akses. Atur `APP_SITE_URL` sesuai alamat lokal
+yang dipakai untuk aktivasi; `APP_ADDITIONAL_ORIGINS` dapat memuat alias lokal yang
+dipercaya. Undangan mengarah ke formulir pengaturan kata sandi, tanpa membawa token
+ke URL halaman formulir.
+
+Pengaturan izin individu tersimpan melalui backend yang ada. Sebagian akses POS
+masih mengikuti peran sampai integrasi izin pada endpoint tersebut dilakukan.
+Lihat [dokumentasi UI karyawan](docs/employee-ui.md) untuk perilaku dan pengujiannya.
+
 Quality checks:
 
 ```bash

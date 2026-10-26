@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { AuthApplicationError } from "@/modules/auth/errors";
 import { PosDomainError, PosDataAccessError } from "@/modules/shared/errors/pos-domain-error";
 import { PosInputError } from "@/modules/shared/validation/input";
+import { EmployeeManagementError, EMPLOYEE_ERRORS } from "@/modules/auth/employee-errors";
 
 export type ApiSuccess<T>={ok:true;data:T};
 export type ApiFailure={ok:false;error:{code:string;message:string}};
@@ -19,6 +20,10 @@ export function apiSuccess<T>(data:T,status=200){return NextResponse.json<ApiSuc
 export function apiFailure(code:string,message:string,status:number){return NextResponse.json<ApiFailure>({ok:false,error:{code,message}},{status});}
 
 export function mapApiError(error:unknown){
+  if(error instanceof EmployeeManagementError){
+    const [status,message]=EMPLOYEE_ERRORS[error.code];
+    return apiFailure(error.code,message,status);
+  }
   if(error instanceof AuthApplicationError){
     const status=error.code==="UNAUTHENTICATED"?401:403;
     return apiFailure(error.code,status===401?"Silakan masuk untuk melanjutkan.":"Anda tidak memiliki akses untuk melakukan tindakan ini.",status);

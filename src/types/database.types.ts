@@ -9,6 +9,170 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      employee_invitations: {
+        Row: {
+          accepted_at: string | null
+          attempt_id: string | null
+          attempts: number
+          auth_user_id: string
+          email: string
+          employee_id: string
+          failure_code: string | null
+          invited_at: string | null
+          lease_until: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          attempt_id?: string | null
+          attempts?: number
+          auth_user_id?: string
+          email: string
+          employee_id: string
+          failure_code?: string | null
+          invited_at?: string | null
+          lease_until?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          attempt_id?: string | null
+          attempts?: number
+          auth_user_id?: string
+          email?: string
+          employee_id?: string
+          failure_code?: string | null
+          invited_at?: string | null
+          lease_until?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_invitations_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: true
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+
+      security_audit_events: {
+        Row: {
+          action: string
+          actor_employee_id: string | null
+          after_value: Json | null
+          before_value: Json | null
+          created_at: string
+          id: number
+          reason: string | null
+          target_id: string
+        }
+        Insert: {
+          action: string
+          actor_employee_id?: string | null
+          after_value?: Json | null
+          before_value?: Json | null
+          created_at?: string
+          id?: never
+          reason?: string | null
+          target_id: string
+        }
+        Update: {
+          action?: string
+          actor_employee_id?: string | null
+          after_value?: Json | null
+          before_value?: Json | null
+          created_at?: string
+          id?: never
+          reason?: string | null
+          target_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "security_audit_events_actor_employee_id_fkey"
+            columns: ["actor_employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+
+      role_permissions: {
+        Row: {
+          permission_code: string
+          role: Database["public"]["Enums"]["employee_position"]
+        }
+        Insert: {
+          permission_code: string
+          role: Database["public"]["Enums"]["employee_position"]
+        }
+        Update: {
+          permission_code?: string
+          role?: Database["public"]["Enums"]["employee_position"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_permissions_permission_code_fkey"
+            columns: ["permission_code"]
+            isOneToOne: false
+            referencedRelation: "permission_definitions"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+
+      permission_definitions: {
+        Row: {
+          code: string
+        }
+        Insert: {
+          code: string
+        }
+        Update: {
+          code?: string
+        }
+        Relationships: []
+      }
+
+      employee_permission_overrides: {
+        Row: {
+          effect: string
+          employee_id: string
+          permission_code: string
+        }
+        Insert: {
+          effect: string
+          employee_id: string
+          permission_code: string
+        }
+        Update: {
+          effect?: string
+          employee_id?: string
+          permission_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_permission_overrides_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_permission_overrides_permission_code_fkey"
+            columns: ["permission_code"]
+            isOneToOne: false
+            referencedRelation: "permission_definitions"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+
       app_settings: {
         Row: {
           expiry_alert_days: number
@@ -173,6 +337,7 @@ export type Database = {
       employees: {
         Row: {
           created_at: string
+          creation_request_id: string | null
           full_name: string
           id: string
           is_active: boolean
@@ -183,6 +348,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          creation_request_id?: string | null
           full_name: string
           id?: string
           is_active?: boolean
@@ -193,6 +359,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          creation_request_id?: string | null
           full_name?: string
           id?: string
           is_active?: boolean
@@ -1197,6 +1364,77 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      require_employee_admin: { Args: { p_actor: string }; Returns: string }
+
+      other_usable_owner: { Args: { p_excluded: string }; Returns: boolean }
+
+      employee_account_access: {
+        Args: { p_auth_user: string }
+        Returns: boolean
+      }
+
+      employee_invitation_accept: {
+        Args: { p_auth_user: string; p_complete?: boolean }
+        Returns: undefined
+      }
+
+      employee_invitation_command: {
+        Args: {
+          p_actor: string
+          p_attempt?: string
+          p_email?: string
+          p_employee: string
+          p_failure?: string
+          p_operation: string
+        }
+        Returns: Json
+      }
+
+      employee_permission_read: {
+        Args: { p_actor: string; p_employee: string }
+        Returns: Json
+      }
+
+      employee_admin_write: {
+        Args: {
+          p_actor: string
+          p_employee: string
+          p_operation: string
+          p_reason: string
+          p_values: Json
+        }
+        Returns: string
+      }
+
+      employee_admin_read: {
+        Args: {
+          p_actor: string
+          p_employee?: string
+          p_limit?: number
+          p_offset?: number
+        }
+        Returns: Json
+      }
+
+      set_employee_permission_override: {
+        Args: {
+          p_actor_auth_user_id: string
+          p_effect: string
+          p_employee_id: string
+          p_permission_code: string
+          p_reason: string
+        }
+        Returns: undefined
+      }
+
+      get_employee_permissions: {
+        Args: {
+          p_employee_id: string
+          p_role: Database["public"]["Enums"]["employee_position"]
+        }
+        Returns: Json
+      }
+
       profit_loss_report: {
         Args: { p_from: string; p_to: string }
         Returns: Json

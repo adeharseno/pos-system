@@ -1,0 +1,10 @@
+BEGIN;
+
+ALTER TABLE public.tax_rates
+ENABLE ROW LEVEL SECURITY;
+
+REVOKE ALL PRIVILEGES
+ON TABLE public.tax_rates
+FROM PUBLIC, anon, authenticated;
+
+COMMIT;

@@ -13,6 +13,15 @@ export async function getVerifiedAuthUser(): Promise<AuthenticatedUser | null> {
 
 export async function findEmployeeByAuthUserId(authUserId: string): Promise<EmployeeRecord | null> {
   const admin = createAdminSupabaseClient();
+  const access = await admin.rpc("employee_account_access", { p_auth_user: authUserId });
+  if (access.error) throw new PosDataAccessError(access.error);
+  if (!access.data) {
+    // Preserve the existing inactive/missing mapping errors from the policy layer.
+    const profile = await admin.from("user_profiles").select("employee_id").eq("id", authUserId).maybeSingle();
+    if (profile.error) throw new PosDataAccessError(profile.error);
+    if (!profile.data?.employee_id) return null;
+    return { employeeId: profile.data.employee_id, name: "", role: "staf", isActive: false };
+  }
   const profile = await admin.from("user_profiles").select("employee_id").eq("id", authUserId).maybeSingle();
   if (profile.error) throw new PosDataAccessError(profile.error);
   if (!profile.data?.employee_id) return null;

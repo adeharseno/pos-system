@@ -10,7 +10,7 @@ type NavItem={label:string;href:string;icon:ComponentType<SVGProps<SVGSVGElement
 const groups:Array<{label:string;items:NavItem[]}>= [
   {label:"Operasional",items:[{label:"Penjualan Baru",href:"/cashier",icon:SaleIcon},{label:"Transaksi",href:"/transactions",icon:ChartIcon},{label:"Retur",href:"#",icon:BoxIcon}]},
   {label:"Persediaan",items:[{label:"Daftar Barang",href:"/products",icon:BoxIcon},{label:"Persediaan",href:"/inventory",icon:BoxIcon},{label:"Perhitungan Stok",href:"/inventory/opname",icon:ChartIcon,admin:true}]},
-  {label:"Pengelolaan",items:[{label:"Laporan",href:"/reports",icon:ChartIcon,admin:true},{label:"Pegawai",href:"#",icon:UsersIcon,admin:true}]},
+  {label:"Pengelolaan",items:[{label:"Laporan",href:"/reports",icon:ChartIcon,admin:true},{label:"Karyawan",href:"/employees",icon:UsersIcon,admin:true}]},
 ];
 
 export function AppShell({employee,drawerOpen,children}:{employee:{name:string;role:EmployeeRole};drawerOpen:boolean;children:React.ReactNode}){
