@@ -10,3 +10,5 @@ export const SaleIcon=(props:IconProps)=><svg {...base} {...props}><path d="M5 4
 export const BoxIcon=(props:IconProps)=><svg {...base} {...props}><path d="m4 7 8-4 8 4-8 4-8-4Z"/><path d="m4 7 8 4 8-4v10l-8 4-8-4Z"/><path d="M12 11v10"/></svg>;
 export const ChartIcon=(props:IconProps)=><svg {...base} {...props}><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>;
 export const UsersIcon=(props:IconProps)=><svg {...base} {...props}><circle cx="9" cy="8" r="3"/><path d="M3 20c0-4 2-6 6-6s6 2 6 6M16 5a3 3 0 0 1 0 6M17 14c3 .5 4 2.5 4 6"/></svg>;
+
+export const HomeIcon=(props:IconProps)=><svg {...base} {...props}><path d="m3 10 9-7 9 7v10H3z"/><path d="M9 20v-7h6v7"/></svg>;

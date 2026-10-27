@@ -14,11 +14,11 @@ export function Container({
   size?: "md" | "lg" | "xl";
 }) {
   const sizes = { md: "max-w-3xl", lg: "max-w-4xl", xl: "max-w-7xl" };
-  return <main className={classes("mx-auto w-full px-4 py-6 sm:px-6", sizes[size], className)}>{children}</main>;
+  return <main className={classes("mx-auto w-full px-4 py-6 sm:px-6 lg:py-8", sizes[size], className)}>{children}</main>;
 }
 
 export function Card({ className, ...props }: ComponentProps<"section">) {
-  return <section className={classes("overflow-hidden rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] shadow-sm", className)} {...props} />;
+  return <section className={classes("overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]", className)} {...props} />;
 }
 
 export function CardHeader({ className, ...props }: ComponentProps<"div">) {
@@ -30,39 +30,40 @@ export function CardContent({ className, ...props }: ComponentProps<"div">) {
 }
 
 export function FormField({ children, className, error }: { children: ReactNode; className?: string; error?: string }) {
-  return <div className={classes("grid gap-1.5", className)}>{children}{error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}</div>;
+  return <div className={classes("grid gap-2", className)}>{children}{error ? <p role="alert" className="text-xs leading-5 text-[var(--danger)]">{error}</p> : null}</div>;
 }
 
 export function Label({ className, ...props }: ComponentProps<"label">) {
-  return <label className={classes("text-sm font-medium text-[var(--text)]", className)} {...props} />;
+  return <label className={classes("text-base font-medium text-gray-700", className)} {...props} />;
 }
 
 type ControlProps = { error?: boolean };
-const controlClassName = "min-h-11 w-full rounded-[var(--radius)] border bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)] transition placeholder:text-[var(--text-muted)] focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-soft)] disabled:cursor-not-allowed disabled:bg-[var(--surface-subtle)] disabled:text-[var(--text-muted)]";
+// Adapted from TailAdmin InputField; native props and existing API are retained.
+const controlClassName = "min-h-13 w-full rounded-lg border bg-[var(--surface)] px-4 py-3 text-base text-gray-800 shadow-theme-xs transition placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-3 focus:ring-brand-500/20 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500 disabled:opacity-60";
 
 export function Input({ className, error, ...props }: ComponentProps<"input"> & ControlProps) {
-  return <input className={classes(controlClassName, error ? "border-[var(--danger)]" : "border-[var(--border-strong)]", className)} {...props} />;
+  return <input aria-invalid={error || undefined} className={classes(controlClassName, error ? "border-[var(--danger)] focus:border-[var(--danger)] focus:ring-red-500/15" : "border-[var(--border-strong)]", className)} {...props} />;
 }
 
 export function Select({ className, error, ...props }: ComponentProps<"select"> & ControlProps) {
-  return <select className={classes(controlClassName, error ? "border-[var(--danger)]" : "border-[var(--border-strong)]", className)} {...props} />;
+  return <select aria-invalid={error || undefined} className={classes(controlClassName, "ui-select appearance-none pr-11", error ? "border-[var(--danger)] focus:border-[var(--danger)] focus:ring-red-500/15" : "border-[var(--border-strong)]", className)} {...props} />;
 }
 
 export function Textarea({ className, error, ...props }: ComponentProps<"textarea"> & ControlProps) {
-  return <textarea className={classes("min-h-24 resize-y", controlClassName, error ? "border-[var(--danger)]" : "border-[var(--border-strong)]", className)} {...props} />;
+  return <textarea aria-invalid={error || undefined} className={classes("min-h-24 resize-y", controlClassName, error ? "border-[var(--danger)] focus:border-[var(--danger)] focus:ring-red-500/15" : "border-[var(--border-strong)]", className)} {...props} />;
 }
 
 export function Checkbox({ className, label, ...props }: ComponentProps<"input"> & { label: ReactNode }) {
-  return <label className={classes("flex min-h-11 items-center gap-2 text-sm text-[var(--text)]", className)}><input className="size-4 rounded border-[var(--border-strong)] accent-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]" type="checkbox" {...props} /><span>{label}</span></label>;
+  return <label className={classes("flex min-h-13 items-center gap-3 text-sm text-gray-700", className)}><input className="size-5 shrink-0 rounded-md border-[var(--border-strong)] accent-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50 focus:ring-3 focus:ring-[var(--accent-soft)]" type="checkbox" {...props} /><span>{label}</span></label>;
 }
 
 export function Button({ className, variant = "primary", ...props }: ComponentProps<"button"> & { variant?: "primary" | "secondary" | "danger" }) {
   const variants = {
-    primary: "border-[var(--accent)] bg-[var(--accent)] text-white hover:opacity-90",
-    secondary: "border-[var(--border-strong)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-subtle)]",
+    primary: "border-transparent bg-brand-500 text-white shadow-theme-xs hover:bg-brand-600 disabled:bg-brand-300",
+    secondary: "border-gray-300 bg-white text-gray-700 shadow-theme-xs hover:bg-gray-50",
     danger: "border-[var(--danger)] bg-[var(--danger)] text-white hover:opacity-90",
   };
-  return <button className={classes("inline-flex min-h-11 items-center justify-center rounded-[var(--radius)] border px-4 py-2 text-sm font-medium transition disabled:opacity-60", variants[variant], className)} {...props} />;
+  return <button className={classes("inline-flex min-h-13 items-center justify-center gap-2 rounded-lg border px-5 py-3 text-base font-medium transition disabled:opacity-60", variants[variant], className)} {...props} />;
 }
 
 export function FormSection({ children, className, description, title }: { children: ReactNode; className?: string; description?: string; title: string }) {

@@ -1364,6 +1364,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      dashboard_analytics_report: {
+        Args: { p_from: string; p_to: string; p_year: number }
+        Returns: Json
+      }
       require_employee_admin: { Args: { p_actor: string }; Returns: string }
 
       other_usable_owner: { Args: { p_excluded: string }; Returns: boolean }
