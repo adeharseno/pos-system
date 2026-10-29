@@ -6,7 +6,7 @@ import { listPurchaseInvoices, savePurchaseInvoice } from "@/modules/purchasing/
 export function GET() {
   return invoiceEndpoint(async () => {
     await requireRole(["owner_admin"]);
-    return apiSuccess(await listPurchaseInvoices());
+    return apiSuccess((await listPurchaseInvoices()).rows);
   });
 }
 export function POST(request: Request) {

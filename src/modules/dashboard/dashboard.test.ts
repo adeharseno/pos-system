@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { PERMISSIONS } from "@/modules/auth/permissions";
 import type { PermissionData } from "@/modules/auth/application/permission-policy";
-import { authorizedDashboardRead, canReadDashboardFinancials, cents, dashboardActions, dashboardFilters, rupiah } from "./dashboard-model";
+import { authorizedDashboardRead, canReadDashboardFinancials, canReadDashboardStock, cents, dashboardActions, dashboardFilters, dashboardLowStockRows, rupiah } from "./dashboard-model";
+import { productStockStatus } from "@/modules/catalog/product-stock-status";
 
 const permissions: PermissionData = { definitions: PERMISSIONS, preset: [...PERMISSIONS], overrides: [] };
 
@@ -47,6 +48,23 @@ test("quick actions intersect permissions with unchanged legacy page role guards
   const denied: PermissionData = { ...permissions, overrides: [{ permission: "cashier.view", effect: "deny" }] };
   assert.ok(!dashboardActions("kasir", denied).some(action => action.href === "/cashier"));
   assert.deepEqual(dashboardActions("staf", { ...permissions, preset: [] }), []);
+});
+
+test("low stock follows product-list thresholds, ordering, and inventory permission", () => {
+  assert.equal(productStockStatus(0, 0), "out");
+  assert.equal(productStockStatus(1, 0), "normal");
+  assert.equal(productStockStatus(4, 5), "low");
+  assert.equal(productStockStatus(5, 5), "normal");
+  const rows = dashboardLowStockRows([
+    { id: "low", name: "Menipis", baseUnit: "Tablet", availableStock: "4", minimumStock: 5, status: "low" },
+    { id: "out", name: "Habis", baseUnit: "Botol", availableStock: "0", minimumStock: 0, status: "out" },
+  ]);
+  assert.deepEqual(rows.map(row => row.id), ["out", "low"]);
+  assert.throws(() => dashboardLowStockRows([{ id: "normal", name: "Normal", baseUnit: "Tablet", availableStock: "5", minimumStock: 5, status: "low" }]));
+  assert.equal(canReadDashboardStock("owner_admin", permissions), true);
+  assert.equal(canReadDashboardStock("kasir", { ...permissions, preset: ["inventory.view"] }), true);
+  assert.equal(canReadDashboardStock("kasir", { ...permissions, preset: ["inventory.view"], overrides: [{ permission: "inventory.view", effect: "deny" }] }), false);
+  assert.equal(canReadDashboardStock("staf", { ...permissions, preset: [] }), false);
 });
 
 test("financial presentation retains exact cents, negatives and large amounts", () => {

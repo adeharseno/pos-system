@@ -10,7 +10,7 @@ type Product=Database["public"]["Tables"]["products"]["Row"];
 type Unit=Database["public"]["Tables"]["product_units"]["Row"];
 type Batch=Database["public"]["Tables"]["product_batches"]["Row"];
 type Named={id:string;name:string};
-export type AdminProductListItem={id:string;sku:string;name:string;genericName:string|null;manufacturer:string|null;baseUnit:string;requiresPrescription:boolean;isActive:boolean;category:string;subcategory:string;defaultSupplier:string|null;storageLocation:string|null;unitCount:number;availableStock:number;baseSellingPrice:number|null};
+export type AdminProductListItem={id:string;sku:string;name:string;genericName:string|null;manufacturer:string|null;baseUnit:string;requiresPrescription:boolean;isActive:boolean;category:string;subcategory:string;defaultSupplier:string|null;storageLocation:string|null;unitCount:number;availableStock:number;minimumStock:number;baseSellingPrice:number|null};
 type DisplayBatch=Omit<Batch,"cost_price">&{cost_price?:number};
 export type AdminProductDetail=AdminProductListItem&{categoryId:string;subcategoryId:string;defaultSupplierId:string|null;storageLocationId:string|null;drugClassification:Product["drug_classification"];description:string|null;costPrice?:number|null;marginPercent?:number|null;taxRate:number;isTaxable:boolean;minimumStock:number;units:Unit[];batches:DisplayBatch[]};
 
@@ -32,7 +32,7 @@ async function metadata(products:Product[]){
 }
 function summary(product:Product, data:Awaited<ReturnType<typeof metadata>>):AdminProductListItem{
   const productUnits=data.units.filter(unit=>unit.product_id===product.id);const stock=data.batches.filter(batch=>batch.product_id===product.id).reduce((total,batch)=>total+batch.quantity,0);const baseUnit=productUnits.find(unit=>unit.is_base_unit);
-  return {id:product.id,sku:product.sku,name:product.name,genericName:product.generic_name,manufacturer:product.manufacturer,baseUnit:product.base_unit,requiresPrescription:product.requires_prescription===true,isActive:product.is_active,category:data.categories.get(product.category_id)??"—",subcategory:data.subcategories.get(product.subcategory_id)??"—",defaultSupplier:product.default_supplier_id?data.suppliers.get(product.default_supplier_id)??"—":null,storageLocation:product.storage_location_id?data.locations.get(product.storage_location_id)??"—":null,unitCount:productUnits.length,availableStock:stock,baseSellingPrice:baseUnit?.selling_price??null};
+  return {id:product.id,sku:product.sku,name:product.name,genericName:product.generic_name,manufacturer:product.manufacturer,baseUnit:product.base_unit,requiresPrescription:product.requires_prescription===true,isActive:product.is_active,category:data.categories.get(product.category_id)??"—",subcategory:data.subcategories.get(product.subcategory_id)??"—",defaultSupplier:product.default_supplier_id?data.suppliers.get(product.default_supplier_id)??"—":null,storageLocation:product.storage_location_id?data.locations.get(product.storage_location_id)??"—":null,unitCount:productUnits.length,availableStock:stock,minimumStock:product.minimum_stock,baseSellingPrice:baseUnit?.selling_price??null};
 }
 export async function listAdminProducts(filters:AdminProductFilters){
   const admin=createAdminSupabaseClient();let query=admin.from("products").select("*",{count:"exact"}).order("name").order("id");

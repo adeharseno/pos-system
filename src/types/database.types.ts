@@ -634,6 +634,7 @@ export type Database = {
           created_at: string
           id: string
           invoice_id: string
+          payment_date: string
           payment_key: string
           recorded_by: string
           updated_at: string
@@ -643,6 +644,7 @@ export type Database = {
           created_at?: string
           id?: string
           invoice_id: string
+          payment_date?: string
           payment_key: string
           recorded_by: string
           updated_at?: string
@@ -652,6 +654,7 @@ export type Database = {
           created_at?: string
           id?: string
           invoice_id?: string
+          payment_date?: string
           payment_key?: string
           recorded_by?: string
           updated_at?: string
@@ -1748,6 +1751,10 @@ export type Database = {
         Args: { p_from: string; p_to: string; p_year: number }
         Returns: Json
       }
+      dashboard_low_stock: {
+        Args: { p_business_date: string }
+        Returns: Json
+      }
       require_employee_admin: { Args: { p_actor: string }; Returns: string }
 
       other_usable_owner: { Args: { p_excluded: string }; Returns: boolean }
@@ -1868,6 +1875,16 @@ export type Database = {
           p_invoice_id: string
           p_request_id: string
           p_token: string
+        }
+        Returns: Json
+      }
+      record_purchase_invoice_payment: {
+        Args: {
+          p_amount: number | string
+          p_employee_id: string
+          p_invoice_id: string
+          p_payment_date: string
+          p_request_id: string
         }
         Returns: Json
       }

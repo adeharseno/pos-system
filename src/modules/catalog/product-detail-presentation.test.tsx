@@ -9,10 +9,10 @@ import type { AdminProductDetail } from "./data/admin-product-queries";
 const product: AdminProductDetail = {
   id: "product", sku: "SKU-1", name: "Barang", genericName: null, manufacturer: null,
   baseUnit: "tablet", requiresPrescription: true, isActive: true, category: "Obat", subcategory: "Tablet",
-  defaultSupplier: null, storageLocation: null, unitCount: 1, availableStock: 7, baseSellingPrice: 12000,
+  defaultSupplier: null, storageLocation: null, unitCount: 1, availableStock: 7, minimumStock: 2, baseSellingPrice: 12000,
   categoryId: "category", subcategoryId: "subcategory", defaultSupplierId: null, storageLocationId: null,
   drugClassification: "prescription_required", description: null, costPrice: 7313, marginPercent: 64.09,
-  taxRate: 0, isTaxable: false, minimumStock: 2, units: [],
+  taxRate: 0, isTaxable: false, units: [],
   batches: [{ id: "batch", product_id: "product", batch_number: "B-1", expired_date: "2030-01-01", quantity: 7, cost_price: 7123, received_date: "2026-01-01", created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" }],
 };
 

@@ -7,19 +7,50 @@ import { INVOICE_BUCKET, parseInvoiceForm, validateInvoiceFile } from "./invoice
 import { invoiceDatabaseError, PurchaseInvoiceError } from "./invoice-errors";
 import type { Json } from "@/types/database.types";
 import { AuthApplicationError } from "@/modules/auth/errors";
+import type { PurchaseHistoryFilters } from "./purchase-history";
+import { parsePurchasePayment, purchaseHistoryRange } from "./purchase-history";
 
 export async function getPurchaseInvoice(id: string) {
   const result = await createAdminSupabaseClient().from("purchase_invoices")
-    .select("*,suppliers(name),purchase_invoice_payments(amount,payment_key)").eq("id", id).maybeSingle();
+    .select("*,suppliers(name),purchase_invoice_payments(id,amount,payment_key,payment_date,created_at,recorded_by,employees!purchase_invoice_payments_recorded_by_fkey(full_name))").eq("id", id).maybeSingle();
   if (result.error) throw mapDatabaseError(result.error);
   if (!result.data) throw new PurchaseInvoiceError("PURCHASE_INVOICE_NOT_FOUND", 404, "Invoice tidak ditemukan.");
   return result.data;
 }
-export async function listPurchaseInvoices() {
-  const result = await createAdminSupabaseClient().from("purchase_invoices")
+export async function listPurchaseInvoices(filters: PurchaseHistoryFilters = { q: "", page: 1, limit: 20 }) {
+  const client = createAdminSupabaseClient();
+  let supplierIds: string[] = [];
+  if (filters.q) {
+    const suppliers = await client.from("suppliers").select("id").ilike("name", `%${filters.q.replace(/[%_]/g, "\\$&")}%`);
+    if (suppliers.error) throw mapDatabaseError(suppliers.error);
+    supplierIds = (suppliers.data ?? []).map(row => row.id);
+  }
+  let query = client.from("purchase_invoices")
     .select("id,invoice_number,invoice_date,total_amount,status,suppliers(name),purchase_invoice_payments(amount)")
-    .order("created_at", { ascending: false }).limit(100);
+    .order("invoice_date", { ascending: false }).order("created_at", { ascending: false }).order("id", { ascending: false });
+  if (filters.q) {
+    const term = filters.q.replace(/[%_]/g, "\\$&");
+    query = query.or(`invoice_number.ilike.%${term}%${supplierIds.length ? `,supplier_id.in.(${supplierIds.join(",")})` : ""}`);
+  }
+  const countQuery = client.from("purchase_invoices").select("id", { count: "exact", head: true });
+  let filteredCount = countQuery;
+  if (filters.q) {
+    const term = filters.q.replace(/[%_]/g, "\\$&");
+    filteredCount = filteredCount.or(`invoice_number.ilike.%${term}%${supplierIds.length ? `,supplier_id.in.(${supplierIds.join(",")})` : ""}`);
+  }
+  const { from, to } = purchaseHistoryRange(filters);
+  const [result, counted] = await Promise.all([query.range(from, to), filteredCount]);
   if (result.error) throw mapDatabaseError(result.error);
+  if (counted.error) throw mapDatabaseError(counted.error);
+  return { rows: result.data, total: counted.count ?? 0 };
+}
+
+export async function recordPurchaseInvoicePayment(request: Request, invoiceId: string, employeeId: string) {
+  const origin = request.headers.get("origin");
+  if (origin && origin !== new URL(request.url).origin) throw new AuthApplicationError("FORBIDDEN");
+  const input = parsePurchasePayment(await request.json());
+  const result = await createAdminSupabaseClient().rpc("record_purchase_invoice_payment", { p_invoice_id: invoiceId, p_request_id: input.requestId, p_employee_id: employeeId, p_amount: input.amount, p_payment_date: input.paymentDate });
+  if (result.error) invoiceDatabaseError(result.error);
   return result.data;
 }
 

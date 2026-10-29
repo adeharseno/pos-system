@@ -2,6 +2,7 @@ import { jakartaToday, reportPeriod, validateReportPeriod, type ReportPeriod } f
 import { hasPermission, type PermissionData } from "@/modules/auth/application/permission-policy";
 import type { EmployeeRole } from "@/modules/auth/types";
 import type { Permission } from "@/modules/auth/permissions";
+import { productStockStatus, type ProductStockStatus } from "@/modules/catalog/product-stock-status";
 
 export const presets = [
   { value: "today", label: "Hari Ini" }, { value: "week", label: "Minggu Ini" },
@@ -34,6 +35,26 @@ export function canReadDashboardFinancials(role: EmployeeRole, data: PermissionD
   // Financial role boundary is unchanged even if a non-owner has an allow override.
   return role === "owner_admin" && ["reports.sales.view", "reports.products.view", "reports.payments.view"]
     .every(permission => hasPermission(role, permission, data));
+}
+
+export function canReadDashboardStock(role: EmployeeRole, data: PermissionData) {
+  return hasPermission(role, "inventory.view", data);
+}
+
+export type DashboardLowStockRow = { id: string; name: string; baseUnit: string; availableStock: number; minimumStock: number; status: Exclude<ProductStockStatus, "normal"> };
+
+export function dashboardLowStockRows(value: unknown): DashboardLowStockRow[] {
+  if (!Array.isArray(value)) throw new TypeError("Invalid low stock rows");
+  return value.map(item => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) throw new TypeError("Invalid low stock row");
+    const row = item as Record<string, unknown>;
+    const availableStock = typeof row.availableStock === "string" && /^\d+$/.test(row.availableStock) ? Number(row.availableStock) : Number.NaN;
+    const minimumStock = typeof row.minimumStock === "number" ? row.minimumStock : Number.NaN;
+    if (typeof row.id !== "string" || typeof row.name !== "string" || typeof row.baseUnit !== "string" || !Number.isSafeInteger(availableStock) || !Number.isSafeInteger(minimumStock)) throw new TypeError("Invalid low stock row");
+    const status = productStockStatus(availableStock, minimumStock);
+    if (status === "normal" || row.status !== status) throw new TypeError("Invalid low stock status");
+    return { id: row.id, name: row.name, baseUnit: row.baseUnit, availableStock, minimumStock, status };
+  }).sort((a,b) => (a.status === b.status ? a.availableStock - b.availableStock || a.name.localeCompare(b.name, "id-ID") : a.status === "out" ? -1 : 1));
 }
 
 const actions: Array<{ href: string; label: string; description: string; permission: Permission; roles?: EmployeeRole[] }> = [

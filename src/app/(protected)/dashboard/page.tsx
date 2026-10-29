@@ -1,11 +1,12 @@
 ﻿import Link from "next/link";
 import { Suspense } from "react";
-import { getDashboardAnalytics, getDashboardContext } from "@/modules/dashboard/dashboard-service";
+import { getDashboardAnalytics, getDashboardContext, getDashboardLowStock } from "@/modules/dashboard/dashboard-service";
 import { dashboardFilters, dateLabel, presets, type DashboardFilters, type DashboardQuery } from "@/modules/dashboard/dashboard-model";
 import { MonthlySalesChart } from "@/modules/dashboard/dashboard-charts";
 import { DashboardSkeleton } from "@/modules/dashboard/dashboard-skeleton";
 import { jakartaToday } from "@/modules/reports/sales-report";
 import { Button, Card, CardContent, Container, FormField, Input, Label, Select } from "@/modules/ui/components";
+import { StockStatus } from "@/modules/catalog/components/product-presentation";
 
 const linkClass = "inline-flex min-h-14 items-center justify-center gap-3 rounded-xl border border-gray-300 bg-white px-5 py-3 text-base font-medium text-gray-800 transition hover:bg-gray-50";
 
@@ -85,6 +86,13 @@ async function Analytics({ filters }: { filters: DashboardFilters }) {
   </>;
 }
 
+async function LowStock() {
+  let rows: Awaited<ReturnType<typeof getDashboardLowStock>>;
+  try { rows = await getDashboardLowStock(); }
+  catch { return <Card><CardContent><p role="alert" className="text-base text-gray-700">Daftar barang yang perlu diisi ulang belum dapat dimuat.</p></CardContent></Card>; }
+  return <section aria-labelledby="low-stock-title" className="space-y-4"><div><h2 id="low-stock-title" className="text-xl font-semibold text-gray-900">Barang Perlu Diisi Ulang</h2><p className="mt-2 text-base text-gray-600">Barang aktif yang stoknya habis atau berada di bawah minimum.</p></div><Card><CardContent className="py-2!">{!rows.length ? <p className="py-7 text-base text-gray-600">Semua stok barang masih mencukupi.</p> : <ul className="divide-y divide-gray-200">{rows.map(row => <li key={row.id}><Link href={`/products/${row.id}`} className="grid gap-4 py-5 transition hover:bg-gray-50 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] sm:items-center sm:px-3"><p className="break-words text-base font-semibold text-brand-600">{row.name}</p><div><p className="text-sm text-gray-500">Stok tersedia</p><p className="mt-1 text-base font-semibold text-gray-900 tabular">{row.availableStock.toLocaleString("id-ID")} {row.baseUnit}</p></div><div><p className="text-sm text-gray-500">Minimum stok</p><p className="mt-1 text-base font-medium text-gray-800 tabular">{row.minimumStock.toLocaleString("id-ID")} {row.baseUnit}</p></div><StockStatus active quantity={row.availableStock} minimum={row.minimumStock}/></Link></li>)}</ul>}</CardContent></Card></section>;
+}
+
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<DashboardQuery> }) {
   const context = await getDashboardContext();
   const query = await searchParams;
@@ -111,5 +119,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <p className="text-base text-gray-700">{dateLabel(jakartaToday())}</p>
       <p className="text-base text-gray-700">{context.actions.length ? "Pilih kegiatan melalui menu di samping." : "Hubungi pengelola apotek untuk kegiatan dan akses kerja Anda."}</p>
     </CardContent></Card>}
+    {context.stock ? <Suspense fallback={<Card><CardContent><p className="text-base text-gray-600">Memuat barang yang perlu diisi ulang...</p></CardContent></Card>}><LowStock /></Suspense> : null}
   </Container>;
 }

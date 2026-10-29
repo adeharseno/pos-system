@@ -24,6 +24,8 @@ export function invoiceDatabaseError(error: { code?: string; message: string }):
     INVOICE_NOT_DRAFT: [409, "Hanya invoice Draft yang dapat diubah."],
     INVALID_SUPPLIER: [400, "Pemasok tidak tersedia. Pilih pemasok lain."],
     INVALID_PURCHASE_INVOICE: [400, "Data invoice atau pembayaran tidak valid."],
+    INVALID_INVOICE_PAYMENT: [400, "Pembayaran tidak valid. Periksa jumlah dan tanggal pembayaran."],
+    INVOICE_PAYMENT_EXCEEDS_BALANCE: [409, "Jumlah pembayaran melebihi sisa hutang terbaru. Muat ulang halaman dan periksa kembali."],
     INVOICE_DOCUMENT_NOT_FOUND: [400, "Dokumen belum tersedia. Unggah kembali dokumen."],
     FORBIDDEN: [403, "Anda tidak memiliki akses untuk menyimpan invoice."],
   };

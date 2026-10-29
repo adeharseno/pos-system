@@ -1,0 +1,7 @@
+import { Card, CardContent } from "@/modules/ui/components";
+import { formatInvoiceAmount } from "../invoice-presentation";
+import type { InvoiceItem } from "../invoice-item-repository";
+
+export function PurchaseItemHistory({ items }: { items: InvoiceItem[] }) {
+  return <section className="space-y-4"><h2 className="text-xl font-semibold">Barang Diterima</h2>{items.length === 0 ? <Card><CardContent><p className="text-base text-gray-600">Belum ada barang pada invoice ini.</p></CardContent></Card> : <div className="grid gap-4">{items.map(item => <Card key={item.id}><CardContent className="grid gap-4 text-base sm:grid-cols-2 lg:grid-cols-4"><div className="sm:col-span-2"><p className="font-semibold text-gray-900">{item.product_name_snapshot}</p><p className="mt-1 text-sm text-gray-600">SKU: {item.sku_snapshot}</p></div><div><p className="text-gray-600">Batch</p><p className="mt-1 font-medium">{item.batch_number}</p><p className="mt-1 text-sm text-gray-600">Kedaluwarsa {item.expired_date}</p></div><div><p className="text-gray-600">Jumlah</p><p className="mt-1 font-medium">{item.quantity.toLocaleString("id-ID")} {item.unit_name_snapshot}</p></div><div><p className="text-gray-600">Harga Pembelian</p><p className="mt-1 font-semibold">{formatInvoiceAmount(item.cost_price)} / {item.unit_name_snapshot}</p></div><div><p className="text-gray-600">Subtotal</p><p className="mt-1 font-semibold">{item.subtotal === null ? "Belum tersedia" : formatInvoiceAmount(item.subtotal)}</p></div></CardContent></Card>)}</div>}</section>;
+}

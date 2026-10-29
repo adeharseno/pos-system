@@ -6,13 +6,22 @@ import { loadPermissions } from "@/modules/auth/data/permission-repository";
 import { requireResultObject, resultNumber, resultString } from "@/modules/shared/data/result";
 import { mapDatabaseError } from "@/modules/shared/errors/pos-domain-error";
 import type { Json } from "@/types/database.types";
-import { authorizedDashboardRead, canReadDashboardFinancials, cents, dashboardActions, dateLabel, rupiah, type ChartPoint, type DashboardFilters } from "./dashboard-model";
+import { authorizedDashboardRead, canReadDashboardFinancials, canReadDashboardStock, cents, dashboardActions, dashboardLowStockRows, dateLabel, rupiah, type ChartPoint, type DashboardFilters } from "./dashboard-model";
+import { inventoryBusinessDate } from "@/modules/inventory/inventory-rules";
 
 export const getDashboardContext = cache(async () => {
   const employee = await requireRequestEmployee();
   const permissions = await loadPermissions(employee.employeeId, employee.role);
-  return { employee, permissions, financial: canReadDashboardFinancials(employee.role, permissions), actions: dashboardActions(employee.role, permissions) };
+  return { employee, permissions, financial: canReadDashboardFinancials(employee.role, permissions), stock: canReadDashboardStock(employee.role, permissions), actions: dashboardActions(employee.role, permissions) };
 });
+
+export async function getDashboardLowStock() {
+  const { employee, permissions } = await getDashboardContext();
+  if (!canReadDashboardStock(employee.role, permissions)) throw new Error("FORBIDDEN");
+  const { data, error } = await createAdminSupabaseClient().rpc("dashboard_low_stock", { p_business_date: inventoryBusinessDate() });
+  if (error) throw mapDatabaseError(error);
+  return dashboardLowStockRows(data);
+}
 
 export async function getDashboardAnalytics(filters: DashboardFilters) {
   const { employee, permissions } = await getDashboardContext();
