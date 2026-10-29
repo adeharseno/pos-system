@@ -511,11 +511,391 @@ export type Database = {
           },
         ]
       }
+      purchase_invoice_items: {
+        Row: {
+          base_unit_snapshot: string
+          batch_number: string
+          conversion_to_base: number
+          cost_price: number
+          created_at: string
+          created_by: string
+          deleted_at: string | null
+          expired_date: string
+          id: string
+          invoice_id: string
+          margin_percent: number | null
+          pricing_mode: string
+          product_id: string
+          product_name_snapshot: string
+          product_unit_id: string | null
+          quantity: number
+          selling_price: number
+          sku_snapshot: string
+          subtotal: number | null
+          tax_rate: number
+          unit_name_snapshot: string
+          updated_at: string
+          updated_by: string
+          version: number
+        }
+        Insert: {
+          base_unit_snapshot: string
+          batch_number: string
+          conversion_to_base: number
+          cost_price: number
+          created_at?: string
+          created_by: string
+          deleted_at?: string | null
+          expired_date: string
+          id: string
+          invoice_id: string
+          margin_percent?: number | null
+          pricing_mode: string
+          product_id: string
+          product_name_snapshot: string
+          product_unit_id?: string | null
+          quantity: number
+          selling_price: number
+          sku_snapshot: string
+          subtotal?: number | null
+          tax_rate: number
+          unit_name_snapshot: string
+          updated_at?: string
+          updated_by: string
+          version?: number
+        }
+        Update: {
+          base_unit_snapshot?: string
+          batch_number?: string
+          conversion_to_base?: number
+          cost_price?: number
+          created_at?: string
+          created_by?: string
+          deleted_at?: string | null
+          expired_date?: string
+          id?: string
+          invoice_id?: string
+          margin_percent?: number | null
+          pricing_mode?: string
+          product_id?: string
+          product_name_snapshot?: string
+          product_unit_id?: string | null
+          quantity?: number
+          selling_price?: number
+          sku_snapshot?: string
+          subtotal?: number | null
+          tax_rate?: number
+          unit_name_snapshot?: string
+          updated_at?: string
+          updated_by?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_invoice_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_invoice_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_invoice_items_product_unit_id_product_id_fkey"
+            columns: ["product_unit_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "product_units"
+            referencedColumns: ["id", "product_id"]
+          },
+          {
+            foreignKeyName: "purchase_invoice_items_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_invoice_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          invoice_id: string
+          payment_key: string
+          recorded_by: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          invoice_id: string
+          payment_key: string
+          recorded_by: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          invoice_id?: string
+          payment_key?: string
+          recorded_by?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_invoice_payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_invoice_payments_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_invoice_receipts: {
+        Row: {
+          batch_id: string
+          cost_price_base: number
+          created_base_unit: boolean
+          invoice_id: string
+          item_id: string
+          new_cost_price: number
+          new_selling_price: number
+          new_tax_rate: number
+          previous_cost_price: number | null
+          previous_selling_price: number | null
+          previous_tax_rate: number
+          product_id: string
+          product_unit_id: string
+          quantity_base: number
+          received_at: string
+        }
+        Insert: {
+          batch_id: string
+          cost_price_base: number
+          created_base_unit: boolean
+          invoice_id: string
+          item_id: string
+          new_cost_price: number
+          new_selling_price: number
+          new_tax_rate: number
+          previous_cost_price?: number | null
+          previous_selling_price?: number | null
+          previous_tax_rate: number
+          product_id: string
+          product_unit_id: string
+          quantity_base: number
+          received_at?: string
+        }
+        Update: {
+          batch_id?: string
+          cost_price_base?: number
+          created_base_unit?: boolean
+          invoice_id?: string
+          item_id?: string
+          new_cost_price?: number
+          new_selling_price?: number
+          new_tax_rate?: number
+          previous_cost_price?: number | null
+          previous_selling_price?: number | null
+          previous_tax_rate?: number
+          product_id?: string
+          product_unit_id?: string
+          quantity_base?: number
+          received_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_invoice_receipts_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "product_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_invoice_receipts_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_invoice_receipts_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: true
+            referencedRelation: "purchase_invoice_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_invoice_receipts_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_invoice_receipts_product_unit_id_fkey"
+            columns: ["product_unit_id"]
+            isOneToOne: false
+            referencedRelation: "product_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_invoice_requests: {
+        Row: {
+          created_at: string
+          employee_id: string
+          invoice_id: string
+          payload: Json
+          request_id: string
+        }
+        Insert: {
+          created_at?: string
+          employee_id: string
+          invoice_id: string
+          payload: Json
+          request_id: string
+        }
+        Update: {
+          created_at?: string
+          employee_id?: string
+          invoice_id?: string
+          payload?: Json
+          request_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_invoice_requests_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_invoice_requests_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_invoices: {
+        Row: {
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          created_by: string
+          document_name: string | null
+          document_path: string | null
+          document_type: string | null
+          finalization_snapshot: Json | null
+          id: string
+          invoice_date: string
+          invoice_number: string
+          status: string
+          supplier_id: string
+          total_amount: number
+          updated_at: string
+          updated_by: string
+          version: number
+        }
+        Insert: {
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by: string
+          document_name?: string | null
+          document_path?: string | null
+          document_type?: string | null
+          finalization_snapshot?: Json | null
+          id: string
+          invoice_date: string
+          invoice_number: string
+          status?: string
+          supplier_id: string
+          total_amount: number
+          updated_at?: string
+          updated_by: string
+          version?: number
+        }
+        Update: {
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string
+          document_name?: string | null
+          document_path?: string | null
+          document_type?: string | null
+          finalization_snapshot?: Json | null
+          id?: string
+          invoice_date?: string
+          invoice_number?: string
+          status?: string
+          supplier_id?: string
+          total_amount?: number
+          updated_at?: string
+          updated_by?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_invoices_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_invoices_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_invoices_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_invoices_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           base_unit: string
           category_id: string
-          cost_price: number
+          cost_price: number | null
           created_at: string
           default_supplier_id: string | null
           description: string | null
@@ -538,7 +918,7 @@ export type Database = {
         Insert: {
           base_unit: string
           category_id: string
-          cost_price?: number
+          cost_price?: number | null
           created_at?: string
           default_supplier_id?: string | null
           description?: string | null
@@ -561,7 +941,7 @@ export type Database = {
         Update: {
           base_unit?: string
           category_id?: string
-          cost_price?: number
+          cost_price?: number | null
           created_at?: string
           default_supplier_id?: string | null
           description?: string | null
@@ -1461,6 +1841,44 @@ export type Database = {
       }
       cancel_stock_opname: {
         Args: { p_employee_id: string; p_session_id: string }
+        Returns: Json
+      }
+
+      write_purchase_invoice_item: {
+        Args: {
+          p_action: string
+          p_employee_id: string
+          p_expected_version: number | null
+          p_invoice_id: string
+          p_item_id: string
+          p_payload: Json
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      preview_purchase_receiving: {
+        Args: { p_employee_id: string; p_invoice_id: string }
+        Returns: Json
+      }
+      finalize_purchase_receiving: {
+        Args: {
+          p_acknowledge_difference: boolean
+          p_employee_id: string
+          p_expected_version: number
+          p_invoice_id: string
+          p_request_id: string
+          p_token: string
+        }
+        Returns: Json
+      }
+      save_purchase_invoice_draft: {
+        Args: {
+          p_employee_id: string
+          p_expected_version: number | null
+          p_id: string
+          p_payload: Json
+          p_request_id: string
+        }
         Returns: Json
       }
       checkout_transaction: {

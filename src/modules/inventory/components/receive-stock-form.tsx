@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card, CardContent, CardHeader, FormActions, FormField, FormSection, Input, Label, Select } from "@/modules/ui/components";
 
-type Product = { id: string; sku: string; name: string; base_unit: string; cost_price: number; current_stock: number };
+type Product = { id: string; sku: string; name: string; base_unit: string; cost_price: number | null; current_stock: number };
 type Batch = { batch_number: string; expired_date: string; quantity: string; cost_price: string; received_date: string };
 
 const emptyBatch = (): Batch => ({ batch_number: "", expired_date: "", quantity: "", cost_price: "", received_date: "" });
@@ -50,7 +50,7 @@ export function ReceiveStockForm({ products, initialProductId = "" }: { products
   return <section className="mt-6 grid gap-6">
     <Card><CardHeader><h2 className="text-lg font-semibold">Produk</h2><p className="mt-1 text-sm text-[var(--text-muted)]">Pilih produk yang akan menerima stok.</p></CardHeader><CardContent className="grid gap-5">
       <FormField><Label htmlFor="product_id">Produk</Label><Select id="product_id" value={productId} onChange={(event) => setProductId(event.target.value)} disabled={busy}><option value="">Pilih produk</option>{products.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.sku}</option>)}</Select></FormField>
-      {product ? <Card className="bg-[var(--surface-subtle)] shadow-none"><CardContent className="grid gap-4 sm:grid-cols-2"><div><p className="text-sm text-[var(--text-muted)]">Nama Produk</p><p className="font-medium">{product.name}</p></div><div><p className="text-sm text-[var(--text-muted)]">SKU</p><p className="font-medium">{product.sku}</p></div><div><p className="text-sm text-[var(--text-muted)]">Unit Dasar</p><p className="font-medium">{product.base_unit}</p></div><div><p className="text-sm text-[var(--text-muted)]">Stok Saat Ini</p><p className="font-medium">{product.current_stock} {product.base_unit}</p></div><div className="sm:col-span-2"><p className="text-sm text-[var(--text-muted)]">Harga Modal Saat Ini</p><p className="font-medium">{rupiah(product.cost_price)}</p></div></CardContent></Card> : null}
+      {product ? <Card className="bg-[var(--surface-subtle)] shadow-none"><CardContent className="grid gap-4 sm:grid-cols-2"><div><p className="text-sm text-[var(--text-muted)]">Nama Produk</p><p className="font-medium">{product.name}</p></div><div><p className="text-sm text-[var(--text-muted)]">SKU</p><p className="font-medium">{product.sku}</p></div><div><p className="text-sm text-[var(--text-muted)]">Unit Dasar</p><p className="font-medium">{product.base_unit}</p></div><div><p className="text-sm text-[var(--text-muted)]">Stok Saat Ini</p><p className="font-medium">{product.current_stock} {product.base_unit}</p></div><div className="sm:col-span-2"><p className="text-sm text-[var(--text-muted)]">Harga Modal Saat Ini</p><p className="font-medium">{product.cost_price === null ? "Belum diatur" : rupiah(product.cost_price)}</p></div></CardContent></Card> : null}
     </CardContent></Card>
 
     <FormSection title="Batch" description="Jumlah menggunakan unit dasar produk."><div className="md:col-span-2 grid gap-4">

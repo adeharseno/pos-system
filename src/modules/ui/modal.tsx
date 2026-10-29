@@ -8,10 +8,11 @@ type ModalProps = {
   labelledBy: string;
   onClose: () => void;
   open: boolean;
+  keepMounted?: boolean;
 };
 
 // TailAdmin rounded modal surface and backdrop, with native focus containment.
-export function Modal({ children, labelledBy, onClose, open }: ModalProps) {
+export function Modal({ children, labelledBy, onClose, open, keepMounted = false }: ModalProps) {
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const element = dialog.current;
@@ -25,7 +26,7 @@ export function Modal({ children, labelledBy, onClose, open }: ModalProps) {
     };
   }, [open]);
 
-  if (!open) return null;
+  if (!open && !keepMounted) return null;
 
   return (
     <dialog

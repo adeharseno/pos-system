@@ -15,9 +15,9 @@ export default async function NewProductPage() {
 
   return (
     <Container size="lg">
-      <h1 className="text-2xl font-bold">Tambah Produk</h1>
+      <h1 className="text-2xl font-bold">Tambah Master Produk</h1>
       <p className="mb-5 mt-1 text-sm text-[var(--text-muted)]">
-        Buat produk beserta satu unit penjualan dasar.
+        Lengkapi informasi master produk. Stok dan harga jual diatur terpisah.
       </p>
       {data.categories.length === 0 ? (
         <Card>

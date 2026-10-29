@@ -1,0 +1,10 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+set local search_path=public,extensions;
+select plan(4);
+select ok(not has_function_privilege('anon','finalize_purchase_receiving(uuid,uuid,uuid,integer,text,boolean)','EXECUTE'),'anonymous cannot finalize directly');
+select ok(not has_function_privilege('authenticated','finalize_purchase_receiving(uuid,uuid,uuid,integer,text,boolean)','EXECUTE') and not has_function_privilege('authenticated','preview_purchase_receiving(uuid,uuid)','EXECUTE'),'browser cannot invoke receiving RPCs directly');
+select ok(not has_function_privilege('service_role','purchase_receiving_plan(uuid)','EXECUTE'),'internal plan is not exposed to API callers');
+select ok(has_function_privilege('service_role','finalize_purchase_receiving(uuid,uuid,uuid,integer,text,boolean)','EXECUTE') and has_table_privilege('service_role','purchase_invoice_receipts','SELECT') and not has_table_privilege('service_role','purchase_invoice_receipts','INSERT'),'server uses guarded RPC and read-only receipt history');
+select * from finish();
+rollback;

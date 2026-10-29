@@ -2,10 +2,9 @@
 import { requirePosOperator } from "@/modules/auth/application/auth-service";
 import { parseAdminProductFilters } from "@/modules/catalog/admin-product-filters";
 import { listAdminProducts, type AdminProductListItem } from "@/modules/catalog/data/admin-product-queries";
-import { ProductBarcodeLookup } from "@/modules/catalog/components/product-barcode-lookup";
 import { ProductStatus, StockValue, hasDisplayValue, productLinkClass, productPrimaryLinkClass } from "@/modules/catalog/components/product-presentation";
 import { formatRupiah } from "@/modules/ui/currency";
-import { Button, Card, CardContent, Container, FormField, Input, Label, Select } from "@/modules/ui/components";
+import { Button, Card, CardContent, Container, FormField, Input, Label } from "@/modules/ui/components";
 
 export default async function ProductsPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const employee = await requirePosOperator();
@@ -28,20 +27,16 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
   const filtered = Boolean(filters.q || filters.status !== "active" || filters.prescription !== "all");
 
   return <Container size="xl" className="space-y-7">
-    <header className="flex flex-wrap items-center justify-between gap-4"><h1 className="text-2xl font-semibold text-gray-900">Daftar Barang</h1>{owner ? <Link href="/products/new" className={productPrimaryLinkClass}>Tambah Barang</Link> : null}</header>
+    <header className="flex flex-wrap items-center justify-between gap-4"><h1 className="text-2xl font-semibold text-gray-900">Daftar Barang</h1>{owner ? <div className="flex flex-wrap items-start gap-3"><Link href="/products/new" className={productPrimaryLinkClass}>Tambah Master Produk</Link><Link href="/purchase-invoices/new" className={productLinkClass}>Terima Barang</Link><Link href="/purchase-invoices" className={productLinkClass}>Invoice Pembelian</Link></div> : null}</header>
+    {owner ? <Card><CardContent className="space-y-4"><h2 className="text-lg font-semibold">Pengaturan Barang</h2><nav aria-label="Pengaturan barang" className="flex flex-wrap gap-3">{[["categories", "Kelola Kategori"], ["subcategories", "Kelola Subkategori"], ["taxes", "Kelola Pajak"], ["suppliers", "Kelola Pemasok"], ["import", "Impor Barang"]].map(([path, label]) => <Link key={path} href={`/products/${path}`} className={productLinkClass}>{label}</Link>)}</nav></CardContent></Card> : null}
     <Card><CardContent className="space-y-5">
-      <form id="product-filters" key={href(filters.page)} action="/products" className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-        <FormField className="min-w-0 sm:col-span-2 xl:col-span-1"><Label htmlFor="product-search">Cari nama atau SKU</Label><Input id="product-search" name="q" defaultValue={filters.q} placeholder="Nama barang atau SKU" maxLength={80} /></FormField>
-        <FormField><Label htmlFor="product-status">Status barang</Label><Select id="product-status" name="status" defaultValue={filters.status}><option value="active">Aktif</option><option value="inactive">Nonaktif</option><option value="all">Semua status</option></Select></FormField>
-        <FormField><Label htmlFor="product-prescription">Kebutuhan resep</Label><Select id="product-prescription" name="prescription" defaultValue={filters.prescription}><option value="all">Semua barang</option><option value="required">Perlu resep</option><option value="non_prescription">Tanpa resep</option></Select></FormField>
-      </form>
-      <div className="flex flex-wrap gap-3"><Button form="product-filters" type="submit">Cari Barang</Button><Link href="/products" className={productLinkClass}>Atur Ulang</Link><ProductBarcodeLookup /></div>
+      <form key={href(filters.page)} action="/products" className="flex flex-col gap-4 sm:flex-row sm:items-end"><FormField className="min-w-0 flex-1"><Label htmlFor="product-search">Cari nama barang / SKU / barcode</Label><Input id="product-search" name="q" defaultValue={filters.q} placeholder="Nama barang, SKU, atau barcode" maxLength={80} /></FormField><Button type="submit">Cari Barang</Button><Link href="/products" className={productLinkClass}>Atur Ulang</Link></form>
     </CardContent></Card>
 
     {error ? <Card><CardContent><p role="alert" className="text-base text-red-800">Daftar barang belum dapat dimuat. Pilihan pencarian tetap tersimpan.</p><div className="mt-5 flex flex-wrap gap-3"><Link href={href(filters.page)} className={productLinkClass}>Coba Lagi</Link>{filters.page > 1 ? <Link href={href(1)} className={productLinkClass}>Ke Halaman Pertama</Link> : null}</div></CardContent></Card> : <>
       {!rows.length ? <Card><CardContent className="space-y-4 py-10!">
         <h2 className="text-xl font-semibold text-gray-900">{total > 0 ? "Tidak ada barang di halaman ini." : filtered ? "Tidak ada barang yang cocok." : "Belum ada barang aktif."}</h2>
-        <p className="text-base text-gray-600">Coba nama lain atau ubah pilihan status dan resep.</p>
+        <p className="text-base text-gray-600">Coba nama barang, SKU, atau barcode lain.</p>
         {filters.page > 1 ? <Link href={href(1)} className={productLinkClass}>Ke Halaman Pertama</Link> : null}
       </CardContent></Card> : <>
         <Card className="hidden xl:block"><table className="w-full table-fixed text-left text-base">
@@ -66,6 +61,5 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
       </>}
       {total > 0 ? <nav aria-label="Halaman daftar barang" className="flex flex-wrap items-center justify-between gap-5"><p className="text-base text-gray-700">{total.toLocaleString("id-ID")} barang · Halaman {filters.page} dari {pages}</p><div className="flex flex-wrap gap-3">{filters.page > 1 ? <Link href={href(filters.page - 1)} className={productLinkClass}>Sebelumnya</Link> : <span aria-disabled="true" className={`${productLinkClass} opacity-50`}>Sebelumnya</span>}{filters.page < pages ? <Link href={href(filters.page + 1)} className={productLinkClass}>Berikutnya</Link> : <span aria-disabled="true" className={`${productLinkClass} opacity-50`}>Berikutnya</span>}</div></nav> : null}
     </>}
-    {owner ? <details className="rounded-xl border border-gray-200 bg-white px-5"><summary className="min-h-14 cursor-pointer py-4 text-base font-medium text-gray-800">Pengaturan Barang</summary><nav aria-label="Pengaturan barang" className="grid gap-3 border-t border-gray-200 py-5 sm:grid-cols-2 xl:grid-cols-4"><Link href="/products/categories" className={productLinkClass}>Kelola Kategori</Link><Link href="/products/subcategories" className={productLinkClass}>Kelola Subkategori</Link><Link href="/products/taxes" className={productLinkClass}>Kelola Pajak</Link><Link href="/products/import" className={productLinkClass}>Impor Barang</Link></nav></details> : null}
   </Container>;
 }

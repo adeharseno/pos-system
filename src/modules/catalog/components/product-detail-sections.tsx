@@ -35,7 +35,7 @@ export function ProductDetailSections({ product, owner, canViewSensitivePricing 
         <p className="text-base text-gray-700">per {product.baseUnit}</p>
         <dl className="text-base"><div className="flex flex-wrap justify-between gap-3 border-t border-gray-200 pt-5"><dt className="text-gray-600">Pajak</dt><dd className="font-medium text-gray-900">{product.taxRate > 0 ? `${product.taxRate.toLocaleString("id-ID")}%` : "Tidak dikenakan"}</dd></div></dl>
         {canViewSensitivePricing ? <details className="border-t border-gray-200 pt-1"><summary className="min-h-13 cursor-pointer py-4 text-base font-medium text-gray-800">Harga Modal &amp; Margin</summary><dl className="grid gap-5 pb-3 text-base sm:grid-cols-2">
-          {product.costPrice !== undefined ? <div><dt className="text-gray-600">Harga modal</dt><dd className="mt-2 break-words font-semibold text-gray-900 tabular">{formatRupiah(product.costPrice)}</dd></div> : null}
+          {product.costPrice !== undefined ? <div><dt className="text-gray-600">Harga modal</dt><dd className="mt-2 break-words font-semibold text-gray-900 tabular">{product.costPrice === null ? "Belum diatur" : formatRupiah(product.costPrice)}</dd></div> : null}
           <div><dt className="text-gray-600">Margin</dt><dd className="mt-2 font-semibold text-gray-900">{product.marginPercent === null || product.marginPercent === undefined ? "Belum dapat dihitung" : `${product.marginPercent.toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`}</dd></div>
         </dl></details> : null}
       </CardContent></Card>
