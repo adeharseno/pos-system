@@ -62,10 +62,9 @@ export function InvoiceForm({ invoice, onSaved, onWorkingChange }: { invoice?: I
       <FormField><Label htmlFor="invoice_date">Tanggal Invoice</Label><Input id="invoice_date" name="invoice_date" type="date" required defaultValue={invoice?.invoice_date ?? ""} /></FormField>
       <FormField><Label htmlFor="total_amount">Total Belanja (Rp)</Label><Input id="total_amount" name="total_amount" type="number" inputMode="decimal" min="0.01" max="999999999999.99" step="0.01" required value={total} onChange={event => setTotal(event.target.value)} /></FormField>
       <FormField><Label htmlFor="paid_amount">Jumlah Dibayarkan (Rp)</Label><Input id="paid_amount" name="paid_amount" type="number" inputMode="decimal" min="0" max={total || undefined} step="0.01" required value={paid} onChange={event => setPaid(event.target.value)} /></FormField>
-      <FormField className="md:col-span-2"><Label htmlFor="document">Upload Invoice (opsional)</Label><Input id="document" name="document" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" /><p className="text-base text-gray-600">Foto JPG, PNG, WebP, atau PDF. Maksimal 10 MB.</p>{invoice?.document_name ? <p className="break-words text-base text-gray-700">Dokumen saat ini: {invoice.document_name}. Kosongkan untuk tetap menggunakan dokumen ini.</p> : null}</FormField>
+      <FormField className="md:col-span-2"><Label htmlFor="document">Upload Invoice (tidak wajib)</Label><Input id="document" name="document" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" />{invoice?.document_name ? <p className="break-words text-base text-gray-700">Dokumen saat ini: {invoice.document_name}. Kosongkan untuk tetap menggunakan dokumen ini.</p> : null}</FormField>
     </fieldset>
     <p role="status" className="text-base font-medium">Status Pembayaran: {status}</p>
-    <p className="text-base text-gray-600">Invoice disimpan sebagai Draft. Belum menambah stok atau mengubah harga.</p>
     {error ? <p role="alert" className="rounded-lg bg-red-50 p-4 text-base text-red-800">{error}</p> : null}
     {uncertain ? <Link className="inline-flex min-h-12 items-center font-medium text-brand-600 underline" href="/purchase-invoices">Periksa Daftar Invoice</Link> : null}
     <FormActions><Button type="submit" disabled={busy}>{busy ? "Menyimpan..." : "Simpan Invoice"}</Button></FormActions>
