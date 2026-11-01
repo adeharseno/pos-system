@@ -18,6 +18,10 @@ export function normalizeEmail(value: unknown) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new PosInputError("invalid email");
   return email;
 }
+export function employeePassword(value: unknown) {
+  if (typeof value !== "string" || value.length < 4 || value.length > 128) throw new PosInputError("invalid password");
+  return value;
+}
 function date(value: unknown) {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value) ||
       Number.isNaN(Date.parse(value)) || new Date(value).toISOString().slice(0, 10) !== value) throw new PosInputError("invalid date");

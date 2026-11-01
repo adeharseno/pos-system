@@ -9,10 +9,11 @@ type ModalProps = {
   onClose: () => void;
   open: boolean;
   keepMounted?: boolean;
+  size?: "md" | "lg" | "xl";
 };
 
 // TailAdmin rounded modal surface and backdrop, with native focus containment.
-export function Modal({ children, labelledBy, onClose, open, keepMounted = false }: ModalProps) {
+export function Modal({ children, labelledBy, onClose, open, keepMounted = false, size = "md" }: ModalProps) {
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const element = dialog.current;
@@ -38,7 +39,7 @@ export function Modal({ children, labelledBy, onClose, open, keepMounted = false
       className="fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none overflow-y-auto bg-transparent p-4 text-[var(--text)] backdrop:bg-gray-400/50 backdrop:backdrop-blur-sm"
     >
       <div className="pointer-events-none flex min-h-full items-center justify-center">
-        <div className="pointer-events-auto w-full max-w-lg overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--surface)] shadow-theme-lg">
+        <div className={`pointer-events-auto w-full ${size === "xl" ? "max-w-3xl" : size === "lg" ? "max-w-2xl" : "max-w-lg"} overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--surface)] shadow-theme-lg`}>
           {children}
         </div>
       </div>

@@ -2,7 +2,7 @@ import "server-only";
 import { requirePermission } from "./auth-service";
 import { AuthApplicationError } from "../errors";
 import { EmployeeManagementError } from "../employee-errors";
-import { allowedKeys, employeeRole, employeeValues, employeeOriginAllowed, invitationRedirect, normalizeEmail, permissionChange, requiredText } from "../employee-validation";
+import { allowedKeys, employeePassword, employeeRole, employeeValues, employeeOriginAllowed, invitationRedirect, normalizeEmail, permissionChange, requiredText } from "../employee-validation";
 import { employeeRpc, ensureInvitationUser, invitationClaim } from "../data/employee-repository";
 import { inviteEmployeeWith } from "./invitation-workflow";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
@@ -56,6 +56,57 @@ export async function writeEmployee(operation: "create" | "edit" | "access" | "r
   const employeeId = await employeeRpc("employee_admin_write", { p_actor: actor.authUserId, p_operation: operation,
     p_employee: id ? requireUuid(id, "employee_id") : null, p_values: values, p_reason: reason });
   return { employee_id: employeeId, message: operation === "create" ? "Pegawai berhasil ditambahkan." : "Data pegawai berhasil diperbarui." };
+}
+
+/**
+ * Creates an employee together with a ready-to-use login account. The admin
+ * supplies the initial password directly, so no invitation email is sent.
+ */
+export async function createEmployeeAccount(body: Record<string, unknown>) {
+  const actor = await requireEmployeeManager("employees.create");
+  allowedKeys(body, ["request_id", "full_name", "phone", "join_date", "position", "email", "password", "reason"]);
+  const email = normalizeEmail(body.email);
+  const password = employeePassword(body.password);
+  const reason = requiredText(body.reason ?? "Penambahan karyawan");
+  const raw: Record<string, unknown> = {
+    request_id: body.request_id, full_name: body.full_name, position: body.position,
+    phone: body.phone ?? null, reason,
+  };
+  if (typeof body.join_date === "string" && body.join_date) raw.join_date = body.join_date;
+  const values = employeeValues(raw, true);
+
+  const employeeId = await employeeRpc("employee_admin_write", {
+    p_actor: actor.authUserId, p_operation: "create", p_employee: null, p_values: values, p_reason: reason,
+  });
+  if (typeof employeeId !== "string") throw new EmployeeManagementError("PROVISIONING_FAILED");
+
+  const command = (operation: string, attempt?: string, failure?: string) => employeeRpc("employee_invitation_command", {
+    p_actor: actor.authUserId, p_operation: operation, p_employee: employeeId,
+    p_email: email, p_attempt: attempt, p_failure: failure,
+  });
+  const claim = invitationClaim(await command("claim"));
+  if (claim.email !== email) throw new EmployeeManagementError("EMAIL_CONFLICT");
+
+  const admin = createAdminSupabaseClient().auth.admin;
+  const created = await admin.createUser({ id: claim.auth_user_id, email: claim.email, password, email_confirm: true });
+  if (created.error) {
+    // A previous attempt may have committed the user even if the response was lost.
+    const existing = await admin.getUserById(claim.auth_user_id);
+    if (!existing.data.user || existing.data.user.email?.toLowerCase() !== claim.email) {
+      const code = created.error.code === "email_exists" ? "EMAIL_CONFLICT" : "PROVISIONING_FAILED";
+      try { await command("fail", claim.attempt_id, code); } catch { /* lease recovery */ }
+      throw new EmployeeManagementError(code);
+    }
+  }
+
+  try {
+    await command("link", claim.attempt_id);
+    await employeeRpc("employee_invitation_accept", { p_auth_user: claim.auth_user_id, p_complete: true });
+  } catch (error) {
+    try { await command("fail", claim.attempt_id, "PROVISIONING_FAILED"); } catch { /* lease recovery */ }
+    throw error;
+  }
+  return { employee_id: employeeId, message: "Karyawan berhasil ditambahkan." };
 }
 export async function getEmployeePermissions(id: string) {
   const actor = await requireEmployeeManager("permissions.manage");

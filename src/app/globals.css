@@ -82,6 +82,27 @@ button:disabled { cursor: not-allowed; }
   outline-offset: 2px;
 }
 
+/* The Rupiah input draws its own focus ring on the wrapper, so the inner
+   text field must not add a second outline. Unlayered to beat :focus-visible. */
+.rupiah-input-field:focus,
+.rupiah-input-field:focus-visible {
+  outline: none;
+}
+
+/* Cart quantity box sits inside a bordered stepper, so the inner field must
+   not draw the blue focus outline. Unlayered to beat :focus-visible. */
+.qty-input-field:focus,
+.qty-input-field:focus-visible {
+  outline: none;
+}
+
+/* Inputs whose focus ring is drawn by a wrapper (e.g. the cash received
+   field) must not add the inner blue focus outline. */
+.plain-input-field:focus,
+.plain-input-field:focus-visible {
+  outline: none;
+}
+
 .ui-select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='m5 7.5 5 5 5-5' stroke='%23667085' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;

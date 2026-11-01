@@ -5,6 +5,7 @@ const base={width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentCo
 export const MenuIcon=(props:IconProps)=><svg {...base} {...props}><path d="M4 7h16M4 12h16M4 17h16"/></svg>;
 export const CloseIcon=(props:IconProps)=><svg {...base} {...props}><path d="m6 6 12 12M18 6 6 18"/></svg>;
 export const SearchIcon=(props:IconProps)=><svg {...base} {...props}><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>;
+export const EmptySearchIcon=(props:IconProps)=><svg {...base} {...props}><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6M9 13h4"/></svg>;
 export const CartIcon=(props:IconProps)=><svg {...base} {...props}><path d="M3 4h2l2.2 10.2a2 2 0 0 0 2 1.6h7.9a2 2 0 0 0 2-1.6L20.5 8H6"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>;
 export const SaleIcon=(props:IconProps)=><svg {...base} {...props}><path d="M5 4h14v16H5zM8 8h8M8 12h5"/></svg>;
 export const BoxIcon=(props:IconProps)=><svg {...base} {...props}><path d="m4 7 8-4 8 4-8 4-8-4Z"/><path d="m4 7 8 4 8-4v10l-8 4-8-4Z"/><path d="M12 11v10"/></svg>;

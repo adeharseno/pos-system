@@ -29,8 +29,13 @@ export function CardContent({ className, ...props }: ComponentProps<"div">) {
   return <div className={classes("p-5 sm:p-6", className)} {...props} />;
 }
 
+export function FormError({ id, children, className }: { id?: string; children?: ReactNode; className?: string }) {
+  if (children === null || children === undefined || children === false || children === "") return null;
+  return <p id={id} role="alert" className={classes("text-sm font-medium text-[var(--danger)]", className)}>{children}</p>;
+}
+
 export function FormField({ children, className, error }: { children: ReactNode; className?: string; error?: string }) {
-  return <div className={classes("grid gap-2", className)}>{children}{error ? <p role="alert" className="text-xs leading-5 text-[var(--danger)]">{error}</p> : null}</div>;
+  return <div className={classes("grid content-start gap-2", className)}>{children}{error ? <FormError className="text-xs leading-5">{error}</FormError> : null}</div>;
 }
 
 export function Label({ className, ...props }: ComponentProps<"label">) {

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { canInvite, filterEmployees, lastUsableOwner, knownPermissions, parseEmployeeAccess, parseEmployees, protectedPermission, type EmployeeRow } from "./employee-ui-model";
-import { employeeFormError, passwordSetupError } from "./employee-form-rules";
+import { employeeFormError, employeePasswordError, passwordSetupError } from "./employee-form-rules";
 import { employeeOriginAllowed, permissionChange } from "./employee-validation";
 import { PERMISSIONS } from "./permissions";
 import { PERMISSION_GROUPS, PERMISSION_LABELS } from "./permission-labels";
@@ -74,6 +74,10 @@ test("password setup validates length and confirmation without altering entered 
   assert.match(passwordSetupError("short", "short")!, /12 hingga 128/);
   assert.match(passwordSetupError("TwelveCharacters!", "DifferentValue!")!, /belum sama/);
   assert.equal(passwordSetupError("TwelveCharacters!", "TwelveCharacters!"), null);
+});
+test("direct account creation validates the single password field", () => {
+  assert.match(employeePasswordError("abc")!, /4 hingga 128/);
+  assert.equal(employeePasswordError("abcd"), null);
 });
 test("explicit local aliases are allowed while unconfigured and deceptive origins stay denied", () => {
   assert.equal(employeeOriginAllowed("http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3000"), true);

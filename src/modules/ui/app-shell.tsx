@@ -6,11 +6,11 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
 import type { EmployeeRole } from "@/modules/auth/types";
 import { UserMenu } from "./user-menu";
-import { BoxIcon, CashDrawerIcon, ChartIcon, CloseIcon, HomeIcon, MenuIcon, SaleIcon, UsersIcon } from "./icons";
+import { BoxIcon, CashDrawerIcon, ChartIcon, CloseIcon, HomeIcon, MenuIcon, UsersIcon } from "./icons";
 
 type NavItem = { label: string; href: string; icon: ComponentType<SVGProps<SVGSVGElement>>; admin?: boolean; posOperator?: boolean };
 const groups: Array<{ label: string; items: NavItem[] }> = [
-  { label: "Operasional", items: [{ label: "Beranda", href: "/dashboard", icon: HomeIcon }, { label: "Penjualan Baru", href: "/cashier", icon: SaleIcon, posOperator: true }, { label: "Sesi Kasir", href: "/cash-drawer", icon: CashDrawerIcon, posOperator: true }, { label: "Transaksi", href: "/transactions", icon: ChartIcon }] },
+  { label: "Operasional", items: [{ label: "Beranda", href: "/dashboard", icon: HomeIcon }, { label: "Sesi Kasir", href: "/cash-drawer", icon: CashDrawerIcon, posOperator: true }, { label: "Riwayat Sesi", href: "/cash-drawer/sessions", icon: CashDrawerIcon, admin: true }, { label: "Transaksi", href: "/transactions", icon: ChartIcon }] },
   { label: "Persediaan", items: [{ label: "Daftar Barang", href: "/products", icon: BoxIcon }, { label: "Persediaan", href: "/inventory", icon: BoxIcon }, { label: "Perhitungan Stok", href: "/inventory/opname", icon: ChartIcon, admin: true }] },
   { label: "Pengelolaan", items: [{ label: "Laporan", href: "/reports", icon: ChartIcon, admin: true }, { label: "Karyawan", href: "/employees", icon: UsersIcon, admin: true }] },
 ];
@@ -40,7 +40,8 @@ export function AppShell({ employee, children }: { employee: { name: string; rol
   const currentItem = groups.flatMap(group => group.items).filter(item => item.href !== "#" && (pathname === item.href || pathname.startsWith(`${item.href}/`))).sort((a, b) => b.href.length - a.href.length)[0];
   const title = currentItem?.label ?? (pathname === "/cash-drawer" ? "Sesi kasir" : pathname === "/expenses" ? "Pengeluaran" : "Beranda");
 
-  if (pathname === "/cashier" || pathname.startsWith("/cashier/")) return <div className="flex h-[100dvh] flex-col overflow-hidden"><header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[var(--border)] bg-white px-4 py-2"><Link href="/dashboard" className="mr-auto min-h-11 content-center text-sm font-semibold text-gray-700 hover:text-brand-500">Kembali ke Beranda</Link><nav aria-label="Menu kasir" className="flex items-center gap-2"><Link href="/cashier" aria-current={pathname === "/cashier" ? "page" : undefined} className={`rounded-lg px-4 py-3 text-sm font-medium ${pathname === "/cashier" ? "bg-brand-50 text-brand-500" : "text-gray-600 hover:bg-gray-50"}`}>Penjualan Baru</Link><Link href="/cashier/returns" aria-current={pathname === "/cashier/returns" ? "page" : undefined} className={`rounded-lg px-4 py-3 text-sm font-medium ${pathname === "/cashier/returns" ? "bg-brand-50 text-brand-500" : "text-gray-600 hover:bg-gray-50"}`}>Retur</Link>{(employee.role === "owner_admin" || employee.role === "kasir") ? <Link href="/cash-drawer" className="rounded-lg border border-[var(--border)] px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50">Kelola Sesi</Link> : null}</nav></header>{children}</div>;
+  if (pathname === "/cashier" || pathname.startsWith("/cashier/")) return <div className="flex h-[100dvh] flex-col overflow-hidden">{children}</div>;
+  if (pathname === "/cash-drawer") return <div className="flex h-[100dvh] flex-col overflow-y-auto">{children}</div>;
 
   const nav = <>
     <Link href="/dashboard" onClick={() => setOpen(false)} className="mb-8 flex min-h-16 items-center gap-3">
