@@ -1,8 +1,9 @@
 {
   "subkategori": {},
-  "klasifikasi": {
-    "OBAT BEBAS": "otc",
-    "OBAT RESEP": "prescription_required",
-    "PSIKOTROPIKA": "prescription_required"
+  "kategori": {
+    "OBAT BEBAS": "OBAT BEBAS",
+    "OBAT RESEP": "OBAT RESEP",
+    "RACIK": "RACIK",
+    "PSIKOTROPIKA": "PSIKOTROPIKA"
   }
 }

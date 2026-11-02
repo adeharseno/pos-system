@@ -22,7 +22,7 @@ type RowInput = {
   sku?: string;
   unit?: string;
   sub?: string;
-  klasifikasi?: string;
+  kategori?: string;
   supplier?: string;
 };
 
@@ -36,7 +36,7 @@ function sheet(rows: RowInput[]) {
       row.sku ?? "",
       row.unit ?? "TAB",
       row.sub ?? "",
-      row.klasifikasi ?? "",
+      row.kategori ?? "",
       row.supplier ?? "",
     ]),
   ];
@@ -44,12 +44,20 @@ function sheet(rows: RowInput[]) {
 
 const defaultMapping: ProductImportMapping = {
   subkategori: {},
-  klasifikasi: {
-    "OBAT BEBAS": "otc",
-    "OBAT RESEP": "prescription_required",
-    "PSIKOTROPIKA": "prescription_required",
+  kategori: {
+    "OBAT BEBAS": "OBAT BEBAS",
+    "OBAT RESEP": "OBAT RESEP",
+    "RACIK": "RACIK",
+    "PSIKOTROPIKA": "PSIKOTROPIKA",
   },
 };
+
+const defaultCategories = [
+  { id: "cat-obat-bebas", name: "OBAT BEBAS" },
+  { id: "cat-obat-resep", name: "OBAT RESEP" },
+  { id: "cat-racik", name: "RACIK" },
+  { id: "cat-psikotropika", name: "PSIKOTROPIKA" },
+];
 
 const defaultSubcategories = [
   { id: "sub-tablet", name: "Tablet" },
@@ -60,6 +68,16 @@ const defaultSuppliers = [
   { id: "sup-a", name: "PT A", is_active: true },
   { id: "sup-b", name: "PT B", is_active: true },
 ];
+
+function lookups(overrides: Partial<ProductImportLookups> = {}): ProductImportLookups {
+  return {
+    categories: defaultCategories,
+    subcategories: defaultSubcategories,
+    suppliers: defaultSuppliers,
+    products: [],
+    ...overrides,
+  };
+}
 
 type StoredProduct = ExistingProduct & {
   base_unit: string;
@@ -83,6 +101,7 @@ type MemoryStore = ProductImportStore & {
 function memoryStore(
   options: {
     products?: ExistingProduct[];
+    categories?: ProductImportLookups["categories"];
     subcategories?: ProductImportLookups["subcategories"];
     suppliers?: ProductImportLookups["suppliers"];
   } = {},
@@ -103,12 +122,14 @@ function memoryStore(
     applyCalls: () => state.applyCalls,
     async loadLookups() {
       return {
+        categories: options.categories ?? defaultCategories,
         subcategories: options.subcategories ?? defaultSubcategories,
         suppliers: options.suppliers ?? defaultSuppliers,
         products: [...state.products.values()].map((product) => ({
           id: product.id,
           sku: product.sku,
           name: product.name,
+          category_id: product.category_id,
           subcategory_id: product.subcategory_id,
           default_supplier_id: product.default_supplier_id,
         })),
@@ -123,6 +144,7 @@ function memoryStore(
             id,
             sku: write.value.sku,
             name: write.value.name,
+            category_id: write.value.category_id,
             subcategory_id: write.value.subcategory_id,
             default_supplier_id: write.value.default_supplier_id,
             base_unit: write.value.base_unit,
@@ -140,6 +162,7 @@ function memoryStore(
         } else {
           const product = state.products.get(write.value.id);
           if (!product) throw new Error(`missing product ${write.value.id}`);
+          product.category_id = write.value.category_id;
           product.subcategory_id = write.value.subcategory_id;
           product.default_supplier_id = write.value.default_supplier_id;
         }
@@ -157,7 +180,7 @@ test("SKU stays text with leading zeros and comma prices are parsed", () => {
         sku: "00200710",
         unit: "TAB",
         sub: "Tablet",
-        klasifikasi: "OBAT BEBAS",
+        kategori: "OBAT BEBAS",
         supplier: "PT A",
       },
     ]),
@@ -168,14 +191,15 @@ test("SKU stays text with leading zeros and comma prices are parsed", () => {
   assert.equal(parsed.records[0].sku, "00200710");
   assert.equal(parsed.records[0].price, 16500);
   assert.equal(parsed.records[0].baseUnit, "TAB");
+  assert.equal(parsed.records[0].category, "OBAT BEBAS");
 });
 
 test("empty names are skipped and later duplicate names are reported", () => {
   const parsed = mapLegacyProductRows(
     sheet([
       { name: "", sku: "EMPTY-1" },
-      { name: "Produk A", sku: "SKU-1", sub: "Tablet", klasifikasi: "OBAT BEBAS", supplier: "PT A" },
-      { name: " produk a ", sku: "SKU-2", sub: "Bebas", klasifikasi: "OBAT RESEP", supplier: "PT B" },
+      { name: "Produk A", sku: "SKU-1", sub: "Tablet", kategori: "OBAT BEBAS", supplier: "PT A" },
+      { name: " produk a ", sku: "SKU-2", sub: "Bebas", kategori: "OBAT RESEP", supplier: "PT B" },
     ]),
   );
 
@@ -184,11 +208,7 @@ test("empty names are skipped and later duplicate names are reported", () => {
   assert.equal(parsed.skippedDuplicate, 1);
   assert.equal(parsed.records.length, 1);
 
-  const plan = buildProductImportPlan(parsed, defaultMapping, {
-    subcategories: defaultSubcategories,
-    suppliers: defaultSuppliers,
-    products: [],
-  });
+  const plan = buildProductImportPlan(parsed, defaultMapping, lookups());
   assert.equal(plan.summary.inserted, 1);
   assert.ok(plan.issues.some((issue) => issue.issue === "empty name"));
   assert.ok(plan.issues.some((issue) => issue.issue.startsWith("duplicate name (first at row 2)")));
@@ -203,11 +223,7 @@ test("empty units are inferred from the product name", () => {
     ]),
   );
 
-  const plan = buildProductImportPlan(parsed, defaultMapping, {
-    subcategories: defaultSubcategories,
-    suppliers: defaultSuppliers,
-    products: [],
-  });
+  const plan = buildProductImportPlan(parsed, defaultMapping, lookups());
   assert.equal(plan.summary.inferredUnits, 3);
   assert.deepEqual(plan.summary.inferredUnitCounts, { TAB: 1, BTL: 1, PCS: 1 });
   const inserted = plan.writes.flatMap((write) => (write.kind === "insert" ? [write.value] : []));
@@ -222,13 +238,22 @@ test("generated SKUs continue after the highest N- number and never collide", ()
       { name: "New C", sku: "" },
     ]),
   );
-  const plan = buildProductImportPlan(parsed, defaultMapping, {
-    subcategories: defaultSubcategories,
-    suppliers: defaultSuppliers,
-    products: [
-      { id: "existing", sku: "N-00003", name: "Existing", subcategory_id: null, default_supplier_id: null },
-    ],
-  });
+  const plan = buildProductImportPlan(
+    parsed,
+    defaultMapping,
+    lookups({
+      products: [
+        {
+          id: "existing",
+          sku: "N-00003",
+          name: "Existing",
+          category_id: null,
+          subcategory_id: null,
+          default_supplier_id: null,
+        },
+      ],
+    }),
+  );
 
   const skus = plan.writes.flatMap((write) => (write.kind === "insert" ? [write.value.sku] : []));
   assert.deepEqual(skus, ["N-00006", "N-00005", "N-00007"]);
@@ -240,11 +265,7 @@ test("zero price creates the product without a selling price or unit row", async
   const parsed = mapLegacyProductRows(
     sheet([{ name: "Produk Gratis", harga: "0", sku: "ZERO-1", unit: "TAB" }]),
   );
-  const plan = buildProductImportPlan(parsed, defaultMapping, {
-    subcategories: defaultSubcategories,
-    suppliers: defaultSuppliers,
-    products: [],
-  });
+  const plan = buildProductImportPlan(parsed, defaultMapping, lookups());
 
   assert.equal(plan.summary.zeroPrice, 1);
   const insert = plan.writes[0];
@@ -261,14 +282,16 @@ test("an ambiguous supplier becomes NULL and is reported", () => {
   const parsed = mapLegacyProductRows(
     sheet([{ name: "Produk A", sku: "SKU-1", supplier: "PT SANDANA" }]),
   );
-  const plan = buildProductImportPlan(parsed, defaultMapping, {
-    subcategories: defaultSubcategories,
-    suppliers: [
-      { id: "sandana-1", name: "PT SANDANA", is_active: true },
-      { id: "sandana-2", name: "PT SANDANA", is_active: true },
-    ],
-    products: [],
-  });
+  const plan = buildProductImportPlan(
+    parsed,
+    defaultMapping,
+    lookups({
+      suppliers: [
+        { id: "sandana-1", name: "PT SANDANA", is_active: true },
+        { id: "sandana-2", name: "PT SANDANA", is_active: true },
+      ],
+    }),
+  );
 
   assert.equal(plan.summary.supplierAmbiguous, 1);
   assert.equal(plan.summary.supplierNone, 0);
@@ -282,14 +305,16 @@ test("multiple supplier matches prefer the only active row", () => {
   const parsed = mapLegacyProductRows(
     sheet([{ name: "Produk A", sku: "SKU-1", supplier: "GUDANG" }]),
   );
-  const plan = buildProductImportPlan(parsed, defaultMapping, {
-    subcategories: defaultSubcategories,
-    suppliers: [
-      { id: "gudang-active", name: "GUDANG", is_active: true },
-      { id: "gudang-inactive", name: "GUDANG", is_active: false },
-    ],
-    products: [],
-  });
+  const plan = buildProductImportPlan(
+    parsed,
+    defaultMapping,
+    lookups({
+      suppliers: [
+        { id: "gudang-active", name: "GUDANG", is_active: true },
+        { id: "gudang-inactive", name: "GUDANG", is_active: false },
+      ],
+    }),
+  );
 
   assert.equal(plan.summary.supplierAmbiguous, 0);
   const insert = plan.writes[0];
@@ -297,17 +322,13 @@ test("multiple supplier matches prefer the only active row", () => {
   if (insert.kind === "insert") assert.equal(insert.value.default_supplier_id, "gudang-active");
 });
 
-test("unmapped values are reported and block a real run without the flag", async () => {
+test("unmapped category is reported and blocks a real run without the flag", async () => {
   const parsed = mapLegacyProductRows(
-    sheet([{ name: "Racikan", sku: "RACIK-1", sub: "Tablet", klasifikasi: "RACIK" }]),
+    sheet([{ name: "Racikan", sku: "RACIK-1", sub: "Tablet", kategori: "KATEGORI ASING" }]),
   );
-  const plan = buildProductImportPlan(parsed, defaultMapping, {
-    subcategories: defaultSubcategories,
-    suppliers: defaultSuppliers,
-    products: [],
-  });
+  const plan = buildProductImportPlan(parsed, defaultMapping, lookups());
 
-  assert.deepEqual(plan.summary.unmappedClassifications, [{ value: "RACIK", count: 1 }]);
+  assert.deepEqual(plan.summary.unmappedCategories, [{ value: "KATEGORI ASING", count: 1 }]);
   assert.deepEqual(plan.summary.unmappedSubcategories, []);
   assert.equal(plan.summary.inserted, 1);
   const insert = plan.writes[0];
@@ -325,25 +346,57 @@ test("unmapped values are reported and block a real run without the flag", async
   assert.equal(store.applyCalls(), 1);
 });
 
-test("existing products only fill NULL lookup fields", () => {
+test("Klasifikasi becomes a category and drug classification stays at the default", () => {
   const parsed = mapLegacyProductRows(
     sheet([
-      { name: "Produk A", sku: "SKU-1", sub: "Tablet", klasifikasi: "OBAT BEBAS", supplier: "PT A" },
+      { name: "Bebas A", sku: "SKU-1", sub: "Tablet", kategori: "obat bebas" },
+      { name: "Psikotropika A", sku: "SKU-2", sub: "Tablet", kategori: "PSIKOTROPIKA" },
+      { name: "Tanpa kategori", sku: "SKU-3" },
     ]),
   );
-  const plan = buildProductImportPlan(parsed, defaultMapping, {
-    subcategories: defaultSubcategories,
-    suppliers: defaultSuppliers,
-    products: [
-      { id: "product-1", sku: "SKU-1", name: "Produk A", subcategory_id: null, default_supplier_id: null },
+  const plan = buildProductImportPlan(parsed, defaultMapping, lookups());
+
+  const inserted = plan.writes.flatMap((write) => (write.kind === "insert" ? [write.value] : []));
+  assert.deepEqual(
+    inserted.map((value) => [value.category_id, value.drug_classification]),
+    [
+      ["cat-obat-bebas", "otc"],
+      ["cat-psikotropika", "otc"],
+      [null, "otc"],
     ],
-  });
+  );
+  assert.deepEqual(plan.summary.drugClassificationCounts, { otc: 3 });
+});
+
+test("existing products fill NULL category and lookup fields", () => {
+  const parsed = mapLegacyProductRows(
+    sheet([
+      { name: "Produk A", sku: "SKU-1", sub: "Tablet", kategori: "OBAT BEBAS", supplier: "PT A" },
+    ]),
+  );
+  const plan = buildProductImportPlan(
+    parsed,
+    defaultMapping,
+    lookups({
+      products: [
+        {
+          id: "product-1",
+          sku: "SKU-1",
+          name: "Produk A",
+          category_id: null,
+          subcategory_id: null,
+          default_supplier_id: null,
+        },
+      ],
+    }),
+  );
 
   assert.equal(plan.summary.inserted, 0);
   assert.equal(plan.summary.updated, 1);
   const update = plan.writes[0];
   assert.equal(update.kind, "update");
   if (update.kind === "update") {
+    assert.equal(update.value.category_id, "cat-obat-bebas");
     assert.equal(update.value.subcategory_id, "sub-tablet");
     assert.equal(update.value.default_supplier_id, "sup-a");
   }
@@ -352,7 +405,7 @@ test("existing products only fill NULL lookup fields", () => {
 test("a second run inserts zero rows and preserves manual edits", async () => {
   const parsed = mapLegacyProductRows(
     sheet([
-      { name: "Produk A", harga: "10,000", sku: "SKU-1", sub: "Tablet", klasifikasi: "OBAT BEBAS", supplier: "PT A" },
+      { name: "Produk A", harga: "10,000", sku: "SKU-1", sub: "Tablet", kategori: "OBAT BEBAS", supplier: "PT A" },
     ]),
   );
   const store = memoryStore();
@@ -378,7 +431,7 @@ test("a second run inserts zero rows and preserves manual edits", async () => {
 
 test("products with a generated SKU match by name on a second run", async () => {
   const parsed = mapLegacyProductRows(
-    sheet([{ name: "Tanpa SKU", harga: "5,000", sku: "", unit: "", sub: "", klasifikasi: "", supplier: "" }]),
+    sheet([{ name: "Tanpa SKU", harga: "5,000", sku: "", unit: "", sub: "", kategori: "", supplier: "" }]),
   );
   const store = memoryStore();
   const first = buildProductImportPlan(parsed, defaultMapping, await store.loadLookups());
@@ -396,29 +449,27 @@ test("products with a generated SKU match by name on a second run", async () => 
   assert.equal(store.products.size, 1);
 });
 
-test("mapping JSON overrides default case-insensitive lookup", () => {
+test("mapping JSON overrides default category and subcategory lookup", () => {
   const parsed = mapLegacyProductRows(
-    sheet([{ name: "Produk A", sku: "SKU-1", sub: "TAB", klasifikasi: "OBAT RESEP" }]),
+    sheet([{ name: "Produk A", sku: "SKU-1", sub: "TAB", kategori: "KATEGORI LAMA" }]),
   );
   const plan = buildProductImportPlan(
     parsed,
     {
       subkategori: { TAB: "Tablet" },
-      klasifikasi: { "OBAT RESEP": "prescription_required" },
+      kategori: { "KATEGORI LAMA": "OBAT BEBAS" },
     },
-    {
-      subcategories: defaultSubcategories,
-      suppliers: defaultSuppliers,
-      products: [],
-    },
+    lookups(),
   );
 
   const insert = plan.writes[0];
   assert.equal(insert.kind, "insert");
   if (insert.kind === "insert") {
+    assert.equal(insert.value.category_id, "cat-obat-bebas");
     assert.equal(insert.value.subcategory_id, "sub-tablet");
-    assert.equal(insert.value.drug_classification, "prescription_required");
+    assert.equal(insert.value.drug_classification, "otc");
   }
+  assert.deepEqual(plan.summary.unmappedCategories, []);
   assert.deepEqual(plan.summary.unmappedSubcategories, []);
-  assert.deepEqual(plan.summary.unmappedClassifications, []);
+  assert.deepEqual(plan.summary.drugClassificationCounts, { otc: 1 });
 });

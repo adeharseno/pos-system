@@ -4,6 +4,10 @@ export const DRUG_CLASSIFICATIONS = ["otc", "otc_limited", "prescription_require
 
 export type DrugClassification = (typeof DRUG_CLASSIFICATIONS)[number];
 
+// The current enum has no psychotropic-specific value. If one is added later,
+// point this constant at it and PSIKOTROPIKA products will use it.
+const PSYCHOTROPIC_CLASSIFICATION: DrugClassification | null = null;
+
 export type LegacyProductRecord = {
   rowNumber: number;
   name: string;
@@ -11,8 +15,8 @@ export type LegacyProductRecord = {
   sku: string | null;
   baseUnit: string;
   unitInferred: boolean;
+  category: string | null;
   subcategory: string | null;
-  classification: string | null;
   supplier: string | null;
 };
 
@@ -32,18 +36,20 @@ export type ParsedProductRows = {
 
 export type ProductImportMapping = {
   subkategori: Record<string, string>;
-  klasifikasi: Record<string, string>;
+  kategori: Record<string, string>;
 };
 
 export type ExistingProduct = {
   id: string;
   sku: string;
   name: string;
+  category_id: string | null;
   subcategory_id: string | null;
   default_supplier_id: string | null;
 };
 
 export type ProductImportLookups = {
+  categories: Array<{ id: string; name: string }>;
   subcategories: Array<{ id: string; name: string }>;
   suppliers: Array<{ id: string; name: string; is_active: boolean }>;
   products: ExistingProduct[];
@@ -54,6 +60,7 @@ export type ProductImportInsert = {
   name: string;
   sku: string;
   base_unit: string;
+  category_id: string | null;
   subcategory_id: string | null;
   drug_classification: DrugClassification;
   default_supplier_id: string | null;
@@ -65,6 +72,7 @@ export type ProductImportUpdate = {
   rowNumber: number;
   name: string;
   id: string;
+  category_id: string | null;
   subcategory_id: string | null;
   default_supplier_id: string | null;
 };
@@ -85,8 +93,9 @@ export type ProductImportSummary = {
   unchanged: number;
   skippedEmpty: number;
   skippedDuplicate: number;
+  unmappedCategories: UnmappedValue[];
   unmappedSubcategories: UnmappedValue[];
-  unmappedClassifications: UnmappedValue[];
+  drugClassificationCounts: Record<string, number>;
   generatedSkus: number;
   inferredUnits: number;
   inferredUnitCounts: Record<string, number>;
@@ -189,7 +198,7 @@ export function parseProductImportMapping(value: unknown): ProductImportMapping 
   const record = value as Record<string, unknown>;
   return {
     subkategori: stringRecord(record.subkategori, "subkategori"),
-    klasifikasi: stringRecord(record.klasifikasi, "klasifikasi"),
+    kategori: stringRecord(record.kategori, "kategori"),
   };
 }
 
@@ -248,8 +257,8 @@ export function mapLegacyProductRows(rows: readonly (readonly unknown[])[]): Par
       sku: cell(row, "SKU") || null,
       baseUnit: sourceUnit || inferBaseUnit(name),
       unitInferred: !sourceUnit,
+      category: cell(row, "Klasifikasi") || null,
       subcategory: cell(row, "Sub kategori") || null,
-      classification: cell(row, "Klasifikasi") || null,
       supplier: cell(row, "Supplier") || null,
     });
   }
@@ -288,14 +297,27 @@ function resolveSupplier(
 
 /**
  * Builds every write before touching the database. Existing products keep
- * their name, unit, price and classification; only NULL subcategory/supplier
- * fields may be filled. New products get the form's minimum-stock default.
+ * their name, unit, price and classification; only NULL category, subcategory
+ * and supplier fields may be filled. New products get the form's
+ * minimum-stock default.
  */
 export function buildProductImportPlan(
   parsed: ParsedProductRows,
   mapping: ProductImportMapping,
   lookups: ProductImportLookups,
 ): ProductImportPlan {
+  const categories = new Map<string, { id: string; name: string }>();
+  for (const category of lookups.categories) {
+    categories.set(normalizeKey(category.name), category);
+  }
+  const categoryOverrides = new Map<string, string>();
+  for (const [source, target] of Object.entries(mapping.kategori)) {
+    if (!categories.has(normalizeKey(target))) {
+      throw new Error(`Mapping kategori "${source}" -> "${target}" tidak ditemukan di master.`);
+    }
+    categoryOverrides.set(normalizeKey(source), target);
+  }
+
   const subcategories = new Map<string, { id: string; name: string }>();
   for (const subcategory of lookups.subcategories) {
     subcategories.set(normalizeKey(subcategory.name), subcategory);
@@ -306,16 +328,6 @@ export function buildProductImportPlan(
       throw new Error(`Mapping subkategori "${source}" -> "${target}" tidak ditemukan di master.`);
     }
     subcategoryOverrides.set(normalizeKey(source), target);
-  }
-
-  const classifications = new Set<string>(DRUG_CLASSIFICATIONS);
-  const classificationOverrides = new Map<string, string>();
-  for (const [source, target] of Object.entries(mapping.klasifikasi)) {
-    const normalizedTarget = normalizeKey(target);
-    if (!classifications.has(normalizedTarget)) {
-      throw new Error(`Mapping klasifikasi "${source}" -> "${target}" tidak dikenal.`);
-    }
-    classificationOverrides.set(normalizeKey(source), normalizedTarget);
   }
 
   const suppliersByName = new Map<string, Array<{ id: string; name: string; is_active: boolean }>>();
@@ -359,8 +371,9 @@ export function buildProductImportPlan(
 
   const issues: ProductImportIssue[] = [...parsed.issues];
   const writes: ProductImportWrite[] = [];
+  const unmappedCategories = new Map<string, UnmappedValue>();
   const unmappedSubcategories = new Map<string, UnmappedValue>();
-  const unmappedClassifications = new Map<string, UnmappedValue>();
+  const drugClassificationCounts: Record<string, number> = {};
   const inferredUnitCounts: Record<string, number> = {};
   const seenSkuRows = new Map<string, number>();
   let inserted = 0;
@@ -389,6 +402,24 @@ export function buildProductImportPlan(
       seenSkuRows.set(skuKey, record.rowNumber);
     }
 
+    let categoryId: string | null = null;
+    let categoryName: string | null = null;
+    if (record.category) {
+      const target = categoryOverrides.get(normalizeKey(record.category)) ?? record.category;
+      const match = categories.get(normalizeKey(target));
+      if (match) {
+        categoryId = match.id;
+        categoryName = match.name;
+      } else {
+        addUnmapped(unmappedCategories, record.category);
+        issues.push({
+          rowNumber: record.rowNumber,
+          name: record.name,
+          issue: `unmapped category: ${record.category} (NULL)`,
+        });
+      }
+    }
+
     let subcategoryId: string | null = null;
     if (record.subcategory) {
       const target = subcategoryOverrides.get(normalizeKey(record.subcategory)) ?? record.subcategory;
@@ -405,21 +436,11 @@ export function buildProductImportPlan(
       }
     }
 
-    let classification: DrugClassification = DEFAULT_DRUG_CLASSIFICATION;
-    if (record.classification) {
-      const sourceKey = normalizeKey(record.classification);
-      const target = classificationOverrides.get(sourceKey) ?? sourceKey;
-      if (classifications.has(target)) {
-        classification = target as DrugClassification;
-      } else {
-        addUnmapped(unmappedClassifications, record.classification);
-        issues.push({
-          rowNumber: record.rowNumber,
-          name: record.name,
-          issue: `unmapped classification: ${record.classification} (${DEFAULT_DRUG_CLASSIFICATION})`,
-        });
-      }
-    }
+    const classification =
+      categoryName && normalizeKey(categoryName) === "psikotropika" && PSYCHOTROPIC_CLASSIFICATION
+        ? PSYCHOTROPIC_CLASSIFICATION
+        : DEFAULT_DRUG_CLASSIFICATION;
+    drugClassificationCounts[classification] = (drugClassificationCounts[classification] ?? 0) + 1;
 
     let supplierId: string | null = null;
     if (record.supplier) {
@@ -445,9 +466,11 @@ export function buildProductImportPlan(
       ? existingBySku.get(record.sku.trim())
       : existingByName.get(normalizeKey(record.name));
     if (existing) {
+      const nextCategoryId = existing.category_id ?? categoryId;
       const nextSubcategoryId = existing.subcategory_id ?? subcategoryId;
       const nextSupplierId = existing.default_supplier_id ?? supplierId;
       if (
+        nextCategoryId !== existing.category_id ||
         nextSubcategoryId !== existing.subcategory_id ||
         nextSupplierId !== existing.default_supplier_id
       ) {
@@ -458,6 +481,7 @@ export function buildProductImportPlan(
             rowNumber: record.rowNumber,
             name: record.name,
             id: existing.id,
+            category_id: nextCategoryId,
             subcategory_id: nextSubcategoryId,
             default_supplier_id: nextSupplierId,
           },
@@ -491,6 +515,7 @@ export function buildProductImportPlan(
         name: record.name,
         sku,
         base_unit: record.baseUnit,
+        category_id: categoryId,
         subcategory_id: subcategoryId,
         drug_classification: classification,
         default_supplier_id: supplierId,
@@ -512,8 +537,9 @@ export function buildProductImportPlan(
       unchanged,
       skippedEmpty: parsed.skippedEmpty,
       skippedDuplicate,
+      unmappedCategories: sortedUnmapped(unmappedCategories),
       unmappedSubcategories: sortedUnmapped(unmappedSubcategories),
-      unmappedClassifications: sortedUnmapped(unmappedClassifications),
+      drugClassificationCounts,
       generatedSkus,
       inferredUnits,
       inferredUnitCounts,
@@ -525,14 +551,14 @@ export function buildProductImportPlan(
 }
 
 export function hasUnmapped(summary: ProductImportSummary) {
-  return summary.unmappedSubcategories.length > 0 || summary.unmappedClassifications.length > 0;
+  return summary.unmappedCategories.length > 0 || summary.unmappedSubcategories.length > 0;
 }
 
 export class ProductImportBlockedError extends Error {
   constructor(public readonly plan: ProductImportPlan) {
     const values = [
+      ...plan.summary.unmappedCategories.map((entry) => `kategori "${entry.value}" (${entry.count})`),
       ...plan.summary.unmappedSubcategories.map((entry) => `subkategori "${entry.value}" (${entry.count})`),
-      ...plan.summary.unmappedClassifications.map((entry) => `klasifikasi "${entry.value}" (${entry.count})`),
     ].join(", ");
     super(
       `Import dihentikan: nilai belum dipetakan: ${values}. Perbaiki mapping atau jalankan dengan --allow-unmapped.`,

@@ -71,7 +71,10 @@ async function fetchAll<T>(
 }
 
 async function loadLookups(supabase: SupabaseClient): Promise<ProductImportLookups> {
-  const [subcategories, suppliers, products] = await Promise.all([
+  const [categories, subcategories, suppliers, products] = await Promise.all([
+    fetchAll<{ id: string; name: string }>((from, to) =>
+      supabase.from("categories").select("id,name").order("id").range(from, to),
+    ),
     fetchAll<{ id: string; name: string }>((from, to) =>
       supabase.from("subcategories").select("id,name").order("id").range(from, to),
     ),
@@ -81,12 +84,12 @@ async function loadLookups(supabase: SupabaseClient): Promise<ProductImportLooku
     fetchAll<ExistingProduct>((from, to) =>
       supabase
         .from("products")
-        .select("id,sku,name,subcategory_id,default_supplier_id")
+        .select("id,sku,name,category_id,subcategory_id,default_supplier_id")
         .order("id")
         .range(from, to),
     ),
   ]);
-  return { subcategories, suppliers, products };
+  return { categories, subcategories, suppliers, products };
 }
 
 function csvCell(value: string | number) {
@@ -108,13 +111,13 @@ function formatUnmapped(values: Array<{ value: string; count: number }>) {
     : "-";
 }
 
-function formatInferred(counts: Record<string, number>) {
+function formatCounts(counts: Record<string, number>) {
   const entries = Object.entries(counts).sort(
-    ([leftUnit, leftCount], [rightUnit, rightCount]) =>
-      rightCount - leftCount || leftUnit.localeCompare(rightUnit),
+    ([leftLabel, leftCount], [rightLabel, rightCount]) =>
+      rightCount - leftCount || leftLabel.localeCompare(rightLabel),
   );
   return entries.length
-    ? ` (${entries.map(([unit, count]) => `${unit}=${count}`).join(", ")})`
+    ? ` (${entries.map(([label, count]) => `${label}=${count}`).join(", ")})`
     : "";
 }
 
@@ -126,10 +129,11 @@ function printSummary(file: string, dryRun: boolean, summary: ProductImportSumma
   console.log(`Unchanged: ${summary.unchanged}`);
   console.log(`Skipped empty name: ${summary.skippedEmpty}`);
   console.log(`Skipped duplicate: ${summary.skippedDuplicate}`);
+  console.log(`Unmapped category: ${formatUnmapped(summary.unmappedCategories)}`);
   console.log(`Unmapped subcategory: ${formatUnmapped(summary.unmappedSubcategories)}`);
-  console.log(`Unmapped classification: ${formatUnmapped(summary.unmappedClassifications)}`);
+  console.log(`Drug classification: ${formatCounts(summary.drugClassificationCounts).trim() || "-"}`);
   console.log(`Generated SKUs: ${summary.generatedSkus}`);
-  console.log(`Inferred units: ${summary.inferredUnits}${formatInferred(summary.inferredUnitCounts)}`);
+  console.log(`Inferred units: ${summary.inferredUnits}${formatCounts(summary.inferredUnitCounts)}`);
   console.log(`Zero price: ${summary.zeroPrice}`);
   console.log(`Supplier none: ${summary.supplierNone}`);
   console.log(`Supplier ambiguous: ${summary.supplierAmbiguous}`);
@@ -149,11 +153,12 @@ async function applyWrites(connectionString: string, writes: ProductImportWrite[
           const result = await client.query<{ id: string }>(
             `insert into public.products
                (sku,name,category_id,subcategory_id,drug_classification,base_unit,minimum_stock,default_supplier_id,is_active)
-             values ($1,$2,null,$3,$4,$5,$6,$7,true)
+             values ($1,$2,$3,$4,$5,$6,$7,$8,true)
              returning id`,
             [
               value.sku,
               value.name,
+              value.category_id,
               value.subcategory_id,
               value.drug_classification,
               value.base_unit,
@@ -174,11 +179,12 @@ async function applyWrites(connectionString: string, writes: ProductImportWrite[
         } else {
           await client.query(
             `update public.products
-             set subcategory_id = coalesce(subcategory_id, $2),
-                 default_supplier_id = coalesce(default_supplier_id, $3),
+             set category_id = coalesce(category_id, $2),
+                 subcategory_id = coalesce(subcategory_id, $3),
+                 default_supplier_id = coalesce(default_supplier_id, $4),
                  updated_at = now()
              where id = $1`,
-            [write.value.id, write.value.subcategory_id, write.value.default_supplier_id],
+            [write.value.id, write.value.category_id, write.value.subcategory_id, write.value.default_supplier_id],
           );
         }
       } catch (error) {
