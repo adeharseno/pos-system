@@ -1,8 +1,9 @@
 ﻿import * as XLSX from "xlsx";
+import { CATEGORY_LABEL, SUBCATEGORY_LABEL } from "../master-data-labels";
 
 export type ProductImportMasterData = {
   categories: Array<{ id: string; name: string }>;
-  subcategories: Array<{ id: string; category_id: string; name: string }>;
+  subcategories: Array<{ id: string; name: string }>;
   suppliers: Array<{ id: string; name: string }>;
   locations: Array<{ id: string; full_code: string }>;
 };
@@ -105,9 +106,8 @@ export function buildProductImportPreviewWithInfo(bytes: ArrayBuffer, fileName: 
     const supplier = get("supplier"), storageLocation = get("storageLocation");
     const baseErrors: string[] = [];
     const resolvedCategory = lookup(master.categories, category);
-    const matchingSubcategories = master.subcategories.filter(item => nameKey(item.name) === nameKey(subcategory) && (!resolvedCategory || item.category_id === resolvedCategory.id));
-    const resolvedSubcategory = matchingSubcategories.length === 1 ? matchingSubcategories[0] : undefined;
-    for (const [label, value] of [["SKU", sku], ["Nama produk", name], ["Kategori", category], ["Subkategori", subcategory], ["Unit dasar", baseUnit]]) if (!value) baseErrors.push(`${label} wajib diisi.`);
+    const resolvedSubcategory = lookup(master.subcategories, subcategory);
+    for (const [label, value] of [["SKU", sku], ["Nama produk", name], [CATEGORY_LABEL, category], [SUBCATEGORY_LABEL, subcategory], ["Unit dasar", baseUnit]]) if (!value) baseErrors.push(`${label} wajib diisi.`);
     if (invalidNumber(sellingPrice, true)) baseErrors.push("Harga jual tidak valid.");
     if (invalidNumber(costPrice, false)) baseErrors.push("Harga modal tidak valid.");
     if (invalidNumber(minimumStock, false, true)) baseErrors.push("Minimum stok tidak valid.");
@@ -119,9 +119,8 @@ export function buildProductImportPreviewWithInfo(bytes: ArrayBuffer, fileName: 
     const defaultSupplierId = supplier ? lookup(master.suppliers, supplier)?.id ?? null : null;
     const storageLocationId = storageLocation ? master.locations.find(item => nameKey(item.full_code) === nameKey(storageLocation))?.id ?? null : null;
     const errors = [...baseErrors];
-    if (category && !categoryId) errors.push("Kategori tidak ditemukan pada data acuan.");
-    if (subcategory && !subcategoryId) errors.push("Subkategori tidak ditemukan pada data acuan.");
-    if (categoryId && subcategoryId && resolvedSubcategory?.category_id !== categoryId) errors.push("Subkategori tidak sesuai dengan kategori.");
+    if (category && !categoryId) errors.push(`${CATEGORY_LABEL} tidak ditemukan pada data acuan.`);
+    if (subcategory && !subcategoryId) errors.push(`${SUBCATEGORY_LABEL} tidak ditemukan pada data acuan.`);
     if (supplier && !defaultSupplierId) errors.push("Pemasok tidak ditemukan pada data acuan.");
     if (storageLocation && !storageLocationId) errors.push("Lokasi penyimpanan tidak ditemukan pada data acuan.");
     const rawManufacturer = get("manufacturer");

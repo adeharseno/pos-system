@@ -247,63 +247,6 @@ export type Database = {
           },
         ]
       }
-      cash_drawer_sessions: {
-        Row: {
-          closed_at: string | null
-          closing_balance_actual: number | null
-          closing_balance_expected: number | null
-          employee_id: string
-          id: string
-          is_open: boolean | null
-          notes: string | null
-          opened_at: string
-          opening_balance: number
-          shift_id: string | null
-          variance: number | null
-        }
-        Insert: {
-          closed_at?: string | null
-          closing_balance_actual?: number | null
-          closing_balance_expected?: number | null
-          employee_id: string
-          id?: string
-          is_open?: boolean | null
-          notes?: string | null
-          opened_at?: string
-          opening_balance: number
-          shift_id?: string | null
-          variance?: number | null
-        }
-        Update: {
-          closed_at?: string | null
-          closing_balance_actual?: number | null
-          closing_balance_expected?: number | null
-          employee_id?: string
-          id?: string
-          is_open?: boolean | null
-          notes?: string | null
-          opened_at?: string
-          opening_balance?: number
-          shift_id?: string | null
-          variance?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "cash_drawer_sessions_employee_id_fkey"
-            columns: ["employee_id"]
-            isOneToOne: false
-            referencedRelation: "employees"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cash_drawer_sessions_shift_id_fkey"
-            columns: ["shift_id"]
-            isOneToOne: false
-            referencedRelation: "shifts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       categories: {
         Row: {
           created_at: string
@@ -431,6 +374,7 @@ export type Database = {
           expired_date: string
           id: string
           product_id: string
+          purchase_invoice_item_id: string | null
           quantity: number
           received_date: string
           updated_at: string
@@ -442,6 +386,7 @@ export type Database = {
           expired_date: string
           id?: string
           product_id: string
+          purchase_invoice_item_id?: string | null
           quantity: number
           received_date?: string
           updated_at?: string
@@ -453,6 +398,7 @@ export type Database = {
           expired_date?: string
           id?: string
           product_id?: string
+          purchase_invoice_item_id?: string | null
           quantity?: number
           received_date?: string
           updated_at?: string
@@ -463,6 +409,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_batches_purchase_invoice_item_id_fkey"
+            columns: ["purchase_invoice_item_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_invoice_items"
             referencedColumns: ["id"]
           },
         ]
@@ -897,7 +850,7 @@ export type Database = {
       products: {
         Row: {
           base_unit: string
-          category_id: string
+          category_id: string | null
           cost_price: number | null
           created_at: string
           default_supplier_id: string | null
@@ -914,13 +867,13 @@ export type Database = {
           requires_prescription: boolean | null
           sku: string
           storage_location_id: string | null
-          subcategory_id: string
+          subcategory_id: string | null
           tax_rate: number
           updated_at: string
         }
         Insert: {
           base_unit: string
-          category_id: string
+          category_id?: string | null
           cost_price?: number | null
           created_at?: string
           default_supplier_id?: string | null
@@ -937,13 +890,13 @@ export type Database = {
           requires_prescription?: boolean | null
           sku: string
           storage_location_id?: string | null
-          subcategory_id: string
+          subcategory_id?: string | null
           tax_rate?: number
           updated_at?: string
         }
         Update: {
           base_unit?: string
-          category_id?: string
+          category_id?: string | null
           cost_price?: number | null
           created_at?: string
           default_supplier_id?: string | null
@@ -960,17 +913,24 @@ export type Database = {
           requires_prescription?: boolean | null
           sku?: string
           storage_location_id?: string | null
-          subcategory_id?: string
+          subcategory_id?: string | null
           tax_rate?: number
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "fk_products_subcategory_category"
-            columns: ["subcategory_id", "category_id"]
+            foreignKeyName: "fk_products_category"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_products_subcategory"
+            columns: ["subcategory_id"]
             isOneToOne: false
             referencedRelation: "subcategories"
-            referencedColumns: ["id", "category_id"]
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "products_default_supplier_id_fkey"
@@ -1094,7 +1054,6 @@ export type Database = {
       returns: {
         Row: {
           business_date: string
-          cash_drawer_session_id: string | null
           created_at: string
           id: string
           processed_by: string
@@ -1108,7 +1067,6 @@ export type Database = {
         }
         Insert: {
           business_date?: string
-          cash_drawer_session_id?: string | null
           created_at?: string
           id?: string
           processed_by: string
@@ -1122,7 +1080,6 @@ export type Database = {
         }
         Update: {
           business_date?: string
-          cash_drawer_session_id?: string | null
           created_at?: string
           id?: string
           processed_by?: string
@@ -1135,13 +1092,6 @@ export type Database = {
           transaction_id?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "returns_cash_drawer_session_id_fkey"
-            columns: ["cash_drawer_session_id"]
-            isOneToOne: false
-            referencedRelation: "cash_drawer_sessions"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "returns_processed_by_fkey"
             columns: ["processed_by"]
@@ -1384,7 +1334,6 @@ export type Database = {
       }
       subcategories: {
         Row: {
-          category_id: string
           created_at: string
           display_order: number
           id: string
@@ -1393,7 +1342,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          category_id: string
           created_at?: string
           display_order?: number
           id?: string
@@ -1402,7 +1350,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          category_id?: string
           created_at?: string
           display_order?: number
           id?: string
@@ -1410,15 +1357,7 @@ export type Database = {
           name?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "subcategories_category_id_fkey"
-            columns: ["category_id"]
-            isOneToOne: false
-            referencedRelation: "categories"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       suppliers: {
         Row: {
@@ -1427,6 +1366,7 @@ export type Database = {
           created_at: string
           id: string
           is_active: boolean
+          legacy_code: string | null
           license_number: string | null
           name: string
           phone: string | null
@@ -1438,6 +1378,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          legacy_code?: string | null
           license_number?: string | null
           name: string
           phone?: string | null
@@ -1449,6 +1390,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          legacy_code?: string | null
           license_number?: string | null
           name?: string
           phone?: string | null
@@ -1505,6 +1447,7 @@ export type Database = {
         Row: {
           conversion_to_base_snapshot: number
           created_at: string
+          discount_amount: number
           id: string
           product_id: string
           product_name_snapshot: string
@@ -1522,6 +1465,7 @@ export type Database = {
         Insert: {
           conversion_to_base_snapshot: number
           created_at?: string
+          discount_amount?: number
           id?: string
           product_id: string
           product_name_snapshot: string
@@ -1539,6 +1483,7 @@ export type Database = {
         Update: {
           conversion_to_base_snapshot?: number
           created_at?: string
+          discount_amount?: number
           id?: string
           product_id?: string
           product_name_snapshot?: string
@@ -1619,7 +1564,6 @@ export type Database = {
         Row: {
           business_date: string
           cash_change: number | null
-          cash_drawer_session_id: string
           cash_received: number | null
           cashier_id: string
           created_at: string
@@ -1640,7 +1584,6 @@ export type Database = {
         Insert: {
           business_date?: string
           cash_change?: number | null
-          cash_drawer_session_id: string
           cash_received?: number | null
           cashier_id: string
           created_at?: string
@@ -1661,7 +1604,6 @@ export type Database = {
         Update: {
           business_date?: string
           cash_change?: number | null
-          cash_drawer_session_id?: string
           cash_received?: number | null
           cashier_id?: string
           created_at?: string
@@ -1680,13 +1622,6 @@ export type Database = {
           voided_by?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "transactions_cash_drawer_session_id_fkey"
-            columns: ["cash_drawer_session_id"]
-            isOneToOne: false
-            referencedRelation: "cash_drawer_sessions"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "transactions_cashier_id_fkey"
             columns: ["cashier_id"]
@@ -1744,7 +1679,30 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      batch_supplier: {
+        Row: {
+          batch_id: string
+          invoice_id: string | null
+          invoice_number: string | null
+          product_id: string
+          received_at: string
+          supplier_id: string | null
+        }
+        Relationships: []
+      }
+      daily_sales_totals: {
+        Row: {
+          business_date: string
+          cashier_id: string
+          cashier_name: string
+          completed_total: number
+          gross_total: number
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          sale_count: number
+          voided_total: number
+        }
+        Relationships: []
+      }
     }
     Functions: {
       dashboard_analytics_report: {
@@ -1900,20 +1858,11 @@ export type Database = {
       }
       checkout_transaction: {
         Args: {
-          p_cash_drawer_session_id: string
           p_cash_received?: number
           p_employee_id: string
           p_items: Json
           p_payment_method: Database["public"]["Enums"]["payment_method"]
           p_prescription?: Json
-        }
-        Returns: Json
-      }
-      close_cash_drawer: {
-        Args: {
-          p_actual_closing_cash: number
-          p_employee_id: string
-          p_session_id: string
         }
         Returns: Json
       }
@@ -1923,7 +1872,6 @@ export type Database = {
       }
       create_customer_return: {
         Args: {
-          p_cash_drawer_session_id: string
           p_employee_id: string
           p_items: Json
           p_reason: string
@@ -1985,10 +1933,6 @@ export type Database = {
       }
       create_supplier_return: {
         Args: { p_employee_id: string; p_items: Json; p_reason: string }
-        Returns: Json
-      }
-      open_cash_drawer: {
-        Args: { p_employee_id: string; p_opening_balance: number }
         Returns: Json
       }
       receive_product_stock: {

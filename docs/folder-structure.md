@@ -10,15 +10,14 @@ migrations and database tests.
 ```text
 src/
 ├── app/
-│   ├── (protected)/cashier, cash-drawer, transactions/[id]/receipt
-│   └── api/ cash-drawer, inventory, products, returns, stock-opname, transactions
+│   ├── (protected)/cashier, transactions/[id]/receipt, transactions/[id]/return
+│   └── api/ inventory, products, returns, stock-opname, transactions
 ├── modules/
 │   ├── auth/           # employee session and position guards
 │   ├── catalog/        # cashier name/SKU search and inventory reads
-│   ├── cash-drawer/    # session RPCs
 │   ├── inventory/      # stock-opname RPCs
 │   ├── returns/        # return RPCs
-│   ├── sales/          # cart, checkout, QRIS, receipt, sales RPCs/reads
+│   ├── sales/          # cart, checkout, QRIS, receipt, transaction log, sales RPCs/reads
 │   └── shared/         # API boundary, validation, RPC/data helpers
 ├── lib/supabase/       # browser, session-server, and service-role factories
 └── types/database.types.ts

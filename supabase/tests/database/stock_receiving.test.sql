@@ -3,7 +3,7 @@ create extension if not exists pgtap with schema extensions;
 set local search_path=public,extensions;
 select plan(12);
 insert into categories(id,name) values ('b1000000-0000-0000-0000-000000000001','Receiving');
-insert into subcategories(id,category_id,name) values ('b2000000-0000-0000-0000-000000000001','b1000000-0000-0000-0000-000000000001','Receiving');
+insert into subcategories(id,name) values ('b2000000-0000-0000-0000-000000000001','Receiving');
 insert into employees(id,full_name,position) values ('b3000000-0000-0000-0000-000000000001','Owner','owner_admin');
 insert into products(id,sku,name,category_id,subcategory_id,base_unit,is_active) values
  ('b4000000-0000-0000-0000-000000000001','REC-A','Active','b1000000-0000-0000-0000-000000000001','b2000000-0000-0000-0000-000000000001','tablet',true),

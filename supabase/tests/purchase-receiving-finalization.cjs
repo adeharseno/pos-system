@@ -50,13 +50,12 @@ async function waitForBlock(blockerPid) {
     await c.query(`insert into employees(id,full_name,position) values($1,'Receiving owner','owner_admin'),($2,'Receiving cashier','kasir')`,[owner,cashier]);
     await c.query('insert into suppliers(id,name) values($1,$2)',[supplier,'Receiving supplier']);
     await c.query('insert into categories(id,name) values($1,$2)',[category,'Receiving category']);
-    await c.query('insert into subcategories(id,category_id,name) values($1,$2,$3)',[subcategory,category,'Receiving subcategory']);
+    await c.query('insert into subcategories(id,name) values($1,$2)',[subcategory,'Receiving subcategory']);
     await c.query(`insert into products(id,sku,name,base_unit,category_id,subcategory_id,cost_price) values($1,'PRICED','Priced product','Tablet',$3,$4,100),($2,'MASTER','Master only','Botol',$3,$4,null)`,[product,master,category,subcategory]);
     await c.query(`insert into products(id,sku,name,base_unit,category_id,subcategory_id,cost_price) values($1,'ROLLBACK-MASTER','Rollback master','Botol',$2,$3,null)`,[rollbackMaster,category,subcategory]);
     await c.query(`insert into product_units(id,product_id,unit_name,conversion_to_base,selling_price,is_base_unit) values($1,$2,'Tablet',1,150,true),($3,$2,'Strip',10,1500,false)`,[baseUnit,product,stripUnit]);
     await c.query(`insert into product_batches(product_id,batch_number,expired_date,quantity,cost_price) values($1,'EXISTING','2035-01-01',6,100)`,[product]);
-    const drawer=(await c.query('select open_cash_drawer($1,0) d',[owner])).rows[0].d.session_id;
-    await c.query("select checkout_transaction($1,$2,'cash',$3,150,null)",[owner,drawer,JSON.stringify([{product_unit_id:baseUnit,quantity:1}])]);
+    await c.query("select checkout_transaction($1,'cash',$2,150,null)",[owner,JSON.stringify([{product_unit_id:baseUnit,quantity:1}])]);
     const saleSnapshot=async()=>(await c.query(`select
       (select jsonb_agg(to_jsonb(t) order by id) from transactions t) transactions,
       (select jsonb_agg(to_jsonb(i) order by id) from transaction_items i) items,
@@ -81,6 +80,12 @@ async function waitForBlock(blockerPid) {
     let batches = (await c.query('select * from product_batches')).rows;
     assert.equal(batches.find(b=>b.batch_number==='NEW-STRIP').quantity,30); assert.equal(batches.find(b=>b.batch_number==='NEW-STRIP').cost_price,'120.00');
     assert.equal(batches.find(b=>b.batch_number==='EXISTING').quantity,7); assert.equal(batches.find(b=>b.batch_number==='EXISTING').cost_price,'128.57');
+    assert.ok(batches.find(b=>b.batch_number==='NEW-STRIP').purchase_invoice_item_id,'new invoice batch records its source item');
+    assert.ok(batches.find(b=>b.batch_number==='MASTER-BATCH').purchase_invoice_item_id,'master batch records its source item');
+    assert.equal(batches.find(b=>b.batch_number==='EXISTING').purchase_invoice_item_id,null,'pre-existing batch keeps its original (opening-stock) attribution');
+    const traced = (await c.query("select b.batch_number,v.supplier_id from product_batches b left join batch_supplier v on v.batch_id=b.id where b.batch_number in ('NEW-STRIP','EXISTING') order by b.batch_number")).rows;
+    assert.equal(traced.find(r=>r.batch_number==='NEW-STRIP').supplier_id,supplier);
+    assert.equal(traced.find(r=>r.batch_number==='EXISTING').supplier_id,null);
     const created = (await c.query('select * from product_units where product_id=$1',[master])).rows;
     assert.equal(created.length,1); assert.equal(created[0].selling_price,'400.00'); assert.equal(created[0].conversion_to_base,1); assert.equal(created[0].is_base_unit,true);
     const completed = (await c.query('select * from purchase_invoices where id=$1',[normal])).rows[0];
@@ -97,6 +102,7 @@ async function waitForBlock(blockerPid) {
     const mergePlan = await preview(merge); const r1=finish(c,merge,mergePlan),r2=finish(c2,merge,mergePlan);
     const raced = await Promise.allSettled([r1,r2]); assert.equal(raced.filter(r=>r.status==='fulfilled').length,1); assert.equal(raced.find(r=>r.status==='rejected').reason.message,'INVOICE_ALREADY_COMPLETED');
     const merged = (await c.query("select * from product_batches where batch_number='MERGE'")).rows[0]; assert.equal(merged.quantity,5); assert.equal(merged.cost_price,'160.00');
+    assert.ok(merged.purchase_invoice_item_id,'merged invoice batch keeps one source item');
 
     // A stale confirmation after manual price or item edits must not write anything.
     const stale = await makeInvoice([{batch_number:'STALE'}]); const stalePlan=await preview(stale);

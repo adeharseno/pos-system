@@ -9,9 +9,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const { id } = await params;
     const body = await request.json() as Record<string, unknown>;
     const name = typeof body.name === "string" ? body.name.trim() : "";
-    const categoryId = typeof body.category_id === "string" ? body.category_id : "";
     if (!name) throw new PosInputError("Subcategory name is required");
-    return editSubcategory(requireUuid(id, "subcategory_id"), requireUuid(categoryId, "category_id"), name);
+    return editSubcategory(requireUuid(id, "subcategory_id"), name);
   });
 }
 

@@ -43,7 +43,10 @@ export function canReadDashboardStock(role: EmployeeRole, data: PermissionData) 
 
 export type DashboardLowStockRow = { id: string; name: string; baseUnit: string; availableStock: number; minimumStock: number; status: Exclude<ProductStockStatus, "normal"> };
 
-export function dashboardLowStockRows(value: unknown): DashboardLowStockRow[] {
+export const DASHBOARD_LOW_STOCK_LIMIT = 5;
+
+/** Keeps only the most depleted items: out of stock first, then lowest stock. */
+export function dashboardLowStockRows(value: unknown, limit = DASHBOARD_LOW_STOCK_LIMIT): DashboardLowStockRow[] {
   if (!Array.isArray(value)) throw new TypeError("Invalid low stock rows");
   return value.map(item => {
     if (!item || typeof item !== "object" || Array.isArray(item)) throw new TypeError("Invalid low stock row");
@@ -54,12 +57,12 @@ export function dashboardLowStockRows(value: unknown): DashboardLowStockRow[] {
     const status = productStockStatus(availableStock, minimumStock);
     if (status === "normal" || row.status !== status) throw new TypeError("Invalid low stock status");
     return { id: row.id, name: row.name, baseUnit: row.baseUnit, availableStock, minimumStock, status };
-  }).sort((a,b) => (a.status === b.status ? a.availableStock - b.availableStock || a.name.localeCompare(b.name, "id-ID") : a.status === "out" ? -1 : 1));
+  }).sort((a,b) => (a.status === b.status ? a.availableStock - b.availableStock || a.name.localeCompare(b.name, "id-ID") : a.status === "out" ? -1 : 1)).slice(0, limit);
 }
 
 const actions: Array<{ href: string; label: string; description: string; permission: Permission; roles?: EmployeeRole[] }> = [
   { href: "/cashier", label: "Penjualan Baru", description: "Mulai transaksi penjualan", permission: "cashier.view", roles: ["owner_admin", "kasir"] },
-  { href: "/cash-drawer", label: "Kelola Sesi Kasir", description: "Buka dan tutup sesi kasir", permission: "cash_drawer.manage", roles: ["owner_admin", "kasir"] },
+  { href: "/transactions", label: "Riwayat Transaksi", description: "Lihat riwayat penjualan dan rekap kasir", permission: "transactions.view", roles: ["owner_admin"] },
   { href: "/inventory/receive", label: "Stok Masuk", description: "Catat penerimaan persediaan", permission: "inventory.receive", roles: ["owner_admin"] },
   { href: "/products", label: "Daftar Barang", description: "Lihat katalog barang apotek", permission: "products.view", roles: ["owner_admin", "kasir"] },
   { href: "/inventory", label: "Persediaan", description: "Periksa ketersediaan barang", permission: "inventory.view", roles: ["owner_admin", "kasir"] },

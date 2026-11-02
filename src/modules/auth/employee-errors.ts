@@ -4,6 +4,7 @@ export const EMPLOYEE_ERRORS = {
   FORBIDDEN: [403, "Anda tidak memiliki akses untuk mengelola pegawai."],
   LAST_ACTIVE_OWNER: [409, "Pemilik aktif terakhir tidak dapat dinonaktifkan atau dilepas."],
   EMAIL_CONFLICT: [409, "Email sudah digunakan. Gunakan email lain atau periksa akun yang ada."],
+  DUPLICATE_USERNAME: [409, "Username sudah digunakan. Gunakan username lain."],
   ACCOUNT_ALREADY_LINKED: [409, "Pegawai atau akun sudah terhubung."],
   INVITATION_BUSY: [409, "Undangan sedang diproses. Coba lagi beberapa saat."],
   INVITATION_STALE: [409, "Undangan tidak berlaku. Minta pemilik mengirim ulang undangan."],

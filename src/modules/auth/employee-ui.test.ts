@@ -7,10 +7,10 @@ import { PERMISSIONS } from "./permissions";
 import { PERMISSION_GROUPS, PERMISSION_LABELS } from "./permission-labels";
 import { employeeRequest, EmployeeUiError } from "./components/employee-request";
 
-const owner: EmployeeRow = { id: "owner", full_name: "Pemilik Apotek", position: "owner_admin", email: "owner@example.test", phone: null,
+const owner: EmployeeRow = { id: "owner", full_name: "Pemilik Apotek", username: "pemilik", position: "owner_admin", email: "owner@example.test", phone: null,
   join_date: "2026-01-01", is_active: true, account_status: "active", retryable: false };
-const cashier: EmployeeRow = { ...owner, id: "cashier", position: "kasir", full_name: "Ani Kasir", email: "ani@example.test" };
-const staff: EmployeeRow = { ...owner, id: "staff", position: "staf", full_name: "Budi", email: null, account_status: "not_invited" };
+const cashier: EmployeeRow = { ...owner, id: "cashier", username: "ani", position: "kasir", full_name: "Ani Kasir", email: "ani@example.test" };
+const staff: EmployeeRow = { ...owner, id: "staff", username: "budi", position: "staf", full_name: "Budi", email: null, account_status: "not_invited" };
 
 test("employee search and combined filters match name/email, role and account status", () => {
   const rows = [owner, cashier, staff];
@@ -63,8 +63,9 @@ test("every known permission has an Indonesian label and supported feature group
   }
 });
 test("form validation supports inactive accounts and rejects incomplete or invalid information", () => {
-  const values = { name: "Ani", email: "ani@example.test", phone: "", date: "2026-01-01", reason: "Penambahan", needsEmail: true };
+  const values = { name: "Ani", username: "ani.kasir", email: "ani@example.test", phone: "", date: "2026-01-01", reason: "Penambahan", needsEmail: true };
   assert.equal(employeeFormError(values), null);
+  for (const username of ["Ani!", "ab", "spasi ada", "x".repeat(31)]) assert.match(employeeFormError({ ...values, username })!, /Username/);
   assert.match(employeeFormError({ ...values, email: "invalid" })!, /email/);
   assert.match(employeeFormError({ ...values, date: "2026-02-30" })!, /tanggal/);
   assert.match(employeeFormError({ ...values, reason: " " })!, /alasan/);

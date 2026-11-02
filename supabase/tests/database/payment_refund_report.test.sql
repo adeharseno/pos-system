@@ -2,14 +2,13 @@ begin;
 select plan(12);
 
 insert into public.employees(id,full_name,position) values ('fd000000-0000-0000-0000-000000000001','Payment report cashier','kasir');
-insert into public.cash_drawer_sessions(id,employee_id,opening_balance) values ('fd000000-0000-0000-0000-000000000002','fd000000-0000-0000-0000-000000000001',0);
-insert into public.transactions(id,invoice_number,business_date,cashier_id,cash_drawer_session_id,subtotal,tax_amount,total_amount,payment_method,cash_received,cash_change,payment_confirmed_at,payment_confirmed_by,status) values
- ('fd000000-0000-0000-0000-000000000003','PAYREPORT-CASH','2092-01-01','fd000000-0000-0000-0000-000000000001','fd000000-0000-0000-0000-000000000002',100,10,110,'cash',200,90,'2092-01-01 01:00+07','fd000000-0000-0000-0000-000000000001','completed'),
- ('fd000000-0000-0000-0000-000000000004','PAYREPORT-QRIS','2092-01-01','fd000000-0000-0000-0000-000000000001','fd000000-0000-0000-0000-000000000002',200,20,220,'qris',null,null,'2092-01-01 18:00+00','fd000000-0000-0000-0000-000000000001','completed'),
- ('fd000000-0000-0000-0000-000000000005','PAYREPORT-BANK','2092-01-01','fd000000-0000-0000-0000-000000000001','fd000000-0000-0000-0000-000000000002',300,30,330,'bank_transfer',null,null,'2092-01-01 18:00+00','fd000000-0000-0000-0000-000000000001','completed'),
- ('fd000000-0000-0000-0000-000000000006','PAYREPORT-PENDING','2092-01-01','fd000000-0000-0000-0000-000000000001','fd000000-0000-0000-0000-000000000002',400,40,440,'qris',null,null,null,null,'pending_payment');
-insert into public.transactions(id,invoice_number,business_date,cashier_id,cash_drawer_session_id,subtotal,tax_amount,total_amount,payment_method,status,voided_at,voided_by,void_reason) values
- ('fd000000-0000-0000-0000-000000000007','PAYREPORT-VOID','2092-01-01','fd000000-0000-0000-0000-000000000001','fd000000-0000-0000-0000-000000000002',500,50,550,'qris','voided','2092-01-01 01:00+07','fd000000-0000-0000-0000-000000000001','test');
+insert into public.transactions(id,invoice_number,business_date,cashier_id,subtotal,tax_amount,total_amount,payment_method,cash_received,cash_change,payment_confirmed_at,payment_confirmed_by,status) values
+ ('fd000000-0000-0000-0000-000000000003','PAYREPORT-CASH','2092-01-01','fd000000-0000-0000-0000-000000000001',100,10,110,'cash',200,90,'2092-01-01 01:00+07','fd000000-0000-0000-0000-000000000001','completed'),
+ ('fd000000-0000-0000-0000-000000000004','PAYREPORT-QRIS','2092-01-01','fd000000-0000-0000-0000-000000000001',200,20,220,'qris',null,null,'2092-01-01 18:00+00','fd000000-0000-0000-0000-000000000001','completed'),
+ ('fd000000-0000-0000-0000-000000000005','PAYREPORT-BANK','2092-01-01','fd000000-0000-0000-0000-000000000001',300,30,330,'bank_transfer',null,null,'2092-01-01 18:00+00','fd000000-0000-0000-0000-000000000001','completed'),
+ ('fd000000-0000-0000-0000-000000000006','PAYREPORT-PENDING','2092-01-01','fd000000-0000-0000-0000-000000000001',400,40,440,'qris',null,null,null,null,'pending_payment');
+insert into public.transactions(id,invoice_number,business_date,cashier_id,subtotal,tax_amount,total_amount,payment_method,status,voided_at,voided_by,void_reason) values
+ ('fd000000-0000-0000-0000-000000000007','PAYREPORT-VOID','2092-01-01','fd000000-0000-0000-0000-000000000001',500,50,550,'qris','voided','2092-01-01 01:00+07','fd000000-0000-0000-0000-000000000001','test');
 insert into public.returns(id,source,transaction_id,refund_method,business_date,reason,processed_by,refund_subtotal,refund_tax_amount,refund_total) values
  ('fd000000-0000-0000-0000-000000000008','customer','fd000000-0000-0000-0000-000000000003','qris','2092-01-02','test','fd000000-0000-0000-0000-000000000001',20,2,22),
  ('fd000000-0000-0000-0000-000000000009','supplier',null,null,'2092-01-02','test','fd000000-0000-0000-0000-000000000001',99,0,99);

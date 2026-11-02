@@ -9,7 +9,6 @@ export interface PrescriptionInput {
 }
 export interface CheckoutInput {
   employeeId: string;
-  cashDrawerSessionId: string;
   paymentMethod: PaymentMethod;
   items: CheckoutItemInput[];
   cashReceived?: number;

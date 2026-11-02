@@ -3,7 +3,7 @@ create extension if not exists pgtap with schema extensions;
 set local search_path=public,extensions;
 select plan(8);
 insert into categories(id,name) values('ab100000-0000-4000-8000-000000000001','Low stock category');
-insert into subcategories(id,category_id,name) values('ab200000-0000-4000-8000-000000000001','ab100000-0000-4000-8000-000000000001','Low stock subcategory');
+insert into subcategories(id,name) values('ab200000-0000-4000-8000-000000000001','Low stock subcategory');
 insert into products(id,sku,name,base_unit,category_id,subcategory_id,minimum_stock,is_active) values
 ('ab300000-0000-4000-8000-000000000001','LOW-OUT','Habis','Tablet','ab100000-0000-4000-8000-000000000001','ab200000-0000-4000-8000-000000000001',5,true),
 ('ab300000-0000-4000-8000-000000000002','LOW-LOW','Menipis','Tablet','ab100000-0000-4000-8000-000000000001','ab200000-0000-4000-8000-000000000001',5,true),

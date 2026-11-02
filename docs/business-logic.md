@@ -9,7 +9,7 @@
 3. `transaction_items` represent what the customer bought; batch sourcing is stored separately in `transaction_item_batches`.
 4. Stock-changing workflows are database transactions. Do not emulate a transaction using several independent Supabase HTTP calls.
 5. Business dates use `Asia/Jakarta`; timestamps remain UTC.
-6. A cashier may only transact against their own currently-open cash drawer session.
+6. Every sale is recorded in a read-only transaction log with the acting employee, timestamp, payment method, totals, and immutable line snapshots.
 7. Database constraints protect structural integrity (product/unit/batch consistency and valid payment-state shapes); RPCs protect multi-row business rules and concurrency.
 8. A batch included in an `in_progress` stock-opname session is operationally frozen. Normal stock-changing workflows must reject mutations to that batch until the opname is applied or cancelled.
 9. When multiple batch rows may be locked, functions must use a deterministic ordering to reduce deadlock risk.
@@ -31,17 +31,13 @@ Route Handler
 checkout_transaction RPC
 BEGIN
   1. Resolve employee from authenticated user.
-  2. Validate cash_drawer_session:
-       - exists
-       - closed_at IS NULL
-       - belongs to current employee
-  3. Load requested products + product units.
-  4. Validate each product/unit relationship and active state.
-  5. Compute quantity_in_base = quantity_in_unit * conversion_to_base.
-  6. If a prescription-required product exists, require prescription data.
-  7. Resolve authoritative selling price/tax and calculate every line plus
+  2. Load requested products + product units.
+  3. Validate each product/unit relationship and active state.
+  4. Compute quantity_in_base = quantity_in_unit * conversion_to_base.
+  5. If a prescription-required product exists, require prescription data.
+  6. Resolve authoritative selling price/tax and calculate every line plus
      subtotal/tax/total before inserting sale rows. Never trust client totals.
-  8. Lock all candidate batches required by the cart in deterministic order.
+  7. Lock all candidate batches required by the cart in deterministic order.
      After each target batch is locked, re-check that it is not part of an
      in_progress stock-opname session.
 
@@ -60,14 +56,14 @@ BEGIN
        RAISE INSUFFICIENT_STOCK
 
      Build the FEFO allocation plan while the locks are held.
-  9. Generate transaction UUID and concurrency-safe invoice number inside
+  8. Generate transaction UUID and concurrency-safe invoice number inside
      the same transaction using invoice_sequences.
- 10. INSERT transaction header with already-calculated authoritative totals:
+  9. INSERT transaction header with already-calculated authoritative totals:
        cash -> status='completed', payment_confirmed_at=now(),
                payment_confirmed_by=current employee
        qris -> status='pending_payment', payment_confirmed_at=NULL,
                payment_confirmed_by=NULL
- 11. For each cart line:
+ 10. For each cart line:
        INSERT one transaction_items row, including authoritative
        `product_name_snapshot` and `unit_name_snapshot` for the receipt.
        For each planned FEFO allocation:
@@ -81,7 +77,7 @@ BEGIN
          UPDATE product_batches
          SET quantity = quantity - allocated_quantity
          WHERE id = batch_id;
- 12. INSERT prescription row if required.
+ 11. INSERT prescription row if required.
 COMMIT
 ```
 
@@ -157,8 +153,6 @@ Rules:
 - Confirmation and void lock/check the same transaction row. The first transition wins.
 - A confirmed QRIS transaction cannot be voided. Reversal of a paid QRIS sale must use customer return/refund.
 - QRIS never uses `cash_received` or `cash_change`.
-- Pending, completed, and voided QRIS transactions never contribute to the
-  physical cash drawer expected balance.
 
 ```text
 pending_payment
@@ -198,7 +192,7 @@ A completed transaction that already has a customer return cannot be voided in P
 
 ## 5. Customer Returns
 
-Customer returns are allowed only from a **completed** transaction. The return records a `refund_method` (`cash` or `qris`). A cash refund additionally records the **currently-open drawer that physically pays the refund**.
+Customer returns are allowed only from a **completed** transaction. The return records a `refund_method` (`cash` or `qris`).
 
 ---
 
@@ -206,11 +200,11 @@ Customer returns are allowed only from a **completed** transaction. The return r
 
 Owner admins manage product master records, including manual creation, non-destructive deactivation, and selling units. Product creation and every successful bulk-import row call `create_product_with_base_unit`, so the product and its initial base selling unit are one atomic database operation. Additional selling units may have their own conversion, selling price, and barcode. The base unit's name and conversion are protected to avoid desynchronizing the existing base unit.
 
-Bulk import accepts CSV/XLSX, previews validation before commit, and maps uploaded category, subcategory, supplier, and storage text to existing master records only. It never creates master data, batches, quantities, or expiry records. Duplicate SKU/barcode values are detected before commit, while the RPC remains final authority for database races. Rows may partially succeed; each result is explicit and a failed row cannot leave an orphan product.
+Bulk import accepts CSV/XLSX, previews validation before commit, and maps uploaded category, subcategory, supplier, and storage text to existing master records only. Category ("Kategori") and subcategory ("Subkategori") are independent lists, so a subcategory is resolved by its own name and not constrained by the category. It never creates master data, batches, quantities, or expiry records. Duplicate SKU/barcode values are detected before commit, while the RPC remains final authority for database races. Rows may partially succeed; each result is explicit and a failed row cannot leave an orphan product.
 
 Product and unit master edits do not rewrite `transaction_items`, transaction-time unit/product snapshots, returns, or inventory batches. Inactive products remain readable in product administration and history but are excluded from the normal cashier product search/sale flow.
 
-Customer Return UI is COMPLETE: completed Cash and completed QRIS sales begin at transaction detail and support partial, repeated/cumulative, and multi-item returns. Pending QRIS, voided sales, and fully returned transactions are not returnable. Mutation uses `quantity_in_base`; sold-unit display uses `conversion_to_base_snapshot`, and non-divisible historical values are not rounded. Product/unit labels use transaction snapshots. `Perkiraan Refund` uses stored sale values only and is not authoritative; PostgreSQL owns final refund, cumulative limits, and original-batch restoration. For cash, the server resolves the authenticated employee's open drawer; the browser cannot choose it. QRIS uses no physical drawer and no gateway refund. Stock-opname freeze applies. Uncertain submissions are not automatically retried; return idempotency remains backlog.
+Customer Return UI is COMPLETE: completed Cash and completed QRIS sales begin at transaction detail and support partial, repeated/cumulative, and multi-item returns. Pending QRIS, voided sales, and fully returned transactions are not returnable. Mutation uses `quantity_in_base`; sold-unit display uses `conversion_to_base_snapshot`, and non-divisible historical values are not rounded. Product/unit labels use transaction snapshots. `Perkiraan Refund` uses stored sale values only and is not authoritative; PostgreSQL owns final refund, cumulative limits, and original-batch restoration. Stock-opname freeze applies. Uncertain submissions are not automatically retried; return idempotency remains backlog.
 
 ### 5.1 Returnable quantity
 
@@ -225,42 +219,21 @@ Reject if requested quantity exceeds `returnable_quantity`.
 
 Batch restoration follows the original sale allocations. If the original line came from multiple batches, the return is restored against those original allocations without exceeding the quantity originally drawn from each batch after accounting for previous returns.
 
-### 5.2 Cash refund drawer rule
-
-A refund is associated with the drawer that pays it **now**, not the drawer used by the original sale.
-
-```text
-customer return + refund_method=cash
-  -> cash_drawer_session_id REQUIRED
-  -> drawer must be open
-  -> drawer must belong to processed_by/current authenticated employee
-
-customer return + refund_method=qris
-  -> cash_drawer_session_id MUST be NULL
-
-supplier return
-  -> cash_drawer_session_id MUST be NULL
-```
-
-Example: a sale made yesterday may be returned today. The cash physically leaves today's drawer, so today's drawer must receive the refund entry.
-
-### 5.3 Atomic return
+### 5.2 Atomic return
 
 ```text
 BEGIN
   1. Lock original transaction and requested transaction_items.
   2. Validate transaction status='completed'.
-  3. For cash refund, validate the submitted current drawer ownership/open state.
-  4. Lock relevant original allocation rows / target product_batches.
-  5. Re-check each target batch is not frozen by stock opname.
-  6. Recompute previous customer returns while locks are held.
-  7. Reject if cumulative return would exceed sold quantity/allocation.
-  8. Allocate returned quantity back to original batches.
-  9. INSERT returns header, including refund_method and current refund drawer
-     when applicable.
- 10. INSERT return_items and return_item_batches with original cost snapshots.
- 11. Increment product_batches.quantity.
- 12. Snapshot refund_subtotal / refund_tax / refund_total.
+  3. Lock relevant original allocation rows / target product_batches.
+  4. Re-check each target batch is not frozen by stock opname.
+  5. Recompute previous customer returns while locks are held.
+  6. Reject if cumulative return would exceed sold quantity/allocation.
+  7. Allocate returned quantity back to original batches.
+  8. INSERT returns header, including refund_method.
+  9. INSERT return_items and return_item_batches with original cost snapshots.
+ 10. Increment product_batches.quantity.
+ 11. Snapshot refund_subtotal / refund_tax / refund_total.
 COMMIT
 ```
 
@@ -269,7 +242,6 @@ Financial effect:
 - customer refund reduces net sales
 - returned batch cost reverses COGS
 - stock is added back to original batch(es)
-- cash refund reduces the expected balance of the drawer that paid the refund
 
 Refund values are stored as snapshots so historical reports do not change if product prices later change.
 
@@ -293,59 +265,25 @@ BEGIN
 COMMIT
 ```
 
-Supplier returns do not reduce sales revenue and never reference a cash drawer.
+Supplier returns are inventory movements, not customer sales refunds.
 
 ---
 
-## 7. Cash Drawer
+## 7. Transaction Log
 
-### 7.1 Open
+There is no cash-drawer lifecycle. Every sale is recorded read-only in a
+transaction log:
 
-Only one open drawer per active `kasir`/`owner_admin` is allowed. The atomic
-`open_cash_drawer` RPC locks the employee row, rejects a second open session,
-validates a non-negative opening balance, and creates the session for the
-server-derived employee identity.
+- Sales: employee (server-derived), `created_at` timestamptz, payment method, totals.
+- Sale items: product name, unit, qty, unit price, discount, tax, and line total
+  snapshots at the time of sale (immutable if the product price later changes).
+- Void / return / refund records: employee, timestamp, reason.
 
-### 7.2 Checkout validation
+Daily totals per cashier per payment method are exposed through the
+`daily_sales_totals` view. Cash variance reconciliation is intentionally dropped.
 
-Every checkout must verify that the submitted session belongs to the authenticated cashier and is still open.
-
-### 7.3 Cash-refund validation
-
-Every cash customer return must verify that `returns.cash_drawer_session_id` belongs to the authenticated processor and is still open at the time of the refund.
-
-### 7.4 Close
-
-`close_cash_drawer` locks the drawer before calculating and persisting the
-closing snapshot. Checkout and cash-refund RPCs lock that same row, so a
-concurrent mutation either commits before the calculation or observes the
-closed drawer and fails.
-
-```text
-cash_sales = SUM(total_amount)
-  WHERE cash_drawer_session_id = :id
-    AND payment_method = 'cash'
-    AND status = 'completed'
-
-customer_cash_refunds = SUM(returns.refund_total)
-  WHERE source = 'customer'
-    AND refund_method = 'cash'
-    AND cash_drawer_session_id = :id
-
-closing_balance_expected = opening_balance + cash_sales - customer_cash_refunds
-variance = closing_balance_actual - closing_balance_expected
-```
-
-**Do not** assign a refund to the original transaction's drawer. A historical drawer may already be closed and did not physically pay today's refund.
-
-For `refund_method = qris`, the refund is handled manually outside payment-gateway integration and does not reduce physical cash in the drawer.
-
-Cashier lifecycle is `login -> open drawer -> transact -> close drawer`.
-General checkout idempotency keys remain a production backlog item for safe
-network retries; they are not part of drawer lifecycle implementation.
-
-The cashier workspace is available only while the server-derived employee has
-an open drawer. Product search returns active products, sell units, and an
+The cashier workspace is available to `kasir`/`owner_admin` without any session
+precondition. Product search returns active products, sell units, and an
 informational aggregate of usable batch stock. Cart state remains browser
 memory only and stores product/unit display snapshots—not batches or FEFO
 allocations. Displayed stock, price, and subtotal are previews; the checkout
@@ -466,8 +404,7 @@ Invoice numbers are generated **inside the checkout database transaction**, not 
 
 The cash checkout UI shows estimated totals and change only as previews.
 `checkout_transaction()` remains authoritative, and the cart is cleared only
-after its successful result. Opening a cashier session redirects to
-`/cashier`.
+after its successful result.
 
 Checkout has no idempotency key in Pilot 1. The browser must never retry a
 submitted checkout automatically; an uncertain network response requires the

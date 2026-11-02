@@ -3,7 +3,7 @@ create extension if not exists pgtap with schema extensions;
 set local search_path=public,extensions;
 select plan(10);
 insert into categories(id,name) values('a1000000-0000-0000-0000-000000000001','Category');
-insert into subcategories(id,category_id,name) values('a2000000-0000-0000-0000-000000000001','a1000000-0000-0000-0000-000000000001','Subcategory');
+insert into subcategories(id,name) values('a2000000-0000-0000-0000-000000000001','Subcategory');
 select lives_ok($$select public.create_product_with_base_unit(' NEW-001 ','New product','a1000000-0000-0000-0000-000000000001','a2000000-0000-0000-0000-000000000001','Tablet','Tablet',1000,null,null,null,null,null,null,0,0,false,'otc',0,true,'00123')$$,'creates product and base unit');
 select is((select sku from products where sku='NEW-001'),'NEW-001','SKU is trimmed');
 select is((select barcode from product_units u join products p on p.id=u.product_id where p.sku='NEW-001'),'00123','leading zero barcode is preserved');

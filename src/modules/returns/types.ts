@@ -3,7 +3,6 @@ export interface CustomerReturnInput {
   employeeId: string;
   transactionId: string;
   refundMethod: "cash" | "qris";
-  cashDrawerSessionId?: string;
   reason: string;
   items: CustomerReturnItemInput[];
 }

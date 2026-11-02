@@ -28,7 +28,7 @@ Penyimpanan memakai `createProduct` dan RPC produk yang sudah ada, tanpa stok.
 | sku | sku | products.sku |
 | name | name | products.name |
 | category | categoryId melalui nama/pemetaan | products.category_id |
-| subcategory | subcategoryId dalam kategori terpilih | products.subcategory_id |
+| subcategory | subcategoryId independen melalui nama/pemetaan | products.subcategory_id |
 | manufacturer | manufacturer | products.manufacturer |
 | classification | drugClassification | products.drug_classification |
 | unit_name | baseUnit | products.base_unit dan product_units.unit_name |

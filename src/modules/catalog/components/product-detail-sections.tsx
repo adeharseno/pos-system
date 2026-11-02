@@ -3,6 +3,7 @@ import type { AdminProductDetail } from "../data/admin-product-queries";
 import { Card, CardContent, CardHeader } from "@/modules/ui/components";
 import { formatRupiah } from "@/modules/ui/currency";
 import { hasDisplayValue, productLinkClass, productPrimaryLinkClass } from "./product-presentation";
+import { CATEGORY_LABEL, SUBCATEGORY_LABEL } from "../master-data-labels";
 
 // Pure server presentation: the full product is never passed to a Client Component.
 export function ProductDetailSections({ product, owner, canViewSensitivePricing }: {
@@ -17,8 +18,8 @@ export function ProductDetailSections({ product, owner, canViewSensitivePricing 
   const information = [
     { label: "SKU", value: product.sku },
     { label: "Nama generik", value: product.genericName },
-    { label: "Kategori", value: product.category },
-    { label: "Subkategori", value: product.subcategory },
+    { label: CATEGORY_LABEL, value: product.category },
+    { label: SUBCATEGORY_LABEL, value: product.subcategory },
     { label: "Satuan dasar", value: product.baseUnit },
     { label: "Golongan obat", value: classification },
     { label: "Kebutuhan resep", value: product.requiresPrescription ? "Perlu resep" : "Tanpa resep" },

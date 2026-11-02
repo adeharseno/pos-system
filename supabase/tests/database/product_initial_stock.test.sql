@@ -3,7 +3,7 @@ create extension if not exists pgtap with schema extensions;
 set local search_path=public,extensions;
 select plan(12);
 insert into categories(id,name) values('d1000000-0000-0000-0000-000000000001','Initial Stock Category');
-insert into subcategories(id,category_id,name) values('d2000000-0000-0000-0000-000000000001','d1000000-0000-0000-0000-000000000001','Initial Stock Subcategory');
+insert into subcategories(id,name) values('d2000000-0000-0000-0000-000000000001','Initial Stock Subcategory');
 
 select lives_ok($$select create_product_with_base_unit_and_initial_stock('INIT-001','Initial stock product','d1000000-0000-0000-0000-000000000001','d2000000-0000-0000-0000-000000000001','Tablet','Tablet',1332,null,null,null,null,null,null,1000,11,false,'otc',0,true,'00123','{"expired_date":"2030-01-01","quantity":100}')$$,'creates product, base unit, and initial batch atomically');
 select ok((select conversion_to_base=1 and is_base_unit from product_units u join products p on p.id=u.product_id where p.sku='INIT-001'),'initial selling unit remains the base unit');

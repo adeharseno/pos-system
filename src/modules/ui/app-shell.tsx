@@ -6,17 +6,17 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
 import type { EmployeeRole } from "@/modules/auth/types";
 import { UserMenu } from "./user-menu";
-import { BoxIcon, CashDrawerIcon, ChartIcon, CloseIcon, HomeIcon, MenuIcon, UsersIcon } from "./icons";
+import { BoxIcon, ChartIcon, CloseIcon, HomeIcon, MenuIcon, UsersIcon } from "./icons";
 
 type NavItem = { label: string; href: string; icon: ComponentType<SVGProps<SVGSVGElement>>; admin?: boolean; posOperator?: boolean };
 const groups: Array<{ label: string; items: NavItem[] }> = [
-  { label: "Operasional", items: [{ label: "Beranda", href: "/dashboard", icon: HomeIcon }, { label: "Sesi Kasir", href: "/cash-drawer", icon: CashDrawerIcon, posOperator: true }, { label: "Riwayat Sesi", href: "/cash-drawer/sessions", icon: CashDrawerIcon, admin: true }, { label: "Transaksi", href: "/transactions", icon: ChartIcon }] },
+  { label: "Operasional", items: [{ label: "Beranda", href: "/dashboard", icon: HomeIcon }, { label: "Transaksi", href: "/transactions", icon: ChartIcon }] },
   { label: "Persediaan", items: [{ label: "Daftar Barang", href: "/products", icon: BoxIcon }, { label: "Persediaan", href: "/inventory", icon: BoxIcon }, { label: "Perhitungan Stok", href: "/inventory/opname", icon: ChartIcon, admin: true }] },
   { label: "Pengelolaan", items: [{ label: "Laporan", href: "/reports", icon: ChartIcon, admin: true }, { label: "Karyawan", href: "/employees", icon: UsersIcon, admin: true }] },
 ];
 
 // Presentation adapted from TailAdmin AppSidebar/AppHeader; role filtering is retained.
-export function AppShell({ employee, children }: { employee: { name: string; role: EmployeeRole }; drawerOpen: boolean; children: React.ReactNode }) {
+export function AppShell({ employee, children }: { employee: { name: string; role: EmployeeRole }; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const menu = useRef<HTMLDialogElement>(null);
@@ -38,10 +38,9 @@ export function AppShell({ employee, children }: { employee: { name: string; rol
 
   const role = employee.role === "owner_admin" ? "Pemilik" : employee.role === "kasir" ? "Kasir" : "Staf";
   const currentItem = groups.flatMap(group => group.items).filter(item => item.href !== "#" && (pathname === item.href || pathname.startsWith(`${item.href}/`))).sort((a, b) => b.href.length - a.href.length)[0];
-  const title = currentItem?.label ?? (pathname === "/cash-drawer" ? "Sesi kasir" : pathname === "/expenses" ? "Pengeluaran" : "Beranda");
+  const title = currentItem?.label ?? (pathname === "/expenses" ? "Pengeluaran" : "Beranda");
 
   if (pathname === "/cashier" || pathname.startsWith("/cashier/")) return <div className="flex h-[100dvh] flex-col overflow-hidden">{children}</div>;
-  if (pathname === "/cash-drawer") return <div className="flex h-[100dvh] flex-col overflow-y-auto">{children}</div>;
 
   const nav = <>
     <Link href="/dashboard" onClick={() => setOpen(false)} className="mb-8 flex min-h-16 items-center gap-3">

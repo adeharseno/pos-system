@@ -5,7 +5,7 @@ select plan(20);
 insert into employees(id,full_name,position) values('f1000000-0000-4000-8000-000000000001','Item owner','owner_admin'),('f1000000-0000-4000-8000-000000000002','Item cashier','kasir');
 insert into suppliers(id,name) values('f2000000-0000-4000-8000-000000000001','Item supplier');
 insert into categories(id,name) values('f3000000-0000-4000-8000-000000000001','Item category');
-insert into subcategories(id,category_id,name) values('f4000000-0000-4000-8000-000000000001','f3000000-0000-4000-8000-000000000001','Item subcategory');
+insert into subcategories(id,name) values('f4000000-0000-4000-8000-000000000001','Item subcategory');
 insert into products(id,sku,name,base_unit,category_id,subcategory_id,cost_price) values('f5000000-0000-4000-8000-000000000001','ITEM-SNAPSHOT','Snapshot product','Tablet','f3000000-0000-4000-8000-000000000001','f4000000-0000-4000-8000-000000000001',100),('f5000000-0000-4000-8000-000000000002','ITEM-UNPRICED','Unpriced master','Botol','f3000000-0000-4000-8000-000000000001','f4000000-0000-4000-8000-000000000001',null);
 insert into product_units(id,product_id,unit_name,conversion_to_base,selling_price,is_base_unit) values('f6000000-0000-4000-8000-000000000001','f5000000-0000-4000-8000-000000000001','Tablet',1,133.2,true);
 insert into purchase_invoices(id,supplier_id,invoice_number,invoice_date,total_amount,created_by,updated_by) values('f7000000-0000-4000-8000-000000000001','f2000000-0000-4000-8000-000000000001','ITEM-INV','2026-10-29',1000,'f1000000-0000-4000-8000-000000000001','f1000000-0000-4000-8000-000000000001');

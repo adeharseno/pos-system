@@ -3,7 +3,7 @@ import test from "node:test";
 import * as XLSX from "xlsx";
 import { buildProductImportPreview, buildProductImportPreviewWithInfo, normalizeImportNumber, type ProductImportMasterData } from "./application/preview-product-import";
 
-const master: ProductImportMasterData = { categories: [{ id: "category-a", name: "Obat Bebas" }], subcategories: [{ id: "subcategory-a", category_id: "category-a", name: "Tablet" }], suppliers: [{ id: "supplier-a", name: "PT Kimia Farma" }], locations: [{ id: "location-a", full_code: "RAK-A" }] };
+const master: ProductImportMasterData = { categories: [{ id: "category-a", name: "Obat Bebas" }], subcategories: [{ id: "subcategory-a", name: "Tablet" }], suppliers: [{ id: "supplier-a", name: "PT Kimia Farma" }], locations: [{ id: "location-a", full_code: "RAK-A" }] };
 const xlsx = (rows: string[][]) => { const book = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(book, XLSX.utils.aoa_to_sheet(rows), "Produk"); return XLSX.write(book, { type: "array", bookType: "xlsx" }) as ArrayBuffer; };
 const headers = ["SKU", "Nama Produk", "Kategori", "Subkategori", "Unit Dasar", "Harga Jual", "Harga Modal", "Barcode", "Klasifikasi Obat", "Minimum Stok", "Supplier", "Lokasi Penyimpanan"];
 

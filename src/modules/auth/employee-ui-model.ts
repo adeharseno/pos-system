@@ -2,7 +2,7 @@ import type { EmployeeRole } from "./types";
 import { isPermission, type Permission, type PermissionOverride } from "./permissions";
 
 export type AccountStatus = "active" | "disabled" | "not_invited" | "invited" | "retryable" | "failed";
-export type EmployeeRow = { id: string; full_name: string; email: string | null; phone: string | null;
+export type EmployeeRow = { id: string; full_name: string; username: string; email: string | null; phone: string | null;
   position: EmployeeRole; join_date: string; is_active: boolean; account_status: AccountStatus; retryable: boolean | null };
 export type PermissionCatalog = { definitions: Permission[]; presets: Record<EmployeeRole, Permission[]> };
 export type EmployeeAccess = { role: EmployeeRole; is_active: boolean; account_enabled: boolean;
@@ -14,7 +14,7 @@ export const STATUS_LABELS: Record<AccountStatus, string> = {
 };
 export function filterEmployees(rows: EmployeeRow[], search: string, role: string, status: string) {
   const query = search.trim().toLocaleLowerCase("id-ID");
-  return rows.filter(row => `${row.full_name} ${row.email ?? ""}`.toLocaleLowerCase("id-ID").includes(query) &&
+  return rows.filter(row => `${row.full_name} ${row.username} ${row.email ?? ""}`.toLocaleLowerCase("id-ID").includes(query) &&
     (!role || row.position === role) && (!status || row.account_status === status || status === "inactive" && !row.is_active));
 }
 export function lastUsableOwner(rows: EmployeeRow[], row: EmployeeRow) {
@@ -33,10 +33,11 @@ export function parseEmployees(value: unknown): EmployeeRow[] {
   if (!Array.isArray(value)) throw new Error("invalid response");
   return value.map(row => {
     if (!row || typeof row !== "object" || typeof row.id !== "string" || typeof row.full_name !== "string" ||
+        typeof row.username !== "string" || !/^[a-z0-9._-]{3,30}$/.test(row.username) ||
         !Object.hasOwn(ROLE_LABELS, row.position) || !Object.hasOwn(STATUS_LABELS, row.account_status) ||
         typeof row.is_active !== "boolean" || typeof row.join_date !== "string" ||
         row.email !== null && typeof row.email !== "string" || row.phone !== null && typeof row.phone !== "string") throw new Error("invalid response");
-    return { id: row.id, full_name: row.full_name, position: row.position, account_status: row.account_status,
+    return { id: row.id, full_name: row.full_name, username: row.username, position: row.position, account_status: row.account_status,
       email: row.email, phone: row.phone, join_date: row.join_date, is_active: row.is_active, retryable: row.retryable === true };
   });
 }

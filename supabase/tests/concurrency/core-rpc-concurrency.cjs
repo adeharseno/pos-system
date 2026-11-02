@@ -79,20 +79,17 @@ async function seed(client, options = {}) {
   await clean(client);
   const ids = {
     category: randomUUID(), subcategory: randomUUID(), location: randomUUID(),
-    product: randomUUID(), unit: randomUUID(), cashier: randomUUID(), owner: randomUUID(), drawer: randomUUID(),
+    product: randomUUID(), unit: randomUUID(), cashier: randomUUID(), owner: randomUUID(),
     batch1: randomUUID(), batch2: randomUUID(),
   };
   await client.query("insert into public.categories(id,name) values($1,'Concurrency')", [ids.category]);
-  await client.query("insert into public.subcategories(id,category_id,name) values($1,$2,'Concurrency')", [ids.subcategory, ids.category]);
+  await client.query("insert into public.subcategories(id,name) values($1,'Concurrency')", [ids.subcategory]);
   await client.query("insert into public.storage_locations(id,zone_code,rack_code,level_code,full_code) values($1,'CZ','CR','CL',$2)", [ids.location, ids.location]);
   await client.query(`insert into public.products(id,sku,name,category_id,subcategory_id,base_unit,storage_location_id)
     values($1,$2,'Concurrent product',$3,$4,'tablet',$5)`, [ids.product, ids.product, ids.category, ids.subcategory, ids.location]);
   await client.query(`insert into public.product_units(id,product_id,unit_name,conversion_to_base,selling_price,is_base_unit)
     values($1,$2,'tablet',1,100,true)`, [ids.unit, ids.product]);
   await client.query("insert into public.employees(id,full_name,position) values($1,'Cashier','kasir'),($2,'Owner','owner_admin')", [ids.cashier, ids.owner]);
-  if (options.createDrawer !== false) {
-    await client.query('insert into public.cash_drawer_sessions(id,employee_id,opening_balance) values($1,$2,100000)', [ids.drawer, ids.cashier]);
-  }
   const stock1 = options.stock1 ?? 10;
   await client.query(`insert into public.product_batches(id,product_id,batch_number,expired_date,quantity,cost_price,created_at)
     values($1,$2,'EARLY','2028-01-01',$3,50,'2026-01-01')`, [ids.batch1, ids.product, stock1]);
@@ -105,8 +102,8 @@ async function seed(client, options = {}) {
 
 function checkoutCall(ids, quantity, method = 'cash') {
   return {
-    text: `select public.checkout_transaction($1,$2,$3,$4::jsonb,$5,null) result`,
-    values: [ids.cashier, ids.drawer, method,
+    text: `select public.checkout_transaction($1,$2,$3::jsonb,$4,null) result`,
+    values: [ids.cashier, method,
       JSON.stringify([{ product_unit_id: ids.unit, quantity }]), method === 'cash' ? 100000 : null],
   };
 }
@@ -152,7 +149,7 @@ async function prepareSale(client, quantity = 10, stock = 20, method = 'cash') {
 }
 
 function returnCall(ids, quantity) {
-  return { text:'select public.create_customer_return($1,$2,\'qris\',null,\'race\',$3::jsonb)',
+  return { text:'select public.create_customer_return($1,$2,\'qris\',\'race\',$3::jsonb)',
     values:[ids.cashier,ids.transaction,JSON.stringify([{transaction_item_id:ids.item,quantity_in_base:quantity}])] };
 }
 
@@ -316,35 +313,6 @@ async function main() {
     const results=await race([call,call]);
     assert(successes(results).length===1 && messageOf(failures(results)[0]).includes('STOCK_OPNAME_IN_PROGRESS'),'multiple opname starts not serialized');
     assert((await client.query("select count(*)::int count from public.stock_opname_sessions where status='in_progress'")).rows[0].count===1,'multiple active opnames');
-  });
-
-  await run('cash drawer open vs open', async (client) => {
-    const ids=await seed(client,{stock1:10,createDrawer:false});
-    const call={text:'select public.open_cash_drawer($1,100000)',values:[ids.cashier]};
-    const results=await race([call,call]);
-    assert(successes(results).length===1 && messageOf(failures(results)[0]).includes('CASH_DRAWER_ALREADY_OPEN'),'drawer open race not serialized');
-    assert((await client.query('select count(*)::int count from public.cash_drawer_sessions where employee_id=$1 and is_open',[ids.cashier])).rows[0].count===1,'more than one drawer opened');
-  });
-
-  await run('cash drawer close vs close', async (client) => {
-    const ids=await seed(client,{stock1:10});
-    const call={text:'select public.close_cash_drawer($1,$2,100000)',values:[ids.drawer,ids.cashier]};
-    const results=await race([call,call]);
-    assert(successes(results).length===1 && messageOf(failures(results)[0]).includes('CASH_DRAWER_ALREADY_CLOSED'),'drawer close race not serialized');
-    const drawer=(await client.query('select is_open,closing_balance_expected from public.cash_drawer_sessions where id=$1',[ids.drawer])).rows[0];
-    assert(!drawer.is_open && Number(drawer.closing_balance_expected)===100000,'drawer closing snapshot invalid');
-  });
-
-  await run('checkout vs cash drawer close', async (client) => {
-    const ids=await seed(client,{stock1:10});
-    const results=await race([checkoutCall(ids,1),{text:'select public.close_cash_drawer($1,$2,100000)',values:[ids.drawer,ids.cashier]}]);
-    const checkoutSucceeded=results[0].status==='fulfilled';
-    assert(results[1].status==='fulfilled','drawer close did not complete');
-    if(!checkoutSucceeded)assert(messageOf(results[0]).includes('NO_ACTIVE_CASH_DRAWER'),'checkout race loser lacks drawer domain error');
-    const drawer=(await client.query('select is_open,closing_balance_expected from public.cash_drawer_sessions where id=$1',[ids.drawer])).rows[0];
-    const transactions=(await client.query('select count(*)::int count from public.transactions')).rows[0].count;
-    assert(!drawer.is_open && transactions===(checkoutSucceeded?1:0),'checkout committed outside serialized drawer lifecycle');
-    assert(Number(drawer.closing_balance_expected)===(checkoutSucceeded?100100:100000),'closing expected cash missed concurrent checkout');
   });
 
   assert(deadlocks===0,'deadlock detected');

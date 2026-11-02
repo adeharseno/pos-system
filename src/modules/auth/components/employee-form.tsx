@@ -14,6 +14,7 @@ export function EmployeeForm({ employee, catalog, protectedOwner, onSaved, onCan
   onBusyChange: (busy: boolean) => void;
 }) {
   const [name, setName] = useState(employee?.full_name ?? "");
+  const [username, setUsername] = useState(employee?.username ?? "");
   const [email, setEmail] = useState(employee?.email ?? "");
   const [password, setPassword] = useState("");
   const [phone, setPhone] = useState(employee?.phone ?? "");
@@ -31,14 +32,14 @@ export function EmployeeForm({ employee, catalog, protectedOwner, onSaved, onCan
     setBusy(true); onBusyChange(true); setError("");
     try {
       if (employee) {
-        await employeeRequest(`/api/employees/${employee.id}`, "PATCH", { full_name: name, phone: phone || null, join_date: date, reason });
+        await employeeRequest(`/api/employees/${employee.id}`, "PATCH", { full_name: name, username, phone: phone || null, join_date: date, reason });
         if (role !== employee.position) await employeeRequest(`/api/employees/${employee.id}/role`, "PATCH", { position: role, reason });
         if (active !== employee.is_active) await employeeRequest(`/api/employees/${employee.id}/access`, "PATCH", { is_active: active, reason });
         onSaved("Data karyawan berhasil disimpan.");
       } else {
         if (!createdId) {
           const result = await employeeRequest<{ employee_id: string }>("/api/employees/account", "POST", {
-            request_id: requestId, full_name: name, email, password, phone: phone || null, position: role, join_date: date, reason,
+            request_id: requestId, full_name: name, username, email, password, phone: phone || null, position: role, join_date: date, reason,
           });
           setCreatedId(result.employee_id);
         }
@@ -49,7 +50,7 @@ export function EmployeeForm({ employee, catalog, protectedOwner, onSaved, onCan
   }
   function submit(event: FormEvent) {
     event.preventDefault(); setError("");
-    const validation = employeeFormError({ name, email, phone, date, reason, needsEmail: isCreate }) ??
+    const validation = employeeFormError({ name, username, email, phone, date, reason, needsEmail: isCreate }) ??
       (isCreate ? employeePasswordError(password) : null);
     if (validation) return setError(validation);
     if (employee && (employee.is_active && !active || employee.position === "owner_admin" && role !== "owner_admin")) setConfirm(true);
@@ -59,6 +60,7 @@ export function EmployeeForm({ employee, catalog, protectedOwner, onSaved, onCan
     {error && <p role="alert" className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">{createdId ? "Data karyawan sudah tersimpan. " : ""}{error} Isian Anda tetap tersimpan di formulir ini.</p>}
     <fieldset disabled={busy} className="grid gap-4 sm:grid-cols-2">
       <FormField><Label htmlFor="employee-name">Nama Karyawan</Label><Input id="employee-name" value={name} onChange={e => setName(e.target.value)} readOnly={Boolean(createdId)} autoComplete="name" maxLength={150} autoFocus required /></FormField>
+      <FormField><Label htmlFor="employee-username">Username</Label><Input id="employee-username" value={username} onChange={e => setUsername(e.target.value.toLowerCase())} readOnly={Boolean(createdId)} autoComplete="username" pattern="[a-z0-9._-]{3,30}" minLength={3} maxLength={30} required /></FormField>
       <FormField><Label htmlFor="employee-email">Email</Label><Input id="employee-email" type="email" value={email} onChange={e => setEmail(e.target.value)} readOnly={Boolean(employee) || Boolean(createdId)} autoComplete="email" required={isCreate} /></FormField>
       {isCreate && <FormField><Label htmlFor="employee-password">Password</Label><Input id="employee-password" type="password" value={password} onChange={e => setPassword(e.target.value)} readOnly={Boolean(createdId)} autoComplete="new-password" minLength={4} required /></FormField>}
       <FormField><Label htmlFor="employee-phone">No Hp</Label><Input id="employee-phone" type="tel" value={phone} onChange={e => setPhone(e.target.value)} readOnly={Boolean(createdId)} autoComplete="tel" maxLength={40} placeholder="Opsional" /></FormField>

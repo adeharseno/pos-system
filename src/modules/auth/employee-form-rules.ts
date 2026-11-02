@@ -1,5 +1,6 @@
-export function employeeFormError(input: { name: string; email: string; phone: string; date: string; reason: string; needsEmail: boolean }): string | null {
+export function employeeFormError(input: { name: string; username: string; email: string; phone: string; date: string; reason: string; needsEmail: boolean }): string | null {
   if (!input.name.trim() || input.name.trim().length > 150) return "Isi nama lengkap karyawan, maksimal 150 karakter.";
+  if (!/^[a-z0-9._-]{3,30}$/.test(input.username.trim())) return "Username harus 3-30 karakter dan hanya berisi huruf kecil, angka, titik, garis bawah, atau tanda hubung.";
   if (input.needsEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email.trim())) return "Isi alamat email yang benar.";
   if (input.phone.length > 40) return "Nomor telepon terlalu panjang. Gunakan maksimal 40 karakter.";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date) || Number.isNaN(Date.parse(input.date)) || new Date(input.date).toISOString().slice(0, 10) !== input.date) return "Isi tanggal bergabung yang benar.";

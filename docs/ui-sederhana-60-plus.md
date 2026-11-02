@@ -23,7 +23,7 @@ Perubahan dilakukan pada branch lokal yang sama, melanjutkan desain TailAdmin.
 - Visualisasi: satu grafik Penjualan Bulanan dan daftar Produk Terlaris.
   Grafik harian, metode pembayaran, detail SKU/nilai produk, badge berulang,
   dan paragraf penjelasan panjang tidak ditampilkan.
-- Lima tindakan cepat Pemilik: Penjualan Baru, Kelola Sesi Kasir, Stok Masuk,
+- Lima tindakan cepat Pemilik: Penjualan Baru, Riwayat Transaksi, Stok Masuk,
   Daftar Barang, Persediaan. Kasir hanya mendapat tindakan yang diizinkan.
   Tombol Tambah Produk dan kartu tindakan duplikat pada tampilan operasional
   dihapus. Akun Staf tetap memperoleh sambutan dan arahan kerja.

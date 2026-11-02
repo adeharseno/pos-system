@@ -1,14 +1,13 @@
 begin;
 select plan(13);
 insert into public.categories(id,name) values ('fe000000-0000-0000-0000-000000000001','Profit test category');
-insert into public.subcategories(id,category_id,name) values ('fe000000-0000-0000-0000-000000000002','fe000000-0000-0000-0000-000000000001','Profit test subcategory');
+insert into public.subcategories(id,name) values ('fe000000-0000-0000-0000-000000000002','Profit test subcategory');
 insert into public.products(id,sku,name,category_id,subcategory_id,base_unit) values ('fe000000-0000-0000-0000-000000000003','PROFIT-TEST-SKU','Profit product','fe000000-0000-0000-0000-000000000001','fe000000-0000-0000-0000-000000000002','tablet');
 insert into public.product_units(id,product_id,unit_name,conversion_to_base,selling_price,is_base_unit) values ('fe000000-0000-0000-0000-000000000004','fe000000-0000-0000-0000-000000000003','tablet',1,100,true);
 insert into public.product_batches(id,product_id,batch_number,expired_date,quantity,cost_price) values ('fe000000-0000-0000-0000-000000000005','fe000000-0000-0000-0000-000000000003','profit','2099-01-01',1,40);
 insert into public.employees(id,full_name,position) values ('fe000000-0000-0000-0000-000000000006','Profit cashier','kasir');
-insert into public.cash_drawer_sessions(id,employee_id,opening_balance) values ('fe000000-0000-0000-0000-000000000007','fe000000-0000-0000-0000-000000000006',0);
-insert into public.transactions(id,invoice_number,business_date,cashier_id,cash_drawer_session_id,subtotal,tax_amount,total_amount,payment_method,cash_received,cash_change,payment_confirmed_at,payment_confirmed_by,status) values
- ('fe000000-0000-0000-0000-000000000008','PROFIT-CASH','2093-01-01','fe000000-0000-0000-0000-000000000006','fe000000-0000-0000-0000-000000000007',200,20,220,'cash',220,0,'2093-01-01 01:00+07','fe000000-0000-0000-0000-000000000006','completed');
+insert into public.transactions(id,invoice_number,business_date,cashier_id,subtotal,tax_amount,total_amount,payment_method,cash_received,cash_change,payment_confirmed_at,payment_confirmed_by,status) values
+ ('fe000000-0000-0000-0000-000000000008','PROFIT-CASH','2093-01-01','fe000000-0000-0000-0000-000000000006',200,20,220,'cash',220,0,'2093-01-01 01:00+07','fe000000-0000-0000-0000-000000000006','completed');
 insert into public.transaction_items(id,transaction_id,product_id,product_unit_id,product_name_snapshot,unit_name_snapshot,quantity_in_unit,conversion_to_base_snapshot,quantity_in_base,unit_price,tax_rate_snapshot,subtotal,tax_amount,total_amount) values
  ('fe000000-0000-0000-0000-000000000009','fe000000-0000-0000-0000-000000000008','fe000000-0000-0000-0000-000000000003','fe000000-0000-0000-0000-000000000004','Profit product','tablet',2,1,2,100,10,200,20,220);
 insert into public.transaction_item_batches(transaction_item_id,product_id,batch_id,quantity_in_base,cost_price_snapshot) values

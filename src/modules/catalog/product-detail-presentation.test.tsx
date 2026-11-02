@@ -13,7 +13,7 @@ const product: AdminProductDetail = {
   categoryId: "category", subcategoryId: "subcategory", defaultSupplierId: null, storageLocationId: null,
   drugClassification: "prescription_required", description: null, costPrice: 7313, marginPercent: 64.09,
   taxRate: 0, isTaxable: false, units: [],
-  batches: [{ id: "batch", product_id: "product", batch_number: "B-1", expired_date: "2030-01-01", quantity: 7, cost_price: 7123, received_date: "2026-01-01", created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" }],
+  batches: [{ id: "batch", product_id: "product", purchase_invoice_item_id: null, batch_number: "B-1", expired_date: "2030-01-01", quantity: 7, cost_price: 7123, received_date: "2026-01-01", created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" }],
 };
 
 test("non-owner rendered product content excludes cost and margin, even if passed a sensitive object", () => {

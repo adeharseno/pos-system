@@ -82,7 +82,7 @@ A custom domain or VPS is not required for development/demo Pilot 1. Hosting pla
 
 ## Important
 
-Critical inventory/financial workflows are designed to run atomically in PostgreSQL RPC/functions. Do not implement checkout/void/returns/opname as unrelated database calls from the Next.js API layer. Stock opname freezes affected batches while in progress; cash refunds belong to the drawer that pays the refund; composite FKs and lifecycle checks are part of the base schema.
+Critical inventory/financial workflows are designed to run atomically in PostgreSQL RPC/functions. Do not implement checkout/void/returns/opname as unrelated database calls from the Next.js API layer. Stock opname freezes affected batches while in progress; every sale and refund is recorded in a read-only transaction log; composite FKs and lifecycle checks are part of the base schema.
 
 QRIS lifecycle is deliberately strict: an unconfirmed `pending_payment` transaction may be confirmed or voided, while a confirmed `completed` QRIS transaction can only be reversed through customer return/refund.
 

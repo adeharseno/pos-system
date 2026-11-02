@@ -18,6 +18,11 @@ export function normalizeEmail(value: unknown) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new PosInputError("invalid email");
   return email;
 }
+export function normalizeUsername(value: unknown) {
+  const username = requiredText(value, 30).toLowerCase();
+  if (!/^[a-z0-9._-]{3,30}$/.test(username)) throw new PosInputError("invalid username");
+  return username;
+}
 export function employeePassword(value: unknown) {
   if (typeof value !== "string" || value.length < 4 || value.length > 128) throw new PosInputError("invalid password");
   return value;
@@ -28,8 +33,9 @@ function date(value: unknown) {
   return value;
 }
 export function employeeValues(body: Record<string, unknown>, create: boolean) {
-  allowedKeys(body, create ? ["request_id", "full_name", "position", "phone", "join_date", "reason"] : ["full_name", "phone", "join_date", "reason"]);
+  allowedKeys(body, create ? ["request_id", "full_name", "username", "position", "phone", "join_date", "reason"] : ["full_name", "username", "phone", "join_date", "reason"]);
   const values: Record<string, string | null> = {};
+  if (body.username !== undefined && body.username !== null) values.username = normalizeUsername(body.username);
   if (create || "full_name" in body) values.full_name = requiredText(body.full_name, 150);
   if (create) {
     values.request_id = requireUuid(requiredText(body.request_id), "request_id");

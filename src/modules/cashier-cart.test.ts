@@ -2,13 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { buildCashierProductResults,parseBarcode,parseProductSearchQuery } from "./catalog/search";
 import { addCartItem,cartSubtotalPreview,decreaseCartQuantity,increaseCartQuantity,removeCartItem,setCartQuantity,type CartCandidate } from "./sales/cart";
-import { cashierDrawerState } from "./sales/cashier-access";
 
 const product={id:"p1",name:"Paracetamol",sku:"PAR-01",requires_prescription:true,product_units:[{id:"u1",unit_name:"Tablet",conversion_to_base:1,selling_price:1000,barcode:null},{id:"u2",unit_name:"Box",conversion_to_base:10,selling_price:9000,barcode:"BOX"}]};
 const tablet:CartCandidate={productId:"p1",productName:"Paracetamol",productUnitId:"u1",unitLabel:"Tablet",conversionToBase:1,displayedUnitPrice:1000,requiresPrescription:true};
 const box:CartCandidate={...tablet,productUnitId:"u2",unitLabel:"Box",conversionToBase:10,displayedUnitPrice:9000};
-test("no open drawer makes cashier unavailable",()=>assert.equal(cashierDrawerState(null),"drawer_required"));
-test("open drawer makes cashier workspace available",()=>assert.equal(cashierDrawerState({id:"d",employee_id:"e",opening_balance:0,opened_at:"now",is_open:true}),"available"));
 test("successful product search mapping includes units and aggregate stock",()=>{const result=buildCashierProductResults([product],[{product_id:"p1",quantity:4},{product_id:"p1",quantity:6}]);assert.equal(result[0].availableStockBase,10);assert.equal(result[0].units.length,2);});
 test("empty product search result stays empty",()=>assert.deepEqual(buildCashierProductResults([],[]),[]));
 test("malformed search query is rejected safely",()=>assert.throws(()=>parseProductSearchQuery("bad,(query)")));

@@ -3,7 +3,7 @@
 ## Architecture and database hardening
 
 Pilot 1 is a Next.js modular monolith with Supabase PostgreSQL/Auth/Storage.
-Critical checkout, payment, void, return, stock-opname, and cash-drawer
+Critical checkout, payment, void, return, stock-opname, and transaction-log
 changes are atomic PostgreSQL RPC workflows; the browser has no direct
 operational-table or protected-RPC authority.
 

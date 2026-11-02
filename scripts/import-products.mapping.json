@@ -1,0 +1,8 @@
+{
+  "subkategori": {},
+  "klasifikasi": {
+    "OBAT BEBAS": "otc",
+    "OBAT RESEP": "prescription_required",
+    "PSIKOTROPIKA": "prescription_required"
+  }
+}

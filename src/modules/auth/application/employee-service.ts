@@ -64,7 +64,7 @@ export async function writeEmployee(operation: "create" | "edit" | "access" | "r
  */
 export async function createEmployeeAccount(body: Record<string, unknown>) {
   const actor = await requireEmployeeManager("employees.create");
-  allowedKeys(body, ["request_id", "full_name", "phone", "join_date", "position", "email", "password", "reason"]);
+  allowedKeys(body, ["request_id", "full_name", "username", "phone", "join_date", "position", "email", "password", "reason"]);
   const email = normalizeEmail(body.email);
   const password = employeePassword(body.password);
   const reason = requiredText(body.reason ?? "Penambahan karyawan");
@@ -72,6 +72,7 @@ export async function createEmployeeAccount(body: Record<string, unknown>) {
     request_id: body.request_id, full_name: body.full_name, position: body.position,
     phone: body.phone ?? null, reason,
   };
+  if (body.username !== undefined) raw.username = body.username;
   if (typeof body.join_date === "string" && body.join_date) raw.join_date = body.join_date;
   const values = employeeValues(raw, true);
 

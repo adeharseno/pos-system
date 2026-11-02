@@ -17,13 +17,8 @@ export type CoreRpcName = Extract<keyof Functions,
   | "start_stock_opname"
   | "apply_stock_opname"
   | "cancel_stock_opname">;
-// Cash-drawer functions share the same trusted server-only RPC boundary.
-export type CashDrawerRpcName = "open_cash_drawer" | "close_cash_drawer";
-export type ServerRpcName = CoreRpcName | CashDrawerRpcName;
-type GeneratedRpcArgs<Name extends ServerRpcName> = Functions[Name]["Args"];
-export type CoreRpcArgs<Name extends ServerRpcName> = Name extends "create_customer_return"
-  ? Omit<GeneratedRpcArgs<Name>, "p_cash_drawer_session_id"> & { p_cash_drawer_session_id: string | null }
-  : GeneratedRpcArgs<Name>;
+export type ServerRpcName = CoreRpcName;
+export type CoreRpcArgs<Name extends ServerRpcName> = Functions[Name]["Args"];
 
 export async function callCoreRpc<Name extends ServerRpcName>(
   name: Name,

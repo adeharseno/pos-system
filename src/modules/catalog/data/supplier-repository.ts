@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { mapDatabaseError, PosDomainError } from "@/modules/shared/errors/pos-domain-error";
+import { assertActiveSupplierNameAvailable } from "../supplier-name";
 import type { SupplierInput } from "../supplier-input";
 export async function listSuppliers(q = "", page = 1) {
   let query = createAdminSupabaseClient().from("suppliers").select("id,name,phone,address", { count: "exact" }).eq("is_active", true).order("name").order("id");
@@ -10,7 +11,11 @@ export async function listSuppliers(q = "", page = 1) {
   return { rows: result.data ?? [], total: result.count ?? 0 };
 }
 export async function saveSupplier(input: SupplierInput, id?: string) {
-  const table = createAdminSupabaseClient().from("suppliers");
+  const client = createAdminSupabaseClient();
+  const active = await client.from("suppliers").select("id,name,is_active").eq("is_active", true);
+  if (active.error) throw mapDatabaseError(active.error);
+  assertActiveSupplierNameAvailable(input.name, active.data ?? [], id);
+  const table = client.from("suppliers");
   const result = id
     ? await table.update(input).eq("id", id).eq("is_active", true).select("id,name,phone,address").maybeSingle()
     : await table.insert(input).select("id,name,phone,address").single();

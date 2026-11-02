@@ -25,13 +25,13 @@ Do **not** introduce microservices, a separate Express/Nest/Go backend, queues, 
 4. **Customer returns are cumulative.** Previous returns must be included when checking the remaining returnable quantity.
 5. **Customer returns restore original sale allocation batches** and snapshot refunds/COGS reversal.
 6. **A transaction with an existing customer return cannot be voided** in Pilot 1.
-7. **Checkout validates cash-drawer ownership** against the authenticated employee and requires the session to be open.
+7. **Checkout records a read-only transaction log** with the server-derived employee, timestamp, payment method, totals, and immutable line snapshots. There is no cash-drawer precondition.
 8. **Invoice numbers are generated DB-side inside checkout** using a concurrency-safe daily sequence.
 9. **Business timezone is Asia/Jakarta.** Store timestamps as UTC, but use WIB business dates for invoice/report/day boundaries.
 10. **Transactional tables are server-only.** Never expose `SUPABASE_SERVICE_ROLE_KEY`; browser database access to operational tables is denied by RLS.
 11. **Role model stays simple**: resolve `auth.users -> user_profiles -> employees`; `employees.position` is the authority (`owner_admin` | `kasir` | `staf`). Do not use Auth `app_metadata` as the application role authority or create granular RBAC tables in Pilot 1.
 12. **Stock opname is batch-level with operational freeze** in Pilot 1; `physical_quantity` is nullable until counted, only one session may be `in_progress`, frozen batches reject normal stock mutations, and apply is blocked while any item is uncounted.
-13. **Cash refunds use the current refund drawer**, never the original transaction drawer. The drawer must be open and owned by the authenticated processor.
+13. **Cash refunds are recorded in the transaction log** with employee, timestamp, and reason; there is no refund-drawer attribution.
 14. **Product/unit/batch consistency is enforced by composite foreign keys**, not only by RPC validation.
 15. **Payment lifecycle shape is enforced by database checks** in addition to RPC state-transition locking.
 16. **Checkout inserts the transaction header before transaction items** after authoritative totals and invoice number are calculated, so foreign-key order is valid.
@@ -60,9 +60,9 @@ Do **not** introduce microservices, a separate Express/Nest/Go backend, queues, 
   remains backlog work.
 - M1.3 database integrity tests use pgTAP against real local PostgreSQL and
   cover relational, numeric, payment lifecycle, void, return, stock-opname,
-  cash-drawer, and RLS constraints. Run them with `npm run db:test`.
-- Core/cash-drawer functions implement atomic checkout, payment, void, return,
-  stock-opname, and drawer RPCs and have passed local deterministic and
+  and RLS constraints. Run them with `npm run db:test`.
+- Core functions implement atomic checkout, payment, void, return,
+  stock-opname, and the transaction-log RPCs and have passed local deterministic and
   concurrency verification.
 - M1.1 application foundation is implemented: Next.js App Router, strict
   TypeScript, Tailwind CSS, ESLint, modular domain directories, and foundational

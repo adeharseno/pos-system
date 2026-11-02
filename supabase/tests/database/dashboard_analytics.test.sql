@@ -2,18 +2,17 @@ begin;
 select plan(21);
 
 insert into public.categories(id,name) values ('fb000000-0000-0000-0000-000000000001','Report test category');
-insert into public.subcategories(id,category_id,name) values ('fb000000-0000-0000-0000-000000000002','fb000000-0000-0000-0000-000000000001','Report test subcategory');
+insert into public.subcategories(id,name) values ('fb000000-0000-0000-0000-000000000002','Report test subcategory');
 insert into public.products(id,sku,name,category_id,subcategory_id,base_unit) values ('fb000000-0000-0000-0000-000000000003','REPORT-TEST-SKU','Report product','fb000000-0000-0000-0000-000000000001','fb000000-0000-0000-0000-000000000002','tablet');
 insert into public.product_units(id,product_id,unit_name,conversion_to_base,selling_price,is_base_unit) values ('fb000000-0000-0000-0000-000000000004','fb000000-0000-0000-0000-000000000003','tablet',1,100,true);
 insert into public.product_batches(id,product_id,batch_number,expired_date,quantity,cost_price) values
  ('fb000000-0000-0000-0000-000000000005','fb000000-0000-0000-0000-000000000003','report1','2099-01-01',1,50),
  ('fb000000-0000-0000-0000-000000000006','fb000000-0000-0000-0000-000000000003','report2','2099-01-01',1,70);
 insert into public.employees(id,full_name,position) values ('fb000000-0000-0000-0000-000000000007','Report cashier','kasir');
-insert into public.cash_drawer_sessions(id,employee_id,opening_balance) values ('fb000000-0000-0000-0000-000000000008','fb000000-0000-0000-0000-000000000007',0);
-insert into public.transactions(id,invoice_number,business_date,cashier_id,cash_drawer_session_id,subtotal,tax_amount,total_amount,payment_method,cash_received,cash_change,payment_confirmed_at,payment_confirmed_by,status) values
- ('fb000000-0000-0000-0000-000000000009','REPORT-TEST-CASH','2090-01-01','fb000000-0000-0000-0000-000000000007','fb000000-0000-0000-0000-000000000008',200,20,220,'cash',220,0,'2090-01-01 01:00+07','fb000000-0000-0000-0000-000000000007','completed'),
- ('fb000000-0000-0000-0000-000000000010','REPORT-TEST-QRIS','2090-01-01','fb000000-0000-0000-0000-000000000007','fb000000-0000-0000-0000-000000000008',100,10,110,'qris',null,null,'2090-01-01 18:00+00','fb000000-0000-0000-0000-000000000007','completed'),
- ('fb000000-0000-0000-0000-000000000011','REPORT-TEST-PENDING','2090-01-01','fb000000-0000-0000-0000-000000000007','fb000000-0000-0000-0000-000000000008',500,50,550,'qris',null,null,null,null,'pending_payment');
+insert into public.transactions(id,invoice_number,business_date,cashier_id,subtotal,tax_amount,total_amount,payment_method,cash_received,cash_change,payment_confirmed_at,payment_confirmed_by,status) values
+ ('fb000000-0000-0000-0000-000000000009','REPORT-TEST-CASH','2090-01-01','fb000000-0000-0000-0000-000000000007',200,20,220,'cash',220,0,'2090-01-01 01:00+07','fb000000-0000-0000-0000-000000000007','completed'),
+ ('fb000000-0000-0000-0000-000000000010','REPORT-TEST-QRIS','2090-01-01','fb000000-0000-0000-0000-000000000007',100,10,110,'qris',null,null,'2090-01-01 18:00+00','fb000000-0000-0000-0000-000000000007','completed'),
+ ('fb000000-0000-0000-0000-000000000011','REPORT-TEST-PENDING','2090-01-01','fb000000-0000-0000-0000-000000000007',500,50,550,'qris',null,null,null,null,'pending_payment');
 insert into public.transaction_items(id,transaction_id,product_id,product_unit_id,product_name_snapshot,unit_name_snapshot,quantity_in_unit,conversion_to_base_snapshot,quantity_in_base,unit_price,tax_rate_snapshot,subtotal,tax_amount,total_amount) values
  ('fb000000-0000-0000-0000-000000000012','fb000000-0000-0000-0000-000000000009','fb000000-0000-0000-0000-000000000003','fb000000-0000-0000-0000-000000000004','Report product','tablet',2,1,2,100,10,200,20,220);
 insert into public.transaction_item_batches(transaction_item_id,product_id,batch_id,quantity_in_base,cost_price_snapshot) values
@@ -47,8 +46,8 @@ select ok((select provolatile = 's' and not prosecdef from pg_proc where oid = '
 select is((select sum((value->>'revenue')::numeric) from jsonb_array_elements(public.dashboard_analytics_report('2090-01-01','2090-01-02',2090)->'daily')), (public.sales_gross_profit_report('2090-01-01','2090-01-02')->>'salesRevenue')::numeric,'sum of daily chart equals total sales in reports');
 
 -- Rollback-only fixtures: verify bank confirmation boundaries and void exclusion.
-insert into public.transactions(id,invoice_number,business_date,cashier_id,cash_drawer_session_id,subtotal,tax_amount,total_amount,payment_method,payment_confirmed_at,payment_confirmed_by,status) values
- ('fb000000-0000-0000-0000-000000000020','DASHBOARD-BANK','2090-01-01','fb000000-0000-0000-0000-000000000007','fb000000-0000-0000-0000-000000000008',100,10,110,'bank_transfer','2090-02-01 18:00+00','fb000000-0000-0000-0000-000000000007','completed');
+insert into public.transactions(id,invoice_number,business_date,cashier_id,subtotal,tax_amount,total_amount,payment_method,payment_confirmed_at,payment_confirmed_by,status) values
+ ('fb000000-0000-0000-0000-000000000020','DASHBOARD-BANK','2090-01-01','fb000000-0000-0000-0000-000000000007',100,10,110,'bank_transfer','2090-02-01 18:00+00','fb000000-0000-0000-0000-000000000007','completed');
 select is(public.dashboard_analytics_report('2090-02-02','2090-02-02',2090)#>>'{daily,0,revenue}','100.00','bank transfer is recognized on Jakarta confirmation day across month boundary');
 select is(public.dashboard_analytics_report('2090-02-02','2090-02-02',2090)#>>'{monthly,1,revenue}','100.00','bank transfer belongs to confirmation month rather than business month');
 update public.transactions set status='voided',voided_at='2090-02-03 01:00+07',voided_by='fb000000-0000-0000-0000-000000000007',void_reason='rollback-only test' where id='fb000000-0000-0000-0000-000000000011';

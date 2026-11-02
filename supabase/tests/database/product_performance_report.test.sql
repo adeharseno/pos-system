@@ -2,7 +2,7 @@ begin;
 select plan(11);
 
 insert into public.categories(id,name) values ('fc000000-0000-0000-0000-000000000001','Performance test category');
-insert into public.subcategories(id,category_id,name) values ('fc000000-0000-0000-0000-000000000002','fc000000-0000-0000-0000-000000000001','Performance test subcategory');
+insert into public.subcategories(id,name) values ('fc000000-0000-0000-0000-000000000002','Performance test subcategory');
 insert into public.products(id,sku,name,category_id,subcategory_id,base_unit) values
  ('fc000000-0000-0000-0000-000000000003','PERF-SOLD','Performance sold','fc000000-0000-0000-0000-000000000001','fc000000-0000-0000-0000-000000000002','tablet'),
  ('fc000000-0000-0000-0000-000000000004','PERF-STOCK','Performance stock','fc000000-0000-0000-0000-000000000001','fc000000-0000-0000-0000-000000000002','tablet'),
@@ -14,9 +14,8 @@ insert into public.product_batches(product_id,batch_number,expired_date,quantity
  ('fc000000-0000-0000-0000-000000000004','active','9999-01-01',7,1),
  ('fc000000-0000-0000-0000-000000000005','expired','2000-01-01',9,1);
 insert into public.employees(id,full_name,position) values ('fc000000-0000-0000-0000-000000000008','Performance cashier','kasir');
-insert into public.cash_drawer_sessions(id,employee_id,opening_balance) values ('fc000000-0000-0000-0000-000000000009','fc000000-0000-0000-0000-000000000008',0);
-insert into public.transactions(id,invoice_number,business_date,cashier_id,cash_drawer_session_id,subtotal,tax_amount,total_amount,payment_method,cash_received,cash_change,payment_confirmed_at,payment_confirmed_by,status) values
- ('fc000000-0000-0000-0000-000000000010','PERF-CASH','2091-01-01','fc000000-0000-0000-0000-000000000008','fc000000-0000-0000-0000-000000000009',120,0,120,'cash',120,0,'2091-01-01 01:00+07','fc000000-0000-0000-0000-000000000008','completed');
+insert into public.transactions(id,invoice_number,business_date,cashier_id,subtotal,tax_amount,total_amount,payment_method,cash_received,cash_change,payment_confirmed_at,payment_confirmed_by,status) values
+ ('fc000000-0000-0000-0000-000000000010','PERF-CASH','2091-01-01','fc000000-0000-0000-0000-000000000008',120,0,120,'cash',120,0,'2091-01-01 01:00+07','fc000000-0000-0000-0000-000000000008','completed');
 insert into public.transaction_items(id,transaction_id,product_id,product_unit_id,product_name_snapshot,unit_name_snapshot,quantity_in_unit,conversion_to_base_snapshot,quantity_in_base,unit_price,tax_rate_snapshot,subtotal,tax_amount,total_amount) values
  ('fc000000-0000-0000-0000-000000000011','fc000000-0000-0000-0000-000000000010','fc000000-0000-0000-0000-000000000003','fc000000-0000-0000-0000-000000000006','Performance sold','tablet',2,1,2,10,0,20,0,20),
  ('fc000000-0000-0000-0000-000000000012','fc000000-0000-0000-0000-000000000010','fc000000-0000-0000-0000-000000000003','fc000000-0000-0000-0000-000000000007','Performance sold','strip',1,10,10,100,0,100,0,100);

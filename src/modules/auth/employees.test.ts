@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { employeeValues, invitationRedirect, normalizeEmail, permissionChange } from "./employee-validation";
+import { employeeValues, invitationRedirect, normalizeEmail, normalizeUsername, permissionChange } from "./employee-validation";
 import { inviteEmployeeWith, type InvitationDependencies } from "./application/invitation-workflow";
 import { EmployeeManagementError } from "./employee-errors";
 import { mapApiError } from "../shared/api/response";
@@ -18,6 +18,13 @@ test("mass assignment, forged identity, invalid dates and role injection are rej
     assert.throws(() => employeeValues({ full_name: "Staf", reason: "test", ...injected }, false));
   }
   assert.throws(() => employeeValues({ full_name: "Staf", join_date: "2026-02-30" }, false));
+});
+test("username is normalized, format-checked, and optional for legacy callers", () => {
+  assert.equal(normalizeUsername(" Admin.User "), "admin.user");
+  assert.equal(normalizeUsername("Upper"), "upper");
+  for (const invalid of ["ab", "bad space", "bad!char", "x".repeat(31)]) assert.throws(() => normalizeUsername(invalid));
+  assert.equal(employeeValues({ request_id, full_name: "Staf", username: "staf.01", reason: "x" }, true).username, "staf.01");
+  assert.equal("username" in employeeValues({ request_id, full_name: "Staf", reason: "x" }, true), false);
 });
 test("permission validation rejects unknown and protected administrative capabilities", () => {
   for (const permission of ["employees.edit", "permissions.manage", "audit.view", "submissions.approve", "products.activate", "made.up"]) {

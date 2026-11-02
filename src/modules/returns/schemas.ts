@@ -4,7 +4,6 @@ import type { CustomerReturnInput, SupplierReturnInput } from "./types";
 export function validateCustomerReturn(input: CustomerReturnInput): CustomerReturnInput {
   requireUuid(input.employeeId, "employeeId"); requireUuid(input.transactionId, "transactionId"); requireNonBlank(input.reason, "reason");
   if (!input.items.length) throw new TypeError("items must not be empty");
-  if (input.refundMethod === "cash") requireUuid(input.cashDrawerSessionId ?? "", "cashDrawerSessionId");
   input.items.forEach((item, index) => { requireUuid(item.transactionItemId, `items[${index}].transactionItemId`); requirePositiveInteger(item.quantityInBase, `items[${index}].quantityInBase`); });
   return input;
 }

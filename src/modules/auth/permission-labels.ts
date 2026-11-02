@@ -7,7 +7,6 @@ export const PERMISSION_LABELS: Record<Permission, Label> = {
   "transactions.view": { group: "Kasir & Transaksi", label: "Melihat Riwayat Transaksi" },
   "transactions.void": { group: "Kasir & Transaksi", label: "Membatalkan Transaksi" },
   "transactions.confirm_payment": { group: "Kasir & Transaksi", label: "Mengonfirmasi Pembayaran" },
-  "cash_drawer.manage": { group: "Kasir & Transaksi", label: "Membuka dan Menutup Sesi Kasir" },
   "products.view": { group: "Produk", label: "Melihat Daftar Produk" },
   "products.create": { group: "Produk", label: "Membuat Produk Langsung" },
   "products.edit": { group: "Produk", label: "Mengubah Data Produk" },

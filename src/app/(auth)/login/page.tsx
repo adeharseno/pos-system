@@ -6,7 +6,7 @@ import { loginAction } from "@/modules/auth/actions";
 import { Button, FormField, Input, Label } from "@/modules/ui/components";
 
 const messages: Record<string,string> = {
-  INVALID_CREDENTIALS:"Email atau kata sandi tidak valid.",
+  INVALID_CREDENTIALS:"Username atau password salah.",
   EMPLOYEE_NOT_FOUND:"Akun belum terhubung ke data pegawai.",
   EMPLOYEE_INACTIVE:"Akun pegawai tidak aktif.",
   UNAUTHENTICATED:"Silakan masuk untuk melanjutkan.",
@@ -28,7 +28,7 @@ export default async function LoginPage({searchParams}:{searchParams:Promise<{er
         <div className="mb-8"><h1 className="mb-2 text-3xl font-semibold tracking-tight text-gray-800 sm:text-4xl">Masuk ke akun Anda</h1><p className="text-sm leading-6 text-gray-500">Gunakan akun pegawai Anda.</p></div>
         <form action={loginAction} className="grid gap-6">
           {error ? <p id="login-error" role="alert" className="rounded-xl border border-red-200 bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]">{messages[error] ?? messages.UNAUTHENTICATED}</p> : null}
-          <FormField><Label htmlFor="email">Email <span className="text-[var(--danger)]">*</span></Label><Input id="email" required name="email" type="email" autoComplete="email" placeholder="Masukkan email Anda" aria-describedby={error ? "login-error" : undefined} /></FormField>
+          <FormField><Label htmlFor="identifier">Username atau email <span className="text-[var(--danger)]">*</span></Label><Input id="identifier" required name="identifier" type="text" autoComplete="username" placeholder="Masukkan username atau email" aria-describedby={error ? "login-error" : undefined} /></FormField>
           <FormField><Label htmlFor="password">Kata sandi <span className="text-[var(--danger)]">*</span></Label><Input id="password" required name="password" type="password" autoComplete="current-password" placeholder="Masukkan kata sandi Anda" aria-describedby={error ? "login-error" : undefined} /></FormField>
           <Button type="submit" className="w-full">Masuk</Button>
         </form>

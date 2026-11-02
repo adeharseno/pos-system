@@ -12,7 +12,7 @@ function dependencies() {
   const saved = new Map<string, CreateProductInput>();
   let active = 0, maximum = 0;
   const deps: ProductImportDependencies = {
-    master: async () => ({ categories: [{ id: category, name: "Obat" }], subcategories: [{ id: subcategory, category_id: category, name: "Tablet" }], suppliers: [], locations: [] }),
+    master: async () => ({ categories: [{ id: category, name: "Obat" }], subcategories: [{ id: subcategory, name: "Tablet" }], suppliers: [], locations: [] }),
     existing: async skus => ({ skus: skus.filter(sku => saved.has(sku)), barcodes: [] }),
     create: async input => {
       active++; maximum = Math.max(maximum, active);

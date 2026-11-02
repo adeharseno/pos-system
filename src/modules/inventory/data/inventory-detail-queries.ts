@@ -25,14 +25,16 @@ export async function getInventoryProductDetail(productId: string, includeSensit
   if (productResult.error) throw mapDatabaseError(productResult.error);
   const product = productResult.data;
   if (!product) return null;
-  const [categoriesResult, subcategoriesResult] = await Promise.all([
-    admin.from("categories").select("name").eq("id", product.category_id).maybeSingle(),
-    admin.from("subcategories").select("name").eq("id", product.subcategory_id).maybeSingle(),
-  ]);
-  if (categoriesResult.error) throw mapDatabaseError(categoriesResult.error);
-  if (subcategoriesResult.error) throw mapDatabaseError(subcategoriesResult.error);
-  const category = categoriesResult.data?.name ?? "—";
-  const subcategory = subcategoriesResult.data?.name ?? "—";
+  const categoryResult = product.category_id
+    ? await admin.from("categories").select("name").eq("id", product.category_id).maybeSingle()
+    : { data: null, error: null };
+  const subcategoryResult = product.subcategory_id
+    ? await admin.from("subcategories").select("name").eq("id", product.subcategory_id).maybeSingle()
+    : { data: null, error: null };
+  if (categoryResult.error) throw mapDatabaseError(categoryResult.error);
+  if (subcategoryResult.error) throw mapDatabaseError(subcategoryResult.error);
+  const category = categoryResult.data?.name ?? "—";
+  const subcategory = subcategoryResult.data?.name ?? "—";
   if (includeSensitivePricing) {
     const batchesResult = await admin.from("product_batches").select("id,batch_number,quantity,cost_price,received_date,expired_date").eq("product_id", product.id).order("expired_date").order("created_at").order("id");
     if (batchesResult.error) throw mapDatabaseError(batchesResult.error);

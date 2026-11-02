@@ -82,17 +82,11 @@ returns
 
 Customer returns reference the original `transaction_item_id`; batch restoration is recorded separately and uses original sale allocations.
 
-### 2.4 Cash refund drawer
+### 2.4 Customer refunds
 
-A customer cash refund references the **drawer session that actually pays the refund**, not the drawer from the original transaction.
-
-`returns.cash_drawer_session_id` rules:
-
-- customer + cash refund: required
-- customer + QRIS/manual non-cash refund: null
-- supplier return: null
-
-Ownership/open-session validation remains an RPC rule because it spans `returns`, `cash_drawer_sessions`, and the authenticated employee.
+Customer returns reference the original `transaction_id` and record a `refund_method`
+(`cash` or `qris`). The refund total and item quantities are always recalculated
+against the original sale, so a refund never references a physical drawer.
 
 ### 2.5 QRIS/payment state
 
@@ -134,18 +128,20 @@ Normal stock-changing RPCs must lock each target batch and then re-check whether
 ## 3. Entity Relationship Diagram (abbreviated)
 
 ```text
-categories ──< subcategories ──< products ──< product_units
-                                   │
-                                   └──< product_batches
+categories ──< products >── subcategories
+                    │
+                    └──< product_units
+
+suppliers ──< purchase_invoices ──< purchase_invoice_items ──< product_batches
+                    │
+                    └──< products (default_supplier_id)
 
 employees ──< user_profiles
 employees ──< shifts ──< attendances
-employees ──< cash_drawer_sessions
 
 transactions ──< transaction_items ──< transaction_item_batches >── product_batches
 transactions ──< transaction_prescriptions
 transactions ──< returns ──< return_items ──< return_item_batches >── product_batches
-cash_drawer_sessions ──< returns  # only customer cash refunds
 
 stock_opname_sessions ──< stock_opname_items >── product_batches
 
@@ -164,6 +160,8 @@ The executable base schema is `supabase/migrations/0001_init.sql`. Important tab
 
 #### `categories`
 
+UI label: **Kategori**.
+
 - `id`
 - `name`
 - `description`
@@ -171,16 +169,25 @@ The executable base schema is `supabase/migrations/0001_init.sql`. Important tab
 - `is_active`
 - timestamps
 
+Legacy values: Obat Bebas, Obat Resep, Racik, Psikotropika.
+
 #### `subcategories`
 
+UI label: **Subkategori**.
+
 - `id`
-- `category_id`
 - `name`
 - `display_order`
 - `is_active`
 - timestamps
 
-A composite uniqueness key supports a DB-level guarantee that a product's `subcategory_id` belongs to its `category_id`.
+There is **no** `category_id` and no parent/child relationship. Category and
+subcategory are two independent lookup lists; the same subcategory may be used
+by products under different categories. Name uniqueness is enforced on
+`lower(btrim(name))` within each table.
+
+Legacy values: Syrup, Tablet, Injeksi, Infus, Alkes, Supp, Cream, Obat Tetes,
+Bebas.
 
 #### `products`
 
@@ -189,8 +196,8 @@ Important fields:
 - `sku`
 - `name`
 - `generic_name`
-- `category_id`
-- `subcategory_id`
+- `category_id` (nullable FK to `categories`)
+- `subcategory_id` (nullable FK to `subcategories`)
 - `drug_classification`
 - generated `requires_prescription`
 - `base_unit`
@@ -199,6 +206,9 @@ Important fields:
 - `storage_location_id`
 - `default_supplier_id`
 - `is_active`
+
+Any category/subcategory combination is allowed; there is no check that the
+subcategory belongs to the category.
 
 #### `product_units`
 
@@ -220,13 +230,64 @@ At most one base unit is enforced by a partial unique index; application validat
 - `quantity >= 0` in base unit
 - `cost_price >= 0`
 - `received_date`
+- `purchase_invoice_item_id` (nullable FK to `purchase_invoice_items`, `ON DELETE RESTRICT`, indexed)
 - `UNIQUE (id, product_id)` for composite FK targets
 
 FEFO index: product + expiry date for batches with positive quantity.
 
+`purchase_invoice_item_id` is nullable on purpose: opening stock from migrations and stock-opname adjustment batches have no purchase invoice. Batches created by invoice receiving store their source item, so they can be traced to `purchase_invoices.supplier_id`. Returning stock to a supplier is derived through this chain, not through a `supplier_id` on `returns`.
+
 ---
 
-## 5. Employees & Cash Drawer
+### 4.2 Suppliers and purchase traceability
+
+#### `suppliers`
+
+- `id`
+- `legacy_code` (nullable, unique when not null; maps old SASPoS supplier codes to UUIDs)
+- `name` (not unique at the database level)
+- `contact_person`
+- `phone`
+- `address`
+- `license_number`
+- `is_active`
+- timestamps
+
+Application validation rejects a new or edited supplier whose
+`lower(btrim(name))` matches another **active** supplier. Inactive rows are
+ignored, and legacy duplicate names can be imported as-is. Deleting a supplier
+is a soft delete (`is_active = false`).
+
+`scripts/import-suppliers.ts` upserts `data/legacy/supplier.csv` by
+`legacy_code`, ignores debt columns, and preserves manual `is_active` changes on
+reruns. `LARUTAN` and `GUDANG` are imported as inactive internal suppliers.
+
+#### `purchase_invoices` / `purchase_invoice_items`
+
+`purchase_invoices.supplier_id` is `NOT NULL` with `ON DELETE RESTRICT`.
+`purchase_invoice_items.invoice_id` references the invoice. The receiving RPC
+creates or reuses a stock batch for each invoice item group and, for a newly
+created batch, sets `product_batches.purchase_invoice_item_id` to its source
+item. Existing batches are not re-attributed because they may already contain
+opening stock or stock from another supplier.
+
+Traceability chain:
+
+```text
+suppliers <- purchase_invoices.supplier_id <- purchase_invoice_items <- product_batches.purchase_invoice_item_id
+```
+
+#### `batch_supplier` (read-only view)
+
+Columns: `batch_id`, `product_id`, `supplier_id`, `invoice_id`,
+`invoice_number`, `received_at`. It is a `LEFT JOIN` chain, so every batch is
+returned: opening-stock and stock-opname batches have `supplier_id = NULL`,
+`invoice_id = NULL`, and `invoice_number = NULL`. `received_at` is the batch
+creation timestamp. Only `service_role` may read the view.
+
+---
+
+## 5. Employees
 
 ### `employees`
 
@@ -235,19 +296,6 @@ Operational employee profile. Only positions that need login are linked to Supab
 ### `user_profiles`
 
 1:1 bridge from `auth.users.id` to `employees.id`.
-
-### `cash_drawer_sessions`
-
-- one open session per employee (partial unique index)
-- opening balance
-- expected closing balance
-- actual closing balance
-- variance
-- timestamps
-
-Checkout RPC must validate ownership of the drawer session, not trust a client-provided UUID.
-
-For customer **cash refunds**, the return RPC must validate `returns.cash_drawer_session_id` the same way. Drawer close subtracts only cash refunds whose `returns.cash_drawer_session_id` equals that drawer.
 
 ---
 
@@ -269,7 +317,6 @@ Important fields:
 - `invoice_number` unique
 - `business_date`
 - `cashier_id`
-- `cash_drawer_session_id`
 - subtotal/tax/total snapshots
 - `payment_method`
 - cash received/change
@@ -293,6 +340,7 @@ One row per customer-facing sale line:
 - `conversion_to_base_snapshot`
 - `quantity_in_base`
 - `unit_price`
+- `discount_amount`
 - `tax_rate_snapshot`
 - `subtotal`
 - `tax_amount`
@@ -331,14 +379,14 @@ Header:
 - `source` (`customer` | `supplier`)
 - `transaction_id` for customer returns
 - `refund_method` (`cash` / `qris`) for customer returns
-- `cash_drawer_session_id` only when a customer cash refund is physically paid from that drawer
 - `reason`
 - `processed_by`
 - refund subtotal/tax/total snapshots
 - `business_date`
 - timestamp
 
-A check constraint enforces the source/refund/drawer shape. Open-drawer ownership is validated atomically by the return RPC.
+A check constraint enforces the source/refund shape. Return lifecycle, cumulative
+quantity, batch restoration, and freeze checks are validated atomically by the return RPC.
 
 ### `return_items`
 
@@ -409,7 +457,6 @@ Manual operational expense entries used by P&L.
 - Customer refunds reduce sales.
 - Sale COGS = transaction batch allocations × cost snapshot.
 - Returned COGS reverses COGS using return batch allocation cost snapshots.
-- Cash drawer expected balance subtracts customer cash refunds by **refund drawer**, not original sale drawer.
 - Supplier returns are inventory movements and do not reduce sales revenue.
 
 ---
@@ -421,21 +468,22 @@ Database-level protections include:
 - no negative product batch quantity
 - no negative money fields where inappropriate
 - tax rate constrained to 0..100
-- product subcategory must belong to selected category
+- product category and subcategory are independent lookup references
 - product/unit/batch consistency through composite foreign keys
 - unique SKU and unit barcode
 - at most one base unit per product
-- one open cash drawer per employee
 - only one globally in-progress stock-opname session in Pilot 1
 - invoice number unique
 - batch uniqueness by product + batch number + expiry
+- supplier legacy codes unique when not null (supplier names are validated in the application, not by a unique constraint)
+- invoiced batches reference their source purchase invoice item; supplier is derived through that chain
 - stock-opname item unique per session + batch
 - valid transaction payment/status/confirmation shape
 - valid transaction void metadata shape
-- valid customer/supplier return refund/drawer shape
+- valid customer/supplier return source/refund shape
 - updated timestamps maintained through triggers for mutable tables
 
-Business rules that span multiple rows/tables (cumulative return quantity, drawer ownership, valid state transitions under concurrency, FEFO allocation, stock-opname freeze checks) belong in RPC functions because they require locks/transaction context.
+Business rules that span multiple rows/tables (cumulative return quantity, valid state transitions under concurrency, FEFO allocation, stock-opname freeze checks) belong in RPC functions because they require locks/transaction context.
 
 ---
 
@@ -471,7 +519,7 @@ No schema for:
 - payment gateway references/webhooks
 - granular permission matrix
 - formal approval workflow
-- purchase orders/goods receipt workflow
+- purchase orders (goods receiving is modeled through purchase invoices)
 - multi-branch / `outlet_id`
 - payroll
 - CRM/loyalty

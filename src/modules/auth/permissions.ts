@@ -5,7 +5,7 @@ export const PERMISSIONS = [
   "pricing.cost.view", "pricing.cost.edit", "pricing.margin.view", "pricing.selling.view", "pricing.selling.edit",
   "inventory.view", "inventory.receive", "inventory.opname",
   "cashier.view", "sales.checkout", "transactions.view", "transactions.void", "transactions.confirm_payment",
-  "returns.view", "returns.create", "returns.supplier", "cash_drawer.manage",
+  "returns.view", "returns.create", "returns.supplier",
   "reports.sales.view", "reports.products.view", "reports.payments.view", "reports.profit.view", "expenses.manage",
   "employees.view", "employees.create", "employees.edit", "employees.deactivate", "employees.invite",
   "permissions.manage", "audit.view",

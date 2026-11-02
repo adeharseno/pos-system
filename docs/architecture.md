@@ -21,7 +21,6 @@ Next.js modular monolith (Vercel)
   |   |- sales
   |   |- payments
   |   |- returns
-  |   |- cash-drawer
   |   |- reporting
   |   `- employees
   |
@@ -85,10 +84,11 @@ Checkout is atomic but is not idempotent when a successful response is lost to
 the network; automated checkout retry needs an explicit idempotency key in a
 future milestone.
 
-Cash-drawer open/close are also PostgreSQL RPCs. Checkout, cash refund, and
-drawer close serialize on the same drawer row, preventing a transaction from
-being committed to a closed drawer while being omitted from its closing cash
-snapshot.
+A read-only transaction log records every sale (employee, timestamp, payment
+method, and totals), per-line price/name/unit/discount/tax snapshots, and
+void/return/refund records. Daily totals per cashier per payment method are
+exposed through a view; cash variance reconciliation is intentionally not part
+of the system.
 
 Cashier cart state is local React state and is intentionally cleared by a page
 refresh. Product stock and subtotal shown in the workspace are previews only;

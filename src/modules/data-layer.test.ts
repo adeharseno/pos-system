@@ -8,20 +8,19 @@ import { toCheckoutRpcArgs } from "./sales/rpc-contract";
 import { validateCheckoutInput } from "./sales/schemas";
 
 const employeeId="11111111-1111-4111-8111-111111111111";
-const drawerId="22222222-2222-4222-8222-222222222222";
 const unitId="33333333-3333-4333-8333-333333333333";
 
 test("checkout input maps only application values into the SQL RPC contract",()=>{
-  const args=toCheckoutRpcArgs({employeeId,cashDrawerSessionId:drawerId,paymentMethod:"cash",cashReceived:5000,items:[{productUnitId:unitId,quantity:2}]});
-  assert.deepEqual(args,{p_employee_id:employeeId,p_cash_drawer_session_id:drawerId,p_payment_method:"cash",p_items:[{product_unit_id:unitId,quantity:2}],p_cash_received:5000,p_prescription:undefined});
+  const args=toCheckoutRpcArgs({employeeId,paymentMethod:"cash",cashReceived:5000,items:[{productUnitId:unitId,quantity:2}]});
+  assert.deepEqual(args,{p_employee_id:employeeId,p_payment_method:"cash",p_items:[{product_unit_id:unitId,quantity:2}],p_cash_received:5000,p_prescription:undefined});
   assert.equal("invoice_number" in args,false);
   assert.equal("cash_change" in args,false);
   assert.equal("batch_id" in args,false);
 });
 
 test("basic boundary validation rejects malformed input",()=>{
-  assert.throws(()=>validateCheckoutInput({employeeId:"bad",cashDrawerSessionId:drawerId,paymentMethod:"cash",items:[{productUnitId:unitId,quantity:1}]}),PosInputError);
-  assert.throws(()=>validateCheckoutInput({employeeId,cashDrawerSessionId:drawerId,paymentMethod:"cash",items:[{productUnitId:unitId,quantity:0}]}),PosInputError);
+  assert.throws(()=>validateCheckoutInput({employeeId:"bad",paymentMethod:"cash",items:[{productUnitId:unitId,quantity:1}]}),PosInputError);
+  assert.throws(()=>validateCheckoutInput({employeeId,paymentMethod:"cash",items:[{productUnitId:unitId,quantity:0}]}),PosInputError);
 });
 
 test("successful JSON RPC results are mapped with checked field types",()=>{

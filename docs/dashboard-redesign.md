@@ -73,8 +73,8 @@ No user identity or report data is cached across requests.
 - Cashier and Staff do not query or receive financial dashboard data, even if
   someone grants them reporting permissions through an override.
 - Quick actions intersect effective permissions with the existing destination
-  page's role guard. Cashiers can get sales, drawer, catalog and inventory links;
-  product creation and receiving remain owner-only.
+  page's role guard. Cashiers can get sales, catalog and inventory links;
+  product creation, receiving, and the transaction log remain owner-only.
 - Staff currently have no operational feature pages allowed by the existing
   role guards. Their dashboard shows identity, active account status, workplace,
   current Jakarta date and access guidance without broken quick-action links.

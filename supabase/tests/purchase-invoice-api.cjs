@@ -50,7 +50,7 @@ async function save(input, cookie, edit = false, file) {
   await db.connect();
   try {
     await db.query('insert into categories(id,name) values($1,$2)', [categoryId, `Invoice item ${categoryId}`]);
-    await db.query('insert into subcategories(id,category_id,name) values($1,$2,$3)', [subcategoryId, categoryId, 'Invoice item fixture']);
+    await db.query('insert into subcategories(id,name) values($1,$2)', [subcategoryId, 'Invoice item fixture']);
     await db.query(`insert into products(id,sku,name,base_unit,category_id,subcategory_id,cost_price,tax_rate) values
       ($1,$2,'Invoice item priced','Tablet',$3,$4,1000,11),($5,$6,'Invoice item unpriced','Botol',$3,$4,null,0)`, [pricedProduct, `ITEM-${pricedProduct}`, categoryId, subcategoryId, unpricedProduct, `ITEM-${unpricedProduct}`]);
     await db.query(`insert into product_units(id,product_id,unit_name,conversion_to_base,selling_price,is_base_unit) values($1,$2,'Tablet',1,1332,true),($3,$2,'Strip',10,13320,false)`, [baseUnitId, pricedProduct, stripUnitId]);

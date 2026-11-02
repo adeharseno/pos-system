@@ -69,12 +69,12 @@ export async function commitProductImportWith(payload: unknown, dependencies: Pr
   }
   const master = await dependencies.master();
   const categories = new Set(master.categories.map(value => value.id));
-  const subcategories = new Map(master.subcategories.map(value => [value.id, value.category_id]));
+  const subcategories = new Set(master.subcategories.map(value => value.id));
   const suppliers = new Set(master.suppliers.map(value => value.id)), locations = new Set(master.locations.map(value => value.id));
   const ready = rows.filter(({ row, index }) => {
     const code = (skuCounts.get(row.sku.toLocaleLowerCase("id-ID")) ?? 0) > 1 ? "DUPLICATE_SKU"
       : row.barcode && (barcodeCounts.get(row.barcode) ?? 0) > 1 ? "DUPLICATE_BARCODE"
-      : !row.categoryId || !row.subcategoryId || !categories.has(row.categoryId) || subcategories.get(row.subcategoryId) !== row.categoryId ? "INVALID_CATEGORY_SUBCATEGORY"
+      : !row.categoryId || !row.subcategoryId || !categories.has(row.categoryId) || !subcategories.has(row.subcategoryId) ? "INVALID_CATEGORY_SUBCATEGORY"
       : row.defaultSupplierId && !suppliers.has(row.defaultSupplierId) ? "INVALID_SUPPLIER"
       : row.storageLocationId && !locations.has(row.storageLocationId) ? "INVALID_STORAGE_LOCATION" : undefined;
     if (code) { results[index] = { row: row.rowNumber, sku: row.sku, status: "failed", error: { code, message: safeMessages[code] } }; return false; }

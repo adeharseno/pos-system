@@ -3,14 +3,14 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
 
-select plan(52);
+select no_plan();
 
 -- Minimal deterministic fixtures. The enclosing transaction is rolled back.
 insert into categories (id, name) values
   ('10000000-0000-0000-0000-000000000001', 'Test Category');
 
-insert into subcategories (id, category_id, name) values
-  ('11000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'Test Subcategory');
+insert into subcategories (id, name) values
+  ('11000000-0000-0000-0000-000000000001', 'Test Subcategory');
 
 insert into products (id, sku, name, category_id, subcategory_id, base_unit) values
   ('20000000-0000-0000-0000-000000000001', 'TEST-A', 'Product A', '10000000-0000-0000-0000-000000000001', '11000000-0000-0000-0000-000000000001', 'tablet'),
@@ -28,22 +28,19 @@ insert into employees (id, full_name, position) values
   ('50000000-0000-0000-0000-000000000001', 'Test Cashier', 'kasir'),
   ('50000000-0000-0000-0000-000000000002', 'Test Admin', 'owner_admin');
 
-insert into cash_drawer_sessions (id, employee_id, opening_balance) values
-  ('60000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000001', 100000);
-
 -- Cash, QRIS, and transaction-item structure.
 select lives_ok(
-  $$insert into transactions (id, invoice_number, cashier_id, cash_drawer_session_id, subtotal, total_amount, payment_method, cash_received, cash_change, payment_confirmed_at, payment_confirmed_by, status) values ('70000000-0000-0000-0000-000000000001', 'TEST-CASH-VALID', '50000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001', 100, 100, 'cash', 200, 100, now(), '50000000-0000-0000-0000-000000000001', 'completed')$$,
+  $$insert into transactions (id, invoice_number, cashier_id, subtotal, total_amount, payment_method, cash_received, cash_change, payment_confirmed_at, payment_confirmed_by, status) values ('70000000-0000-0000-0000-000000000001', 'TEST-CASH-VALID', '50000000-0000-0000-0000-000000000001', 100, 100, 'cash', 200, 100, now(), '50000000-0000-0000-0000-000000000001', 'completed')$$,
   'valid cash lifecycle is accepted'
 );
 
 select lives_ok(
-  $$insert into transactions (id, invoice_number, cashier_id, cash_drawer_session_id, subtotal, total_amount, payment_method, status) values ('70000000-0000-0000-0000-000000000002', 'TEST-QRIS-PENDING', '50000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001', 100, 100, 'qris', 'pending_payment')$$,
+  $$insert into transactions (id, invoice_number, cashier_id, subtotal, total_amount, payment_method, status) values ('70000000-0000-0000-0000-000000000002', 'TEST-QRIS-PENDING', '50000000-0000-0000-0000-000000000001', 100, 100, 'qris', 'pending_payment')$$,
   'valid pending QRIS lifecycle is accepted'
 );
 
 select lives_ok(
-  $$insert into transactions (id, invoice_number, cashier_id, cash_drawer_session_id, subtotal, total_amount, payment_method, payment_confirmed_at, payment_confirmed_by, status) values ('70000000-0000-0000-0000-000000000003', 'TEST-QRIS-COMPLETE', '50000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001', 100, 100, 'qris', now(), '50000000-0000-0000-0000-000000000001', 'completed')$$,
+  $$insert into transactions (id, invoice_number, cashier_id, subtotal, total_amount, payment_method, payment_confirmed_at, payment_confirmed_by, status) values ('70000000-0000-0000-0000-000000000003', 'TEST-QRIS-COMPLETE', '50000000-0000-0000-0000-000000000001', 100, 100, 'qris', now(), '50000000-0000-0000-0000-000000000001', 'completed')$$,
   'valid completed QRIS lifecycle is accepted'
 );
 
@@ -84,23 +81,13 @@ select throws_ok(
 
 -- Return header, source item, and batch structure.
 select lives_ok(
-  $$insert into returns (id, source, transaction_id, refund_method, cash_drawer_session_id, reason, processed_by, refund_subtotal, refund_total) values ('90000000-0000-0000-0000-000000000001', 'customer', '70000000-0000-0000-0000-000000000001', 'cash', '60000000-0000-0000-0000-000000000001', 'Test return', '50000000-0000-0000-0000-000000000001', 100, 100)$$,
-  'customer cash return with a valid refund drawer is accepted'
+  $$insert into returns (id, source, transaction_id, refund_method, reason, processed_by, refund_subtotal, refund_total) values ('90000000-0000-0000-0000-000000000001', 'customer', '70000000-0000-0000-0000-000000000001', 'cash', 'Test return', '50000000-0000-0000-0000-000000000001', 100, 100)$$,
+  'customer cash return is accepted without a drawer'
 );
 
-select throws_ok(
-  $$insert into returns (source, transaction_id, refund_method, cash_drawer_session_id, reason, processed_by) values ('customer', '70000000-0000-0000-0000-000000000001', 'cash', '60000000-0000-0000-0000-000000000099', 'Bad drawer', '50000000-0000-0000-0000-000000000001')$$,
-  23503
-);
-
-select throws_ok(
+select lives_ok(
   $$insert into returns (source, transaction_id, refund_method, reason, processed_by) values ('customer', '70000000-0000-0000-0000-000000000001', 'cash', 'Missing drawer', '50000000-0000-0000-0000-000000000001')$$,
-  23514
-);
-
-select throws_ok(
-  $$insert into returns (source, cash_drawer_session_id, reason, processed_by) values ('supplier', '60000000-0000-0000-0000-000000000001', 'Invalid supplier drawer', '50000000-0000-0000-0000-000000000001')$$,
-  23514
+  'customer cash return without a drawer is accepted'
 );
 
 select lives_ok(
@@ -161,53 +148,53 @@ select throws_ok(
 
 -- Invalid cash and QRIS lifecycle shapes.
 select throws_ok(
-  $$insert into transactions (invoice_number, cashier_id, cash_drawer_session_id, total_amount, payment_method, cash_received, cash_change, payment_confirmed_at, payment_confirmed_by, status) values ('TEST-CASH-PENDING', '50000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001', 100, 'cash', 100, 0, now(), '50000000-0000-0000-0000-000000000001', 'pending_payment')$$,
+  $$insert into transactions (invoice_number, cashier_id, total_amount, payment_method, cash_received, cash_change, payment_confirmed_at, payment_confirmed_by, status) values ('TEST-CASH-PENDING', '50000000-0000-0000-0000-000000000001', 100, 'cash', 100, 0, now(), '50000000-0000-0000-0000-000000000001', 'pending_payment')$$,
   23514
 );
 
 select throws_ok(
-  $$insert into transactions (invoice_number, cashier_id, cash_drawer_session_id, total_amount, payment_method, status) values ('TEST-CASH-NULL', '50000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001', 100, 'cash', 'completed')$$,
+  $$insert into transactions (invoice_number, cashier_id, total_amount, payment_method, status) values ('TEST-CASH-NULL', '50000000-0000-0000-0000-000000000001', 100, 'cash', 'completed')$$,
   23514
 );
 
 select throws_ok(
-  $$insert into transactions (invoice_number, cashier_id, cash_drawer_session_id, total_amount, payment_method, cash_received, cash_change, payment_confirmed_at, payment_confirmed_by, status) values ('TEST-CASH-SHORT', '50000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001', 100, 'cash', 99, 0, now(), '50000000-0000-0000-0000-000000000001', 'completed')$$,
+  $$insert into transactions (invoice_number, cashier_id, total_amount, payment_method, cash_received, cash_change, payment_confirmed_at, payment_confirmed_by, status) values ('TEST-CASH-SHORT', '50000000-0000-0000-0000-000000000001', 100, 'cash', 99, 0, now(), '50000000-0000-0000-0000-000000000001', 'completed')$$,
   23514
 );
 
 select throws_ok(
-  $$insert into transactions (invoice_number, cashier_id, cash_drawer_session_id, total_amount, payment_method, cash_received, cash_change, payment_confirmed_at, payment_confirmed_by, status) values ('TEST-CASH-CHANGE', '50000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001', 100, 'cash', 200, 99, now(), '50000000-0000-0000-0000-000000000001', 'completed')$$,
+  $$insert into transactions (invoice_number, cashier_id, total_amount, payment_method, cash_received, cash_change, payment_confirmed_at, payment_confirmed_by, status) values ('TEST-CASH-CHANGE', '50000000-0000-0000-0000-000000000001', 100, 'cash', 200, 99, now(), '50000000-0000-0000-0000-000000000001', 'completed')$$,
   23514
 );
 
 select throws_ok(
-  $$insert into transactions (invoice_number, cashier_id, cash_drawer_session_id, total_amount, payment_method, payment_confirmed_at, status) values ('TEST-QRIS-TIME', '50000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001', 100, 'qris', now(), 'pending_payment')$$,
+  $$insert into transactions (invoice_number, cashier_id, total_amount, payment_method, payment_confirmed_at, status) values ('TEST-QRIS-TIME', '50000000-0000-0000-0000-000000000001', 100, 'qris', now(), 'pending_payment')$$,
   23514
 );
 
 select throws_ok(
-  $$insert into transactions (invoice_number, cashier_id, cash_drawer_session_id, total_amount, payment_method, payment_confirmed_by, status) values ('TEST-QRIS-ACTOR', '50000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001', 100, 'qris', '50000000-0000-0000-0000-000000000001', 'pending_payment')$$,
+  $$insert into transactions (invoice_number, cashier_id, total_amount, payment_method, payment_confirmed_by, status) values ('TEST-QRIS-ACTOR', '50000000-0000-0000-0000-000000000001', 100, 'qris', '50000000-0000-0000-0000-000000000001', 'pending_payment')$$,
   23514
 );
 
 select throws_ok(
-  $$insert into transactions (invoice_number, cashier_id, cash_drawer_session_id, total_amount, payment_method, status) values ('TEST-QRIS-COMPLETE-BAD', '50000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001', 100, 'qris', 'completed')$$,
+  $$insert into transactions (invoice_number, cashier_id, total_amount, payment_method, status) values ('TEST-QRIS-COMPLETE-BAD', '50000000-0000-0000-0000-000000000001', 100, 'qris', 'completed')$$,
   23514
 );
 
 -- Void metadata consistency.
 select lives_ok(
-  $$insert into transactions (invoice_number, cashier_id, cash_drawer_session_id, total_amount, payment_method, status, voided_at, voided_by, void_reason) values ('TEST-VOID-VALID', '50000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001', 100, 'qris', 'voided', now(), '50000000-0000-0000-0000-000000000001', 'Test void')$$,
+  $$insert into transactions (invoice_number, cashier_id, total_amount, payment_method, status, voided_at, voided_by, void_reason) values ('TEST-VOID-VALID', '50000000-0000-0000-0000-000000000001', 100, 'qris', 'voided', now(), '50000000-0000-0000-0000-000000000001', 'Test void')$$,
   'voided transaction with complete metadata is accepted'
 );
 
 select throws_ok(
-  $$insert into transactions (invoice_number, cashier_id, cash_drawer_session_id, total_amount, payment_method, status) values ('TEST-VOID-MISSING', '50000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001', 100, 'qris', 'voided')$$,
+  $$insert into transactions (invoice_number, cashier_id, total_amount, payment_method, status) values ('TEST-VOID-MISSING', '50000000-0000-0000-0000-000000000001', 100, 'qris', 'voided')$$,
   23514
 );
 
 select throws_ok(
-  $$insert into transactions (invoice_number, cashier_id, cash_drawer_session_id, total_amount, payment_method, status, voided_at, voided_by, void_reason) values ('TEST-NONVOID-METADATA', '50000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001', 100, 'qris', 'pending_payment', now(), '50000000-0000-0000-0000-000000000001', 'Should fail')$$,
+  $$insert into transactions (invoice_number, cashier_id, total_amount, payment_method, status, voided_at, voided_by, void_reason) values ('TEST-NONVOID-METADATA', '50000000-0000-0000-0000-000000000001', 100, 'qris', 'pending_payment', now(), '50000000-0000-0000-0000-000000000001', 'Should fail')$$,
   23514
 );
 
@@ -247,54 +234,24 @@ select throws_ok(
   23514
 );
 
--- Cash drawer and reference integrity.
-select throws_ok(
-  $$insert into cash_drawer_sessions (employee_id, opening_balance) values ('50000000-0000-0000-0000-000000000002', -1)$$,
-  23514
-);
-
-select throws_ok(
-  $$insert into cash_drawer_sessions (employee_id, opening_balance) values ('50000000-0000-0000-0000-000000000001', 0)$$,
-  23505
-);
-
-select throws_ok(
-  $$insert into transactions (invoice_number, cashier_id, cash_drawer_session_id, total_amount, payment_method, status) values ('TEST-BAD-DRAWER', '50000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000099', 100, 'qris', 'pending_payment')$$,
-  23503
-);
-
-select throws_ok(
-  $$insert into returns (source, transaction_id, refund_method, cash_drawer_session_id, reason, processed_by) values ('customer', '70000000-0000-0000-0000-000000000001', 'cash', '60000000-0000-0000-0000-000000000099', 'Bad drawer FK', '50000000-0000-0000-0000-000000000001')$$,
-  23503
-);
-
-insert into cash_drawer_sessions (id, employee_id, opening_balance, closed_at)
-values ('60000000-0000-0000-0000-000000000002', '50000000-0000-0000-0000-000000000002', 0, now());
-
-select is(
-  (select is_open from cash_drawer_sessions where id = '60000000-0000-0000-0000-000000000002'),
-  false,
-  'closed_at structurally derives is_open=false'
-);
-
 -- RLS and privilege regression on a protected transactional table.
 set local role anon;
 select throws_ok(
-  $$insert into transactions (invoice_number, cashier_id, cash_drawer_session_id, total_amount, payment_method, status) values ('TEST-ANON', '50000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001', 100, 'qris', 'pending_payment')$$,
+  $$insert into transactions (invoice_number, cashier_id, total_amount, payment_method, status) values ('TEST-ANON', '50000000-0000-0000-0000-000000000001', 100, 'qris', 'pending_payment')$$,
   42501
 );
 reset role;
 
 set local role authenticated;
 select throws_ok(
-  $$insert into transactions (invoice_number, cashier_id, cash_drawer_session_id, total_amount, payment_method, status) values ('TEST-AUTH', '50000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001', 100, 'qris', 'pending_payment')$$,
+  $$insert into transactions (invoice_number, cashier_id, total_amount, payment_method, status) values ('TEST-AUTH', '50000000-0000-0000-0000-000000000001', 100, 'qris', 'pending_payment')$$,
   42501
 );
 reset role;
 
 set local role service_role;
 select lives_ok(
-  $$insert into transactions (invoice_number, cashier_id, cash_drawer_session_id, total_amount, payment_method, status) values ('TEST-SERVICE-ROLE', '50000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001', 100, 'qris', 'pending_payment')$$,
+  $$insert into transactions (invoice_number, cashier_id, total_amount, payment_method, status) values ('TEST-SERVICE-ROLE', '50000000-0000-0000-0000-000000000001', 100, 'qris', 'pending_payment')$$,
   'service_role can mutate a protected transactional table'
 );
 reset role;

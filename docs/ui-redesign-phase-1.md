@@ -8,7 +8,7 @@ Implemented on the existing branch. Primary reference: the supplied
 - Login: responsive two-column layout, existing Cipayung Farma logo, Indonesian
   copy, shared controls, and existing server action/error handling.
 - App shell: 290 px desktop sidebar, full-width header beside the sidebar,
-  active navigation, employee identity, and cash-drawer status. Smaller screens
+  active navigation, and employee identity. Smaller screens
   use a modal navigation drawer with Escape, focus containment, and scroll lock.
 - Cashier: retains its separate full-screen workspace and existing navigation.
 - Shared primitives: Button, Input, Select, Textarea, Checkbox, Card, CardHeader,

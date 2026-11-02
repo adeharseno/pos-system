@@ -3,7 +3,6 @@ import type { CheckoutInput, TransactionActionInput, VoidTransactionInput } from
 
 export function validateCheckoutInput(input: CheckoutInput): CheckoutInput {
   requireUuid(input.employeeId, "employeeId");
-  requireUuid(input.cashDrawerSessionId, "cashDrawerSessionId");
   if (!input.items.length) throw new TypeError("items must not be empty");
   input.items.forEach((item, index) => {
     requireUuid(item.productUnitId, `items[${index}].productUnitId`);
