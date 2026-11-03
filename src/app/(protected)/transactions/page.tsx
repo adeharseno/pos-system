@@ -20,6 +20,7 @@ import {
   transactionLinkClass,
 } from "@/modules/sales/components/transaction-presentation";
 import { Button, Card, CardContent, CardHeader, Container, FormField, Input, Label, Select } from "@/modules/ui/components";
+import { SearchForm } from "@/modules/ui/search-form";
 
 const statuses: [TransactionStatus, string][] = [
   ["completed", "Selesai"],
@@ -93,7 +94,7 @@ export default async function TransactionsPage({
 
       <Card>
         <CardContent>
-          <form
+          <SearchForm
             action="/transactions"
             key={href(filters.page)}
             className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3"
@@ -163,7 +164,7 @@ export default async function TransactionsPage({
                 Atur Ulang
               </Link>
             </div>
-          </form>
+          </SearchForm>
         </CardContent>
       </Card>
 

@@ -8,6 +8,7 @@ import { amountCents } from "@/modules/returns/refund-preview";
 import { CashierReturnForm } from "@/modules/returns/components/cashier-return-form";
 import { requireUuid } from "@/modules/shared/validation/input";
 import { Button, Card, CardContent, Input } from "@/modules/ui/components";
+import { SearchForm } from "@/modules/ui/search-form";
 import { formatRupiah } from "@/modules/ui/currency";
 
 type SearchParams = { q?: string; transaction?: string };
@@ -55,11 +56,11 @@ export default async function CashierReturnsPage({ searchParams }: { searchParam
       <header className="shrink-0">
         <h1 className="text-2xl font-semibold">Retur Barang</h1>
         <p className="mt-1 text-sm text-[var(--text-muted)]">Cari nomor faktur untuk melihat barang yang dapat diretur.</p>
-        <form className="mt-4 flex gap-2" action="/cashier/returns">
+        <SearchForm className="mt-4 flex gap-2" action="/cashier/returns">
           <label className="sr-only" htmlFor="invoice">Nomor faktur</label>
           <Input id="invoice" name="q" defaultValue={query} placeholder="Cari nomor faktur" autoFocus />
           <Button type="submit">Cari</Button>
-        </form>
+        </SearchForm>
         {error ? <p role="alert" className="mt-2 text-sm text-[var(--danger)]">{error}</p> : null}
       </header>
       <div className="mt-4 grid min-h-0 flex-1 gap-4 overflow-y-auto lg:grid-cols-2 lg:overflow-hidden">

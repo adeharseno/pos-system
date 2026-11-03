@@ -4,6 +4,7 @@ import { requireRole } from "@/modules/auth/application/auth-service";
 import { listSuppliers } from "@/modules/catalog/data/supplier-repository";
 import { SupplierManagement } from "@/modules/catalog/components/supplier-management";
 import { Button, Card, CardContent, Container, FormField, Input, Label } from "@/modules/ui/components";
+import { SearchForm } from "@/modules/ui/search-form";
 import { productLinkClass } from "@/modules/catalog/components/product-presentation";
 export default async function SuppliersPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   try { await requireRole(["owner_admin"]); } catch { redirect("/products"); }
@@ -15,7 +16,7 @@ export default async function SuppliersPage({ searchParams }: { searchParams: Pr
   let failed = false;
   try { data = await listSuppliers(q, page); } catch { failed = true; }
   return <Container size="lg" className="space-y-6"><header className="flex flex-wrap items-center justify-between gap-4"><h1 className="text-2xl font-semibold">Kelola Pemasok</h1><Link href="/products" className={productLinkClass}>Kembali ke Daftar Barang</Link></header>
-    <Card><CardContent><form action="/products/suppliers" className="flex flex-col gap-4 sm:flex-row sm:items-end"><FormField className="min-w-0 flex-1"><Label htmlFor="supplier-search">Cari nama pemasok</Label><Input id="supplier-search" name="q" defaultValue={q} maxLength={200} /></FormField><Button type="submit">Cari Pemasok</Button></form></CardContent></Card>
+    <Card><CardContent><SearchForm action="/products/suppliers" className="flex flex-col gap-4 sm:flex-row sm:items-end"><FormField className="min-w-0 flex-1"><Label htmlFor="supplier-search">Cari nama pemasok</Label><Input id="supplier-search" name="q" defaultValue={q} maxLength={200} /></FormField><Button type="submit">Cari Pemasok</Button></SearchForm></CardContent></Card>
     {failed ? <Card><CardContent><p role="alert" className="mb-4 text-base text-red-800">Daftar pemasok belum dapat dimuat. Silakan coba lagi.</p><Link href={href(page)} className={productLinkClass}>Coba Lagi</Link></CardContent></Card> : <><SupplierManagement rows={data.rows} /><nav aria-label="Halaman daftar pemasok" className="flex flex-wrap items-center justify-between gap-4"><div className="flex gap-3">{page > 1 ? <Link href={href(page - 1)} className={productLinkClass}>Sebelumnya</Link> : null}{page * 20 < data.total ? <Link href={href(page + 1)} className={productLinkClass}>Berikutnya</Link> : null}</div></nav></>}
   </Container>;
 }

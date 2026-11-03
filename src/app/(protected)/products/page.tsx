@@ -6,6 +6,7 @@ import { StockStatus, productLinkClass, productPrimaryLinkClass } from "@/module
 import { CATEGORY_LABEL, SUBCATEGORY_LABEL } from "@/modules/catalog/master-data-labels";
 import { formatRupiah } from "@/modules/ui/currency";
 import { Button, Card, CardContent, Container, FormField, Input, Label } from "@/modules/ui/components";
+import { SearchForm } from "@/modules/ui/search-form";
 import { EyeIcon, PencilIcon } from "@/modules/ui/icons";
 
 export default async function ProductsPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
@@ -32,7 +33,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
     <header className="flex flex-wrap items-center justify-between gap-4"><h1 className="text-2xl font-semibold text-gray-900">Daftar Barang</h1>{owner ? <div className="flex flex-wrap items-start gap-3"><Link href="/products/new" className={productLinkClass}>Tambah Master Produk</Link><Link href="/purchase-invoices/new" className={productPrimaryLinkClass}>Terima Barang</Link></div> : null}</header>
     {owner ? <Card><CardContent className="space-y-4"><h2 className="text-lg font-semibold">Pengaturan Barang</h2><nav aria-label="Pengaturan barang" className="flex flex-wrap gap-3">{[["categories", `Kelola ${CATEGORY_LABEL}`], ["subcategories", `Kelola ${SUBCATEGORY_LABEL}`], ["taxes", "Kelola Pajak"], ["suppliers", "Kelola Pemasok"], ["import", "Impor Barang"]].map(([path, label]) => <Link key={path} href={`/products/${path}`} className={productLinkClass}>{label}</Link>)}</nav></CardContent></Card> : null}
     <Card><CardContent className="space-y-5">
-      <form key={href(filters.page)} action="/products" className="flex flex-col gap-4 sm:flex-row sm:items-end"><FormField className="min-w-0 flex-1"><Label htmlFor="product-search">Cari nama barang / SKU / barcode</Label><Input id="product-search" name="q" defaultValue={filters.q} placeholder="Nama barang, SKU, atau barcode" maxLength={80} /></FormField><Button type="submit">Cari Barang</Button><Link href="/products" className={productLinkClass}>Atur Ulang</Link></form>
+      <SearchForm key={href(filters.page)} action="/products" className="flex flex-col gap-4 sm:flex-row sm:items-end"><FormField className="min-w-0 flex-1"><Label htmlFor="product-search">Cari nama barang / SKU / barcode</Label><Input id="product-search" name="q" defaultValue={filters.q} placeholder="Nama barang, SKU, atau barcode" maxLength={80} /></FormField><Button type="submit">Cari Barang</Button><Link href="/products" className={productLinkClass}>Atur Ulang</Link></SearchForm>
     </CardContent></Card>
 
     {error ? <Card><CardContent><p role="alert" className="text-base text-red-800">Daftar barang belum dapat dimuat. Pilihan pencarian tetap tersimpan.</p><div className="mt-5 flex flex-wrap gap-3"><Link href={href(filters.page)} className={productLinkClass}>Coba Lagi</Link>{filters.page > 1 ? <Link href={href(1)} className={productLinkClass}>Ke Halaman Pertama</Link> : null}</div></CardContent></Card> : <>
