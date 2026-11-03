@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
 import type { EmployeeRole } from "@/modules/auth/types";
 import { UserMenu } from "./user-menu";
-import { BoxIcon, CartIcon, ChartIcon, ChevronDownIcon, CloseIcon, HomeIcon, MenuIcon, UsersIcon } from "./icons";
+import { BoxIcon, CartIcon, ChartIcon, CloseIcon, HomeIcon, MenuIcon, UsersIcon } from "./icons";
 
 type NavChild = { label: string; href: string; admin?: boolean };
 type NavItem = {
@@ -57,8 +57,6 @@ const groups: Array<{ label: string; items: NavItem[] }> = [
 export function AppShell({ employee, children }: { employee: { name: string; role: EmployeeRole }; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  const [expandedState, setExpandedState] = useState<{ pathname: string; values: Record<string, boolean> }>({ pathname, values: {} });
-  const expandedItems = expandedState.pathname === pathname ? expandedState.values : {};
   const menu = useRef<HTMLDialogElement>(null);
   const isOwner = employee.role === "owner_admin";
   const isPosOperator = employee.role === "owner_admin" || employee.role === "kasir";
@@ -109,20 +107,14 @@ export function AppShell({ employee, children }: { employee: { name: string; rol
           const active = currentItem?.href === item.href || children.some(child => child.href === currentItem?.href);
           const className = `flex min-h-14 items-center gap-3 rounded-lg px-3 py-3 text-base font-medium transition-colors ${active ? "bg-brand-50 text-brand-500" : "text-gray-700 hover:bg-gray-100"}`;
           if (children.length > 0) {
-            const isOpen = expandedItems[item.href] ?? children.some(child => child.href === currentItem?.href);
-            return <div key={item.label}>
-              <div className={`flex items-center rounded-lg transition-colors ${active ? "bg-brand-50" : "hover:bg-gray-100"}`}>
-                <Link href={item.href} aria-current={active ? "page" : undefined} onClick={() => setOpen(false)} className={`flex min-h-14 flex-1 items-center gap-3 px-3 py-3 text-base font-medium ${active ? "text-brand-500" : "text-gray-700"}`}>
-                  <Icon className={`size-6 shrink-0 ${active ? "text-brand-500" : "text-gray-500"}`} />{item.label}
-                </Link>
-                <button type="button" aria-expanded={isOpen} aria-label={`${isOpen ? "Tutup" : "Buka"} submenu ${item.label}`} onClick={() => setExpandedState({ pathname, values: { ...expandedItems, [item.href]: !isOpen } })} className={`grid size-12 shrink-0 place-items-center rounded-lg transition-colors ${active ? "text-brand-500 hover:bg-brand-100" : "text-gray-500 hover:bg-gray-100"}`}>
-                  <ChevronDownIcon className={`size-5 transition-transform ${isOpen ? "rotate-180" : ""}`} />
-                </button>
-              </div>
-              {isOpen ? <div className="mt-1 grid gap-1 pl-9">{children.map(child => {
+            return <div key={item.label} className="grid gap-1">
+              <Link href={item.href} aria-current={currentItem?.href === item.href ? "page" : undefined} onClick={() => setOpen(false)} className={className}>
+                <Icon className={`size-6 shrink-0 ${active ? "text-brand-500" : "text-gray-500"}`} />{item.label}
+              </Link>
+              <div className="grid gap-1 pl-9">{children.map(child => {
                 const childActive = child.href === currentItem?.href;
                 return <Link key={child.label} href={child.href} aria-current={childActive ? "page" : undefined} onClick={() => setOpen(false)} className={`block rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${childActive ? "bg-brand-50 text-brand-500" : "text-gray-700 hover:bg-gray-100"}`}>{child.label}</Link>;
-              })}</div> : null}
+              })}</div>
             </div>;
           }
           return item.href === "#" ? <span key={item.label} aria-disabled="true" className={`${className} opacity-45`}><Icon className="size-6 shrink-0" />{item.label}</span> : <Link key={item.label} href={item.href} aria-current={active ? "page" : undefined} onClick={() => setOpen(false)} className={className}><Icon className={`size-6 shrink-0 ${active ? "text-brand-500" : "text-gray-500"}`} />{item.label}</Link>;
