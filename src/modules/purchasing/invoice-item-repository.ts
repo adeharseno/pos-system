@@ -3,6 +3,7 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { getAdminProduct, listAdminProducts } from "@/modules/catalog/data/admin-product-queries";
 import { parseProductSearchQuery } from "@/modules/catalog/search";
 import { AuthApplicationError } from "@/modules/auth/errors";
+import { requestOriginAllowed } from "@/modules/shared/api/request-origin";
 import { PosInputError, requireUuid } from "@/modules/shared/validation/input";
 import { mapDatabaseError } from "@/modules/shared/errors/pos-domain-error";
 import { getPurchaseInvoice } from "./invoice-repository";
@@ -35,7 +36,7 @@ export async function getInvoiceProduct(invoiceId: string, productId: string): P
 }
 export async function writeInvoiceItem(request: Request, invoiceId: string, employeeId: string, action: "create" | "update" | "delete", editingId?: string) {
   const origin = request.headers.get("origin");
-  if (origin && origin !== new URL(request.url).origin) throw new AuthApplicationError("FORBIDDEN");
+  if (!requestOriginAllowed(origin, request.url)) throw new AuthApplicationError("FORBIDDEN");
   if (Number(request.headers.get("content-length") ?? 0) > 16384) throw new PosInputError("Data barang terlalu besar.");
   const body = await request.json() as Record<string, unknown>;
   if (!body || typeof body !== "object" || Array.isArray(body)) throw new PosInputError("Data barang tidak valid.");

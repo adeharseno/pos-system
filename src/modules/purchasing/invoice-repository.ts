@@ -2,6 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { PosInputError } from "@/modules/shared/validation/input";
+import { requestOriginAllowed } from "@/modules/shared/api/request-origin";
 import { mapDatabaseError } from "@/modules/shared/errors/pos-domain-error";
 import { INVOICE_BUCKET, parseInvoiceForm, validateInvoiceFile } from "./invoice-input";
 import { invoiceDatabaseError, PurchaseInvoiceError } from "./invoice-errors";
@@ -47,7 +48,7 @@ export async function listPurchaseInvoices(filters: PurchaseHistoryFilters = { q
 
 export async function recordPurchaseInvoicePayment(request: Request, invoiceId: string, employeeId: string) {
   const origin = request.headers.get("origin");
-  if (origin && origin !== new URL(request.url).origin) throw new AuthApplicationError("FORBIDDEN");
+  if (!requestOriginAllowed(origin, request.url)) throw new AuthApplicationError("FORBIDDEN");
   const input = parsePurchasePayment(await request.json());
   const result = await createAdminSupabaseClient().rpc("record_purchase_invoice_payment", { p_invoice_id: invoiceId, p_request_id: input.requestId, p_employee_id: employeeId, p_amount: input.amount, p_payment_date: input.paymentDate });
   if (result.error) invoiceDatabaseError(result.error);
@@ -56,7 +57,7 @@ export async function recordPurchaseInvoicePayment(request: Request, invoiceId: 
 
 export async function savePurchaseInvoice(request: Request, employeeId: string, editingId?: string) {
   const origin = request.headers.get("origin");
-  if (origin && origin !== new URL(request.url).origin) throw new AuthApplicationError("FORBIDDEN");
+  if (!requestOriginAllowed(origin, request.url)) throw new AuthApplicationError("FORBIDDEN");
   const length = Number(request.headers.get("content-length") ?? 0);
   if (length > 11 * 1024 * 1024) throw new PosInputError("Dokumen maksimal 10 MB.");
   const form = await request.formData();

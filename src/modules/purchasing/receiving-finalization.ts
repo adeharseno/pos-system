@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { AuthApplicationError } from "@/modules/auth/errors";
+import { requestOriginAllowed } from "@/modules/shared/api/request-origin";
 import { PosInputError, requireUuid } from "@/modules/shared/validation/input";
 import { mapDatabaseError } from "@/modules/shared/errors/pos-domain-error";
 import { invoiceDatabaseError } from "./invoice-errors";
@@ -13,7 +14,7 @@ export async function previewReceiving(invoiceId: string, employeeId: string) {
 }
 export async function finalizeReceiving(request: Request, invoiceId: string, employeeId: string) {
   const origin = request.headers.get("origin");
-  if (origin && origin !== new URL(request.url).origin) throw new AuthApplicationError("FORBIDDEN");
+  if (!requestOriginAllowed(origin, request.url)) throw new AuthApplicationError("FORBIDDEN");
   const body = await request.json() as Record<string, unknown>;
   if (!body || typeof body !== "object" || Array.isArray(body) || typeof body.version !== "number" || !Number.isSafeInteger(body.version) || body.version<1 || typeof body.token !== "string" || !/^[a-f0-9]{32}$/.test(body.token) || typeof body.acknowledge_difference !== "boolean") throw new PosInputError("Konfirmasi penerimaan tidak valid.");
   const requestId = requireUuid(typeof body.request_id === "string" ? body.request_id : "", "request_id");
