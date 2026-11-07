@@ -142,6 +142,8 @@ export default async function TransactionsPage({
                 <option value="">Semua metode</option>
                 <option value="cash">Tunai</option>
                 <option value="qris">QRIS</option>
+                <option value="bank_transfer">Transfer Bank</option>
+                <option value="bpjs">Ditanggung BPJS</option>
               </Select>
             </FormField>
             <FormField>

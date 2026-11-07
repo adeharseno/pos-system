@@ -44,6 +44,11 @@ test("history filters ignore malformed values", () => {
   assert.equal(result.cashierId, undefined);
 });
 
+test("history accepts bank transfer as a payment filter", () => {
+  assert.equal(parseHistoryFilters({ payment: "bank_transfer" }).payment, "bank_transfer");
+  assert.equal(parseHistoryFilters({ payment: "bpjs" }).payment, "bpjs");
+});
+
 test("history status labels remain explicit", () => {
   assert.equal(historyStatusLabel("completed"), "Selesai");
   assert.equal(historyStatusLabel("pending_payment"), "Menunggu Pembayaran");

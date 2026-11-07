@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { CartLine } from "./sales/cart";
-import { buildCashCheckoutPayload,buildQrisCheckoutPayload,canSubmitCheckout,canVoidQris,cartAfterCheckout,checkoutErrorMessage,qrisActionPayload,qrisConfirmUrl,qrisVoidUrl,transactionStatusUrl } from "./sales/checkout-ui";
+import { buildBankTransferCheckoutPayload,buildCashCheckoutPayload,buildQrisCheckoutPayload,canSubmitCheckout,canVoidQris,cartAfterCheckout,checkoutErrorMessage,qrisActionPayload,qrisConfirmUrl,qrisVoidUrl,transactionStatusUrl } from "./sales/checkout-ui";
 
 const cart:CartLine[]=[{productId:"p",productName:"Obat",productUnitId:"u",unitLabel:"Tablet",quantity:1,conversionToBase:1,displayedUnitPrice:10000,requiresPrescription:false}];
 test("QRIS can be selected as a payment method",()=>assert.equal(buildQrisCheckoutPayload(cart,{category:"umum"}).payment_method,"qris"));
 test("QRIS checkout omits cash received and change",()=>{const payload=buildQrisCheckoutPayload(cart,{category:"umum"});assert.equal("cash_received" in payload,false);assert.equal("cash_change" in payload,false);});
+test("bank transfer checkout is pending-capable and omits cash fields",()=>{const payload=buildBankTransferCheckoutPayload(cart,{category:"umum"});assert.equal(payload.payment_method,"bank_transfer");assert.equal("cash_received" in payload,false);assert.equal("cash_change" in payload,false);});
+test("duplicate bank transfer confirmation has a safe message",()=>assert.match(checkoutErrorMessage("BANK_TRANSFER_ALREADY_CONFIRMED"),/sudah dikonfirmasi/));
 test("pending QRIS result retains authoritative invoice and total",()=>{const result={status:"pending_payment",invoiceNumber:"INV-1",totalAmount:11000};assert.equal(result.status,"pending_payment");assert.equal(result.invoiceNumber,"INV-1");assert.equal(result.totalAmount,11000);});
 test("cart is not cleared while QRIS is pending",()=>assert.equal(cartAfterCheckout(cart,false),cart));
 test("confirm action targets authenticated confirmation API",()=>assert.equal(qrisConfirmUrl("tx"),"/api/transactions/tx/confirm-payment"));

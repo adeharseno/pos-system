@@ -2352,7 +2352,7 @@ export type Database = {
     Enums: {
       drug_classification: "otc" | "otc_limited" | "prescription_required"
       employee_position: "owner_admin" | "kasir" | "staf"
-      payment_method: "cash" | "qris" | "bank_transfer"
+      payment_method: "cash" | "qris" | "bank_transfer" | "bpjs"
       return_source: "customer" | "supplier"
       transaction_status: "pending_payment" | "completed" | "voided"
     }
@@ -2484,7 +2484,7 @@ export const Constants = {
     Enums: {
       drug_classification: ["otc", "otc_limited", "prescription_required"],
       employee_position: ["owner_admin", "kasir", "staf"],
-      payment_method: ["cash", "qris", "bank_transfer"],
+      payment_method: ["cash", "qris", "bank_transfer", "bpjs"],
       return_source: ["customer", "supplier"],
       transaction_status: ["pending_payment", "completed", "voided"],
     },

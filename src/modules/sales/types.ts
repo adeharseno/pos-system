@@ -1,8 +1,8 @@
-export type PaymentMethod = "cash" | "qris";
+export type PaymentMethod = "cash" | "qris" | "bank_transfer" | "bpjs";
 
 export interface CheckoutItemInput { productUnitId: string; quantity: number }
 export interface PrescriptionInput {
-  category: "umum" | "bpjs";
+  category: "umum" | "bpjs" | "bebas";
   prescriptionNumber?: string;
   patientName?: string;
   bpjsNumber?: string;

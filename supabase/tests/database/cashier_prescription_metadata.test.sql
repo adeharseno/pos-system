@@ -1,7 +1,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path=public,extensions;
-select plan(11);
+select plan(19);
 
 insert into categories(id,name) values('e5000000-0000-4000-8000-000000000001','Cashier prescription metadata');
 insert into products(id,sku,name,base_unit,category_id,minimum_stock,drug_classification) values
@@ -26,21 +26,43 @@ select is((select patient_name from transaction_prescriptions p join umum_sale s
 select is((select bpjs_number from transaction_prescriptions p join umum_sale s on p.transaction_id=(s.data->>'transaction_id')::uuid),null::text,'UMUM stores no BPJS number');
 
 create temporary table bpjs_sale as select checkout_transaction_with_prescription(
-  'e5000000-0000-4000-8000-000000000008','qris',
-  '[{"product_unit_id":"e5000000-0000-4000-8000-000000000004","quantity":1}]',null,
+  'e5000000-0000-4000-8000-000000000008','bpjs',
+  '[{"product_unit_id":"e5000000-0000-4000-8000-000000000004","quantity":1}]',0,
   '{"prescription_category":"bpjs","patient_name":"Pasien BPJS","bpjs_number":"000123","prescription_number":"R-BPJS"}'
 ) data;
-select is((select data->>'status' from bpjs_sale),'pending_payment','BPJS keeps existing QRIS behavior');
+select is((select data->>'status' from bpjs_sale),'completed','BPJS checkout completes without manual payment');
 select is((select prescription_category from transaction_prescriptions p join bpjs_sale s on p.transaction_id=(s.data->>'transaction_id')::uuid),'bpjs','BPJS category persisted');
 select is((select bpjs_number from transaction_prescriptions p join bpjs_sale s on p.transaction_id=(s.data->>'transaction_id')::uuid),'000123','BPJS number preserves leading zeros');
 select is((select quantity from product_batches where id='e5000000-0000-4000-8000-000000000006'),8,'existing checkout still deducts stock once per transaction');
+select ok((select payment_method::text='bpjs' and cash_received=0 and cash_change=0 from transactions t join bpjs_sale s on t.id=(s.data->>'transaction_id')::uuid),'BPJS is covered with zero tender and zero change');
+select is((select total_amount from transactions t join bpjs_sale s on t.id=(s.data->>'transaction_id')::uuid),100::numeric,'BPJS preserves the authoritative transaction total');
 
 select throws_ok($$select checkout_transaction_with_prescription(
-  'e5000000-0000-4000-8000-000000000008','cash',
-  '[{"product_unit_id":"e5000000-0000-4000-8000-000000000004","quantity":1}]',100,
+  'e5000000-0000-4000-8000-000000000008','bpjs',
+  '[{"product_unit_id":"e5000000-0000-4000-8000-000000000004","quantity":1}]',0,
   '{"prescription_category":"bpjs"}'
 )$$,'P0001','BPJS_NUMBER_REQUIRED','BPJS number is enforced in database');
 select is((select quantity from product_batches where id='e5000000-0000-4000-8000-000000000006'),8,'failed BPJS validation does not alter stock');
+
+create temporary table bebas_sales as
+select method, checkout_transaction_with_prescription(
+  'e5000000-0000-4000-8000-000000000008',method::payment_method,
+  '[{"product_unit_id":"e5000000-0000-4000-8000-000000000004","quantity":1}]',
+  case when method='cash' then 100 else null end,
+  '{"prescription_category":"bebas","patient_name":"harus dihapus","prescription_origin":"harus dihapus"}'
+) data from (values ('cash'),('qris'),('bank_transfer')) methods(method);
+select is((select count(*)::integer from bebas_sales),3,'BEBAS supports cash, QRIS, and bank transfer');
+select is((select count(*)::integer from transaction_prescriptions p join bebas_sales s on p.transaction_id=(s.data->>'transaction_id')::uuid where p.prescription_category='bebas'),3,'BEBAS category persists for every payment method');
+select ok(not exists(select 1 from transaction_prescriptions p join bebas_sales s on p.transaction_id=(s.data->>'transaction_id')::uuid where p.patient_name is not null or p.prescription_origin is not null),'BEBAS clears patient and prescription fields');
+select is((select quantity from product_batches where id='e5000000-0000-4000-8000-000000000006'),5,'BEBAS checkout deducts stock once for each transaction');
+
+create temporary table bebas_required as select checkout_transaction_with_prescription(
+  'e5000000-0000-4000-8000-000000000008','cash',
+  '[{"product_unit_id":"e5000000-0000-4000-8000-000000000005","quantity":1}]',100,
+  '{"prescription_category":"bebas"}'
+) data;
+select is((select data->>'status' from bebas_required),'completed','BEBAS requires no prescription validation even for a marked product');
+select is((select quantity from product_batches where id='e5000000-0000-4000-8000-000000000007'),9,'BEBAS prescription-marked product still deducts stock exactly once');
 
 select throws_ok($$select checkout_transaction_with_prescription(
   'e5000000-0000-4000-8000-000000000008','cash',

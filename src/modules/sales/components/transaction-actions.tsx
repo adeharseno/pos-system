@@ -8,10 +8,10 @@ import { formatRupiah } from "@/modules/ui/currency";
 import { checkoutErrorMessage } from "../checkout-ui";
 import type { TransactionStatus } from "../transaction-history-filters";
 
-type Props = { transactionId: string; invoice: string; total: number; status: TransactionStatus; canConfirm: boolean; canVoid: boolean };
+type Props = { transactionId: string; invoice: string; total: number; status: TransactionStatus; paymentMethod: string; canConfirm: boolean; canVoid: boolean };
 type ResponseBody = { ok?: boolean; data?: { status?: TransactionStatus }; error?: { code?: string } };
 
-export function TransactionActions({ transactionId, invoice, total, status, canConfirm, canVoid }: Props) {
+export function TransactionActions({ transactionId, invoice, total, status, paymentMethod, canConfirm, canVoid }: Props) {
   const router = useRouter();
   const [mode, setMode] = useState<"confirm" | "void" | null>(null);
   const [reason, setReason] = useState("");
@@ -49,7 +49,7 @@ export function TransactionActions({ transactionId, invoice, total, status, canC
       const body = await response.json() as ResponseBody;
       if (!response.ok || !body.ok || body.data?.status !== (mode === "confirm" ? "completed" : "voided")) {
         const code = body.error?.code;
-        if (response.status >= 500 || (response.ok && body.ok) || code === "QRIS_ALREADY_CONFIRMED" || code === "TRANSACTION_ALREADY_VOIDED" || code === "INVALID_TRANSACTION_STATE") {
+        if (response.status >= 500 || (response.ok && body.ok) || code === "QRIS_ALREADY_CONFIRMED" || code === "BANK_TRANSFER_ALREADY_CONFIRMED" || code === "TRANSACTION_ALREADY_VOIDED" || code === "INVALID_TRANSACTION_STATE") {
           setUncertain(true); setMode(null);
         }
         const messages: Record<string, string> = {
@@ -86,7 +86,7 @@ export function TransactionActions({ transactionId, invoice, total, status, canC
         <ModalContent>
           <p className="break-all text-base font-semibold text-gray-900">{invoice}</p>
           <p className="mt-2 text-xl font-semibold tabular">{formatRupiah(total)}</p>
-          <p className="my-5 text-base text-gray-700">{mode === "void" ? "Transaksi akan dibatalkan dan stok barang dikembalikan." : "Pastikan pembayaran QRIS sudah diterima."}</p>
+          <p className="my-5 text-base text-gray-700">{mode === "void" ? "Transaksi akan dibatalkan dan stok barang dikembalikan." : `Pastikan pembayaran ${paymentMethod === "qris" ? "QRIS" : "transfer bank"} sudah diterima dan diverifikasi secara eksternal.`}</p>
           {mode === "void" ? <FormField><Label htmlFor="transaction-void-reason">Alasan pembatalan</Label><Textarea id="transaction-void-reason" value={reason} onChange={event => setReason(event.target.value)} required disabled={busy} autoFocus /></FormField> : null}
           {error ? <p role="alert" className="mt-4 text-base text-red-800">{error}</p> : null}
         </ModalContent>

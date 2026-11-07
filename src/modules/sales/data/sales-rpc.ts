@@ -15,7 +15,7 @@ export async function checkoutRpc(input: CheckoutInput): Promise<CheckoutResult>
   };
 }
 
-export async function confirmQrisRpc(input: TransactionActionInput): Promise<TransactionStatusResult> {
+export async function confirmManualPaymentRpc(input: TransactionActionInput): Promise<TransactionStatusResult> {
   const data = requireResultObject(await callCoreRpc("confirm_qris_payment", { p_employee_id: input.employeeId, p_transaction_id: input.transactionId }));
   return { transactionId: resultString(data, "transaction_id"), status: resultString(data, "status") as "completed" };
 }

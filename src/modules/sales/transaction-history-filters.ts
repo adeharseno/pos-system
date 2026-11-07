@@ -1,5 +1,5 @@
 export type TransactionStatus = "pending_payment" | "completed" | "voided";
-export type PaymentMethod = "cash" | "qris";
+export type PaymentMethod = "cash" | "qris" | "bank_transfer" | "bpjs";
 export type HistoryFilters = {
   q: string;
   payment?: PaymentMethod;
@@ -25,7 +25,7 @@ export function parseHistoryFilters(input: Record<string, unknown>): HistoryFilt
   const q = typeof input.q === "string" ? input.q.trim().slice(0, 80) : "";
   return {
     q,
-    payment: values(input.payment, ["cash", "qris"]),
+    payment: values(input.payment, ["cash", "qris", "bank_transfer", "bpjs"]),
     status: values(input.status, ["pending_payment", "completed", "voided"]),
     from: typeof input.from === "string" && date.test(input.from) ? input.from : undefined,
     to: typeof input.to === "string" && date.test(input.to) ? input.to : undefined,

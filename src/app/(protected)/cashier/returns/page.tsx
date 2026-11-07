@@ -74,7 +74,7 @@ export default async function CashierReturnsPage({ searchParams }: { searchParam
                 <CardContent className="grid gap-2 py-4 text-sm">
                   <strong>{item.invoice_number}</strong>
                   <p>{formatReceiptDate(item.created_at)}</p>
-                  <p>Pembayaran: {item.payment_method === "cash" ? "Tunai" : item.payment_method === "qris" ? "QRIS" : "Transfer Bank"}</p>
+                  <p>Pembayaran: {item.payment_method === "cash" ? "Tunai" : item.payment_method === "qris" ? "QRIS" : item.payment_method === "bank_transfer" ? "Transfer Bank" : "Ditanggung BPJS"}</p>
                   <p>Status: {item.status === "completed" ? "Lunas" : item.status === "pending_payment" ? "Menunggu pembayaran" : "Dibatalkan"}</p>
                   <p>Total: {formatRupiah(item.total_amount)}</p>
                   {item.status === "completed" ? (
