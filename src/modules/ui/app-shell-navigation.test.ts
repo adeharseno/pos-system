@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { navigationGroups } from "./app-navigation";
+import { navigationGroups, navigationGroupsForRole } from "./app-navigation";
 
 test("master barang and manajemen stok are separate navigation destinations", () => {
   const inventory = navigationGroups.find(group => group.label === "Persediaan");
@@ -11,6 +11,12 @@ test("master barang and manajemen stok are separate navigation destinations", ()
     ["Manajemen Stok", "/inventory"],
   ]);
   assert.ok(!inventory.items.some(item => item.label.includes("&")));
+});
+
+test("cashier sidebar contains only checkout and read-only transaction history", () => {
+  const hrefs = navigationGroupsForRole("kasir").flatMap(group => group.items.map(item => item.href));
+  assert.deepEqual(hrefs, ["/cashier", "/transactions"]);
+  assert.ok(navigationGroupsForRole("owner_admin").flatMap(group => group.items).some(item => item.href === "/products"));
 });
 
 test("master settings remain owner-only children and inventory has no duplicated settings", () => {

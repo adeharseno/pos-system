@@ -16,6 +16,9 @@ export async function employeeRpc(name: EmployeeRpc, args: Record<string, Json |
     (name: EmployeeRpc, args: Record<string, Json | undefined>) => Promise<{ data: Json | null; error: { message: string; code?: string } | null }>;
   const result = await rpc(name, args);
   if (result.error) {
+    if (result.error.message === "FORBIDDEN") {
+      console.warn("[employee-authorization-denied]", { phase: "database_admin_guard", rpc: name });
+    }
     if (Object.hasOwn(EMPLOYEE_ERRORS, result.error.message)) throw new EmployeeManagementError(result.error.message as EmployeeErrorCode);
     if (result.error.code?.startsWith("22")) throw new PosInputError("invalid employee input");
     throw new PosDataAccessError(result.error);

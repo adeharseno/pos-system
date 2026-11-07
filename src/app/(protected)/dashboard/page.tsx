@@ -10,6 +10,7 @@ import { StockStatus } from "@/modules/catalog/components/product-presentation";
 import { getPurchaseDueReminders } from "@/modules/purchasing/due-reminder-service";
 import { dueReminderLabel } from "@/modules/purchasing/due-reminder-model";
 import { formatInvoiceAmount } from "@/modules/purchasing/invoice-presentation";
+import { requireRole } from "@/modules/auth/application/auth-service";
 
 const linkClass = "inline-flex min-h-14 items-center justify-center gap-3 rounded-xl border border-gray-300 bg-white px-5 py-3 text-base font-medium text-gray-800 transition hover:bg-gray-50";
 
@@ -97,6 +98,7 @@ async function LowStock() {
 }
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<DashboardQuery> }) {
+  await requireRole(["owner_admin", "staf"]);
   const context = await getDashboardContext();
   const dueReminders=context.employee.role==="owner_admin"?await getPurchaseDueReminders().catch(()=>[]):[];
   const query = await searchParams;

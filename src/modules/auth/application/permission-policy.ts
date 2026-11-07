@@ -30,3 +30,9 @@ export async function requireAllPermissionsWith(permissions: readonly string[], 
   }
   return employee;
 }
+
+export async function requireOwnerPermissionWith(permission: string, dependencies: PermissionDependencies) {
+  const employee = await requireAllPermissionsWith([permission], dependencies);
+  if (employee.role !== "owner_admin") throw new AuthApplicationError("FORBIDDEN");
+  return employee;
+}

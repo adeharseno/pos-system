@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import type { EmployeeRole } from "@/modules/auth/types";
 import { UserMenu } from "./user-menu";
 import { BellIcon, CloseIcon, MenuIcon } from "./icons";
-import { navigationGroups } from "./app-navigation";
+import { navigationGroups, navigationGroupsForRole } from "./app-navigation";
 import type { PurchaseDueReminder } from "@/modules/purchasing/due-reminder-model";
 import { dueReminderLabel } from "@/modules/purchasing/due-reminder-model";
 import { formatInvoiceAmount } from "@/modules/purchasing/invoice-presentation";
@@ -19,7 +19,6 @@ export function AppShell({ employee, reminders = [], children }: { employee: { n
   const pathname = usePathname();
   const menu = useRef<HTMLDialogElement>(null);
   const isOwner = employee.role === "owner_admin";
-  const isPosOperator = employee.role === "owner_admin" || employee.role === "kasir";
 
   useEffect(() => {
     if (!open) return;
@@ -48,18 +47,13 @@ export function AppShell({ employee, reminders = [], children }: { employee: { n
   if (pathname === "/cashier" || pathname.startsWith("/cashier/")) return <div className="flex h-[100dvh] flex-col overflow-hidden">{children}</div>;
 
   const nav = <>
-    <Link href="/dashboard" onClick={() => setOpen(false)} className="mb-8 flex min-h-16 items-center gap-3">
+    <Link href={employee.role === "kasir" ? "/cashier" : "/dashboard"} onClick={() => setOpen(false)} className="mb-8 flex min-h-16 items-center gap-3">
       <Image src="/images/logo.png" width={52} height={52} alt="Logo Cipayung Farma" className="size-13 shrink-0 object-contain" />
       <strong className="text-lg leading-snug font-semibold text-gray-800">Apotek Cipayung Farma</strong>
     </Link>
     <nav aria-label="Menu utama" className="grid gap-7">
-      {navigationGroups.map(group => {
-        const items = group.items
-          .filter(item => (!item.admin || isOwner) && (!item.posOperator || isPosOperator))
-          .map(item => ({
-            ...item,
-            children: item.children?.filter(child => !child.admin || isOwner),
-          }));
+      {navigationGroupsForRole(employee.role).map(group => {
+        const items = group.items;
         if (!items.length) return null;
         return <div key={group.label}><p className="mb-3 px-3 text-sm font-medium text-gray-600">{group.label}</p><div className="grid gap-2">{items.map(item => {
           const Icon = item.icon;

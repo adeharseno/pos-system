@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
 import { PERMISSIONS } from "./permissions";
-import { hasPermission, requireAllPermissionsWith, type PermissionData, type PermissionDependencies } from "./application/permission-policy";
+import { hasPermission, requireAllPermissionsWith, requireOwnerPermissionWith, type PermissionData, type PermissionDependencies } from "./application/permission-policy";
 import { requireRoleWith } from "./application/auth-policy";
 import { AuthApplicationError } from "./errors";
 
@@ -32,10 +32,31 @@ test("unknown and absent definitions are denied even for owners", () => {
 test("owner has all known permissions and overrides cannot reduce control", () => {
   for (const permission of PERMISSIONS) assert.equal(hasPermission("owner_admin", permission, { ...data, preset: [], overrides: [{ permission, effect: "deny" }] }), true);
 });
+test("active owner admin can pass the employee creation permission guard", async () => {
+  const employee = await requireAllPermissionsWith(["employees.create"], {
+    ...deps,
+    findEmployee: async () => ({ employeeId: "owner", name: "Owner", role: "owner_admin", isActive: true }),
+    loadPermissions: async () => ({ definitions: PERMISSIONS, preset: [], overrides: [] }),
+  });
+  assert.equal(employee.employeeId, "owner");
+  assert.equal(employee.role, "owner_admin");
+});
 test("guard returns existing employee identity and requires every capability", async () => {
   assert.equal((await requireAllPermissionsWith(["products.view"], deps)).employeeId, "employee");
   await assert.rejects(() => requireAllPermissionsWith(["products.view", "products.edit"], deps), denied("FORBIDDEN"));
   await assert.rejects(() => requireAllPermissionsWith([], deps), denied("FORBIDDEN"));
+});
+test("cashier cannot use owner transaction actions even with an individual grant", async () => {
+  await assert.rejects(() => requireOwnerPermissionWith("transactions.confirm_payment", {
+    ...deps,
+    loadPermissions: async () => ({ definitions: PERMISSIONS, preset: [], overrides: [{ permission: "transactions.confirm_payment", effect: "allow" }] }),
+  }), denied("FORBIDDEN"));
+  const owner = await requireOwnerPermissionWith("transactions.confirm_payment", {
+    ...deps,
+    findEmployee: async () => ({ employeeId: "owner", name: "Owner", role: "owner_admin", isActive: true }),
+    loadPermissions: async () => ({ definitions: PERMISSIONS, preset: [], overrides: [] }),
+  });
+  assert.equal(owner.role, "owner_admin");
 });
 test("inactive employees are rejected before permission loading", async () => {
   await assert.rejects(() => requireAllPermissionsWith(["products.view"], {
@@ -60,4 +81,16 @@ test("migration definitions exactly match the application catalog", () => {
   const insert = sql.split("INSERT INTO public.permission_definitions VALUES ")[1].split(";")[0];
   const definitions = [...insert.matchAll(/\('([^']+)'\)/g)].map(match => match[1]);
   assert.deepEqual(definitions.sort(), [...PERMISSIONS].sort());
+});
+
+test("cashier restriction migration keeps only checkout dependencies and transaction list", () => {
+  const sql = readFileSync("supabase/migrations/0053_restrict_cashier_permissions.sql", "utf8");
+  const permissions = [...sql.matchAll(/\('kasir', '([^']+)'\)/g)].map(match => match[1]);
+  assert.deepEqual(permissions, [
+    "products.view", "pricing.selling.view", "inventory.view",
+    "cashier.view", "sales.checkout", "transactions.view",
+  ]);
+  assert.ok(!permissions.includes("transactions.void"));
+  assert.ok(!permissions.includes("transactions.confirm_payment"));
+  assert.ok(!permissions.includes("returns.create"));
 });

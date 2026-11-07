@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { requirePosOperator } from "@/modules/auth/application/auth-service";
+import { requireRole } from "@/modules/auth/application/auth-service";
 import { isAuthApplicationError } from "@/modules/auth/errors";
 import { StockMovementHistory } from "@/modules/catalog/components/product-detail-sections";
 import { productPrimaryLinkClass } from "@/modules/catalog/components/product-presentation";
@@ -24,7 +24,7 @@ export default async function InventoryDetailPage({ params, searchParams }: {
   params: Promise<{ productId: string }>;
   searchParams: Promise<{ movementPage?: string; stockAdded?: string; movementType?: string; startDate?: string; endDate?: string }>;
 }) {
-  const employee = await requirePosOperator();
+  const employee = await requireRole(["owner_admin"]);
   const { productId: rawProductId } = await params;
   let productId: string;
   try { productId = requireUuid(rawProductId, "productId"); } catch { notFound(); }

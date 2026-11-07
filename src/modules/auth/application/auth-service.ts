@@ -5,7 +5,7 @@ import { getCurrentEmployeeWith, getCurrentUserWith, logoutWith, requireEmployee
 import type { AuthDependencies } from "./auth-policy";
 import type { EmployeeRole } from "../types";
 import { loadPermissions } from "../data/permission-repository";
-import { requireAllPermissionsWith } from "./permission-policy";
+import { requireAllPermissionsWith, requireOwnerPermissionWith } from "./permission-policy";
 
 const defaultDependencies: AuthDependencies = {
   getUser: getVerifiedAuthUser,
@@ -18,6 +18,9 @@ export const getCurrentEmployee = () => getCurrentEmployeeWith(defaultDependenci
 export const requireEmployee = () => requireEmployeeWith(defaultDependencies);
 export const requireRole = (allowedRoles: readonly EmployeeRole[]) => requireRoleWith(allowedRoles, defaultDependencies);
 export const requirePosOperator = () => requireRole(["owner_admin", "kasir"]);
+export const requireOwnerPermission = async (permission: string) => {
+  return requireOwnerPermissionWith(permission, { ...defaultDependencies, loadPermissions });
+};
 export const logout = () => logoutWith(defaultDependencies);
 
 // Existing role guards deliberately retain their behavior until each caller migrates.

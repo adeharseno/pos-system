@@ -1,5 +1,5 @@
 ﻿import Link from "next/link";
-import { requirePosOperator } from "@/modules/auth/application/auth-service";
+import { requireRole } from "@/modules/auth/application/auth-service";
 import { parseAdminProductFilters } from "@/modules/catalog/admin-product-filters";
 import { isProductCatalogEmpty, listAdminProducts, type AdminProductListItem } from "@/modules/catalog/data/admin-product-queries";
 import { ProductStatus, productLinkClass, productPrimaryLinkClass } from "@/modules/catalog/components/product-presentation";
@@ -9,7 +9,7 @@ import { SearchForm } from "@/modules/ui/search-form";
 import { EyeIcon, PencilIcon } from "@/modules/ui/icons";
 
 export default async function ProductsPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
-  const employee = await requirePosOperator();
+  const employee = await requireRole(["owner_admin"]);
   const params = await searchParams;
   const filters = parseAdminProductFilters(params);
   const owner = employee.role === "owner_admin";

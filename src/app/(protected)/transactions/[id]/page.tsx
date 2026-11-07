@@ -1,6 +1,6 @@
 ﻿import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requirePosOperator } from "@/modules/auth/application/auth-service";
+import { requireOwnerPermission } from "@/modules/auth/application/auth-service";
 import { getCustomerReturns, getTransaction } from "@/modules/sales/data/transaction-queries";
 import { buildReceiptViewModel, formatPrescriptionDate, formatReceiptDate, type ReceiptTransactionRow } from "@/modules/sales/receipt";
 import { TransactionActions } from "@/modules/sales/components/transaction-actions";
@@ -17,7 +17,7 @@ type ReturnRecord = { return_items: ReturnItem[] | null };
 type DetailItem = { id: string; quantity_in_base: number; conversion_to_base_snapshot: number };
 
 export default async function TransactionDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  await requirePosOperator();
+  await requireOwnerPermission("transactions.view");
   const { id } = await params;
   let transactionId: string;
   try { transactionId = requireUuid(id, "transactionId"); } catch { notFound(); }

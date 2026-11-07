@@ -85,6 +85,8 @@ test("explicit local aliases are allowed while unconfigured and deceptive origin
   assert.equal(employeeOriginAllowed("http://localhost:3000", "http://127.0.0.1:3000"), false);
   assert.equal(employeeOriginAllowed("http://localhost:3001", "http://127.0.0.1:3000", "http://localhost:3000"), false);
   assert.equal(employeeOriginAllowed("https://pos.example.test.evil.test", "https://pos.example.test"), false);
+  assert.equal(employeeOriginAllowed("https://pos-production.vercel.app", "https://pos-production.vercel.app"), true);
+  assert.equal(employeeOriginAllowed("https://pos-production.vercel.app", "https://other-deployment.vercel.app"), false);
 });
 test("API errors never display raw transport errors or unknown response messages", async () => {
   const original = globalThis.fetch;

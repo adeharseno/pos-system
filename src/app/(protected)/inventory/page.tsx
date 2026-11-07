@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requirePosOperator } from "@/modules/auth/application/auth-service";
+import { requireRole } from "@/modules/auth/application/auth-service";
 import { listInventoryOverview, parseInventoryOverviewFilters, type InventoryStockStatus } from "@/modules/inventory/data/inventory-overview-queries";
 import { Button, Card, CardContent, Container, FormField, Input, Label } from "@/modules/ui/components";
 import { SearchForm } from "@/modules/ui/search-form";
@@ -12,7 +12,7 @@ const formatExpiry = (value: string | null) => value
   : "Belum ada";
 
 export default async function InventoryPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
-  const employee = await requirePosOperator();
+  const employee = await requireRole(["owner_admin"]);
   const parsedFilters = parseInventoryOverviewFilters(await searchParams);
   const filters = { ...parsedFilters, status: "all" as const };
   const { rows, total } = await listInventoryOverview(filters);

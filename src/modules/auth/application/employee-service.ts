@@ -17,14 +17,32 @@ import { knownPermissions, type PermissionCatalog } from "../employee-ui-model";
 
 async function checkRequestOrigin() {
   const origin = (await headers()).get("origin");
-  if (origin && !employeeOriginAllowed(origin, process.env.APP_SITE_URL, process.env.APP_ADDITIONAL_ORIGINS)) throw new AuthApplicationError("FORBIDDEN");
+  if (origin && !employeeOriginAllowed(origin, process.env.APP_SITE_URL, process.env.APP_ADDITIONAL_ORIGINS)) {
+    console.warn("[employee-authorization-denied]", {
+      phase: "request_origin",
+      siteUrlConfigured: Boolean(process.env.APP_SITE_URL),
+      additionalOriginsConfigured: Boolean(process.env.APP_ADDITIONAL_ORIGINS),
+    });
+    throw new AuthApplicationError("FORBIDDEN");
+  }
 }
 
 export async function requireEmployeeManager(permission: string): Promise<EmployeeSession> {
   await checkRequestOrigin();
-  const employee = await requirePermission(permission);
+  let employee: EmployeeSession;
+  try {
+    employee = await requirePermission(permission);
+  } catch (error) {
+    if (error instanceof AuthApplicationError) {
+      console.warn("[employee-authorization-denied]", { phase: "permission", permission, code: error.code });
+    }
+    throw error;
+  }
   // Administrative capabilities cannot be delegated through an override.
-  if (employee.role !== "owner_admin") throw new AuthApplicationError("FORBIDDEN");
+  if (employee.role !== "owner_admin") {
+    console.warn("[employee-authorization-denied]", { phase: "owner_role", permission });
+    throw new AuthApplicationError("FORBIDDEN");
+  }
   return employee;
 }
 

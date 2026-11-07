@@ -1,5 +1,5 @@
 ﻿import Link from "next/link";
-import { requirePosOperator } from "@/modules/auth/application/auth-service";
+import { requirePermission } from "@/modules/auth/application/auth-service";
 import { formatRupiah } from "@/modules/ui/currency";
 import { formatReceiptDate } from "@/modules/sales/receipt";
 import {
@@ -37,8 +37,10 @@ export default async function TransactionsPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  await requirePosOperator();
-  const filters = parseHistoryFilters(await searchParams);
+  const employee = await requirePermission("transactions.view");
+  const isOwner = employee.role === "owner_admin";
+  const requested = await searchParams;
+  const filters = parseHistoryFilters(isOwner ? requested : { page: requested.page });
   const today = jakartaToday();
   let rows: HistoryRow[] = [];
   let total = 0;
@@ -49,8 +51,8 @@ export default async function TransactionsPage({
   try {
     const [transactions, cashierOptions, dailyTotals] = await Promise.all([
       listTransactions(filters),
-      listTransactionCashiers(),
-      filters.from && filters.to ? listDailySalesTotals(filters) : Promise.resolve([]),
+      isOwner ? listTransactionCashiers() : Promise.resolve([]),
+      isOwner && filters.from && filters.to ? listDailySalesTotals(filters) : Promise.resolve([]),
     ]);
     rows = transactions.rows;
     total = transactions.total;
@@ -92,7 +94,7 @@ export default async function TransactionsPage({
         </p>
       </div>
 
-      <Card>
+      {isOwner ? <Card>
         <CardContent>
           <SearchForm
             action="/transactions"
@@ -168,7 +170,7 @@ export default async function TransactionsPage({
             </div>
           </SearchForm>
         </CardContent>
-      </Card>
+      </Card> : null}
 
       {error ? (
         <Card>
@@ -190,7 +192,7 @@ export default async function TransactionsPage({
         </Card>
       ) : (
         <>
-          {showRecap ? (
+          {isOwner && showRecap ? (
             <Card>
               <CardHeader>
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -287,12 +289,7 @@ export default async function TransactionsPage({
                     {rows.map((row) => (
                       <tr key={row.id} className="align-top text-gray-800 hover:bg-gray-50/60">
                         <td className="px-5 py-6">
-                          <Link
-                            className="inline-flex min-h-12 items-center break-all font-semibold text-brand-600 underline decoration-brand-300 underline-offset-4"
-                            href={`/transactions/${row.id}`}
-                          >
-                            {row.invoice_number}
-                          </Link>
+                          {isOwner ? <Link className="inline-flex min-h-12 items-center break-all font-semibold text-brand-600 underline decoration-brand-300 underline-offset-4" href={`/transactions/${row.id}`}>{row.invoice_number}</Link> : <span className="font-semibold">{row.invoice_number}</span>}
                           <p className="mt-2 break-words text-gray-600">
                             Kasir: {row.employees?.full_name ?? "Kasir"}
                           </p>
@@ -306,13 +303,13 @@ export default async function TransactionsPage({
                           <TransactionStatusBadge status={row.status} />
                         </td>
                         <td className="px-4 py-6">
-                          <Link
+                          {isOwner ? <Link
                             href={`/transactions/${row.id}`}
                             aria-label={`Lihat detail transaksi ${row.invoice_number}`}
                             className={`${transactionLinkClass} px-3! text-sm!`}
                           >
                             Detail
-                          </Link>
+                          </Link> : null}
                         </td>
                       </tr>
                     ))}
@@ -350,13 +347,13 @@ export default async function TransactionsPage({
                           </dd>
                         </div>
                       </dl>
-                      <Link
+                      {isOwner ? <Link
                         href={`/transactions/${row.id}`}
                         aria-label={`Lihat detail transaksi ${row.invoice_number}`}
                         className={`${transactionLinkClass} w-full`}
                       >
                         Lihat Detail
-                      </Link>
+                      </Link> : null}
                     </CardContent>
                   </Card>
                 ))}

@@ -1,4 +1,5 @@
 import type { ComponentType, SVGProps } from "react";
+import type { EmployeeRole } from "@/modules/auth/types";
 
 import { BoxIcon, CartIcon, ChartIcon, HomeIcon, UsersIcon } from "./icons";
 
@@ -9,6 +10,7 @@ export type NavItem = {
   icon: ComponentType<SVGProps<SVGSVGElement>>;
   admin?: boolean;
   posOperator?: boolean;
+  cashier?: boolean;
   children?: NavChild[];
 };
 
@@ -18,7 +20,7 @@ export const navigationGroups: Array<{ label: string; items: NavItem[] }> = [
     items: [
       { label: "Beranda", href: "/dashboard", icon: HomeIcon },
       { label: "Kasir", href: "/cashier", icon: CartIcon, posOperator: true },
-      { label: "Transaksi", href: "/transactions", icon: ChartIcon },
+      { label: "Transaksi", href: "/transactions", icon: ChartIcon, cashier: true },
     ],
   },
   {
@@ -46,3 +48,14 @@ export const navigationGroups: Array<{ label: string; items: NavItem[] }> = [
     ],
   },
 ];
+
+export function navigationGroupsForRole(role: EmployeeRole) {
+  const isOwner = role === "owner_admin";
+  const isPosOperator = isOwner || role === "kasir";
+  return navigationGroups.map(group => ({
+    ...group,
+    items: group.items
+      .filter(item => role !== "kasir" ? (!item.admin || isOwner) && (!item.posOperator || isPosOperator) : item.posOperator || item.cashier)
+      .map(item => ({ ...item, children: item.children?.filter(child => !child.admin || isOwner) })),
+  })).filter(group => group.items.length > 0);
+}

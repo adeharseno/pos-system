@@ -1,6 +1,6 @@
 ﻿import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requirePosOperator } from "@/modules/auth/application/auth-service";
+import { requireRole } from "@/modules/auth/application/auth-service";
 import { DeactivateProductButton } from "@/modules/catalog/components/deactivate-product-button";
 import { ProductDetailSections } from "@/modules/catalog/components/product-detail-sections";
 import { ProductStatus, StockStatus, productLinkClass } from "@/modules/catalog/components/product-presentation";
@@ -12,7 +12,7 @@ import { ProductDetailBackButton } from "@/modules/catalog/components/product-de
 import { ConfirmInitialUnit } from "@/modules/catalog/components/confirm-initial-unit";
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const employee = await requirePosOperator();
+  const employee = await requireRole(["owner_admin"]);
   const { id } = await params;
   let productId: string;
   try { productId = requireUuid(id, "productId"); } catch { notFound(); }

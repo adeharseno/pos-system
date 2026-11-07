@@ -122,6 +122,19 @@ button:disabled { cursor: not-allowed; }
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
 }
 
+[data-cashier-restricted="true"] [aria-labelledby="qris-title"] footer button,
+[data-cashier-restricted="true"] a[href^="/transactions/"] {
+  display: none;
+}
+
+[data-cashier-restricted="true"] [aria-labelledby="qris-title"] footer::after {
+  content: "Konfirmasi, pembatalan, dan pemeriksaan detail hanya dapat dilakukan pemilik. Muat ulang halaman untuk memulai transaksi baru.";
+  display: block;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
 @media print {
   @page { margin: 6mm; }
   body { background: white !important; }
