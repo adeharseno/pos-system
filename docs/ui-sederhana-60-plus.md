@@ -1,5 +1,8 @@
 # Penyederhanaan UI untuk pengguna usia 60+
 
+> **Historical UI delivery note.** Keep these usability principles, but use the
+> current components and `current-status.md` when planning further development.
+
 Pembaruan berikutnya menghapus seluruh tindakan cepat beranda dan menambahkan
 Beranda ke sidebar. Lihat [Dashboard dan transaksi](dashboard-transactions-redesign.md)
 untuk keadaan UI terbaru. Catatan di bawah menjelaskan tahap penyederhanaan awal.

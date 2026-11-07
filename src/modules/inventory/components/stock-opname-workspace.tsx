@@ -12,7 +12,7 @@ type OpnameItem = {
   productBarcode: string | null;
   batchId: string;
   batchNumber: string;
-  expiredDate: string;
+  expiredDate: string | null;
   systemQuantity: number;
   physicalQuantity: number | null;
   variance: number | null;
@@ -42,8 +42,8 @@ function messageFor(response: ApiResponse<unknown>, fallback: string) {
   return errorMessages[response.error?.code ?? ""] ?? response.error?.message ?? fallback;
 }
 
-function formatDate(value: string) {
-  if (!value) return "—";
+function formatDate(value: string | null) {
+  if (!value) return "Belum dicatat";
   return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(new Date(`${value}T00:00:00`));
 }
 

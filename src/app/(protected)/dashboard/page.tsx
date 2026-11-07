@@ -7,6 +7,9 @@ import { DashboardSkeleton } from "@/modules/dashboard/dashboard-skeleton";
 import { jakartaToday } from "@/modules/reports/sales-report";
 import { Button, Card, CardContent, Container, FormField, Input, Label, Select } from "@/modules/ui/components";
 import { StockStatus } from "@/modules/catalog/components/product-presentation";
+import { getPurchaseDueReminders } from "@/modules/purchasing/due-reminder-service";
+import { dueReminderLabel } from "@/modules/purchasing/due-reminder-model";
+import { formatInvoiceAmount } from "@/modules/purchasing/invoice-presentation";
 
 const linkClass = "inline-flex min-h-14 items-center justify-center gap-3 rounded-xl border border-gray-300 bg-white px-5 py-3 text-base font-medium text-gray-800 transition hover:bg-gray-50";
 
@@ -90,11 +93,12 @@ async function LowStock() {
   let rows: Awaited<ReturnType<typeof getDashboardLowStock>>;
   try { rows = await getDashboardLowStock(); }
   catch { return <Card><CardContent><p role="alert" className="text-base text-gray-700">Daftar barang yang perlu diisi ulang belum dapat dimuat.</p></CardContent></Card>; }
-  return <section aria-labelledby="low-stock-title" className="space-y-4"><div><h2 id="low-stock-title" className="text-xl font-semibold text-gray-900">Barang Perlu Diisi Ulang</h2><p className="mt-2 text-base text-gray-600">Barang aktif yang stoknya habis atau berada di bawah minimum.</p></div><Card><CardContent className="py-2!">{!rows.length ? <p className="py-7 text-base text-gray-600">Semua stok barang masih mencukupi.</p> : <ul className="divide-y divide-gray-200">{rows.map(row => <li key={row.id}><Link href={`/products/${row.id}`} className="grid gap-4 py-5 transition hover:bg-gray-50 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] sm:items-center sm:px-3"><p className="break-words text-base font-semibold text-brand-600">{row.name}</p><div><p className="text-sm text-gray-500">Stok tersedia</p><p className="mt-1 text-base font-semibold text-gray-900 tabular">{row.availableStock.toLocaleString("id-ID")} {row.baseUnit}</p></div><div><p className="text-sm text-gray-500">Minimum stok</p><p className="mt-1 text-base font-medium text-gray-800 tabular">{row.minimumStock.toLocaleString("id-ID")} {row.baseUnit}</p></div><StockStatus active quantity={row.availableStock} minimum={row.minimumStock}/></Link></li>)}</ul>}</CardContent></Card></section>;
+  return <section aria-labelledby="low-stock-title" className="space-y-4"><div><h2 id="low-stock-title" className="text-xl font-semibold text-gray-900">Barang Perlu Diisi Ulang</h2><p className="mt-2 text-base text-gray-600">Barang aktif yang stoknya habis atau berada pada atau di bawah minimum.</p></div><Card><CardContent className="py-2!">{!rows.length ? <p className="py-7 text-base text-gray-600">Semua stok barang masih mencukupi.</p> : <ul className="divide-y divide-gray-200">{rows.map(row => <li key={row.id}><Link href={`/products/${row.id}`} className="grid gap-4 py-5 transition hover:bg-gray-50 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] sm:items-center sm:px-3"><p className="break-words text-base font-semibold text-brand-600">{row.name}</p><div><p className="text-sm text-gray-500">Stok tersedia</p><p className="mt-1 text-base font-semibold text-gray-900 tabular">{row.availableStock.toLocaleString("id-ID")} {row.baseUnit}</p></div><div><p className="text-sm text-gray-500">Minimum stok</p><p className="mt-1 text-base font-medium text-gray-800 tabular">{row.minimumStock.toLocaleString("id-ID")} {row.baseUnit}</p></div><StockStatus active quantity={row.availableStock} minimum={row.minimumStock}/></Link></li>)}</ul>}</CardContent></Card></section>;
 }
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<DashboardQuery> }) {
   const context = await getDashboardContext();
+  const dueReminders=context.employee.role==="owner_admin"?await getPurchaseDueReminders().catch(()=>[]):[];
   const query = await searchParams;
   let filters: DashboardFilters | undefined;
   let filterError: string | undefined;
@@ -107,6 +111,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     }
   }
   return <Container size="xl" className="space-y-8">
+    {context.employee.role==="owner_admin"?<section aria-labelledby="invoice-reminder-title"><div className="mb-4"><h2 id="invoice-reminder-title" className="text-xl font-semibold">Pengingat Jatuh Tempo Invoice</h2><p className="mt-1 text-base text-gray-600">Invoice tempo yang jatuh tempo dalam tujuh hari atau sudah terlambat.</p></div><Card><CardContent>{dueReminders.length?<ul className="divide-y divide-gray-200">{dueReminders.slice(0,5).map(item=><li key={item.id}><Link href={`/purchase-invoices/${item.id}`} className="grid gap-2 py-4 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center"><div><p className="font-semibold text-brand-600">{item.supplier}</p><p className="text-sm text-gray-600">{item.invoiceNumber} · {item.dueDate}</p></div><p className="font-semibold tabular">{formatInvoiceAmount(item.outstanding)}</p><p className={item.daysRemaining<0?"font-medium text-red-700":"font-medium text-amber-700"}>{dueReminderLabel(item.daysRemaining)}</p></Link></li>)}</ul>:<p className="py-4 text-gray-600">Tidak ada invoice yang mendekati jatuh tempo.</p>}</CardContent></Card></section>:null}
     {context.financial ? <>
       <h1 className="text-2xl font-semibold text-gray-900">Ringkasan Penjualan</h1>
       <PeriodControls query={query} filters={filters} />

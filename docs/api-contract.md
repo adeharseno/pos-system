@@ -6,7 +6,7 @@
 
 Base path: `/api`. Success responses are `{ "ok": true, "data": {} }`; failures are `{ "ok": false, "error": { "code": "…", "message": "…" } }`.
 
-The server derives `auth.users -> user_profiles -> employees` and uses the active employee's `position` (`owner_admin`, `kasir`, or `staf`) for authorization. Browser input never supplies authoritative employee ID, invoice number, prices/totals, batch allocation, cash change, or receipt-label snapshots.
+The server derives `auth.users -> user_profiles -> employees`. Authorization uses the active employee position and, on migrated routes, the shared capability policy. Some legacy routes remain position-only; see `current-status.md`. Browser input never supplies authoritative employee ID, invoice number, prices/totals, batch allocation, cash change, or receipt-label snapshots.
 
 ## Current implemented API
 
@@ -72,9 +72,13 @@ Customer UI submits `source: "customer"`, `transaction_id`, `refund_method`, `re
 
 The import UI maps uploaded category, subcategory, supplier, and storage text to existing master records on the server. Category ("Kategori") and subcategory ("Subkategori") are two independent lookup lists with no parent/child relationship; any pairing is allowed. Legacy values: Kategori — Obat Bebas, Obat Resep, Racik, Psikotropika; Subkategori — Syrup, Tablet, Injeksi, Infus, Alkes, Supp, Cream, Obat Tetes, Bebas. The importer never creates master data. Every committed row creates only a product and its base selling unit; no batch, stock quantity, or expiry data is created. Duplicate SKU/barcode values are detected in-file and preflighted against current records; the RPC remains the concurrency-safe authority. Row-level partial success is explicit, and transaction history remains protected by transaction-time snapshots.
 
+## Other implemented boundaries
+
+The route tree also implements category, independent-subcategory, supplier and tax CRUD; product-master create/import; inventory receive and opname session/item operations; employee/account/access/invitation operations; expenses; and purchase-invoice document/item/finalize/payment workflows. Several reports and transaction history are server-rendered and therefore do not need duplicate public list APIs. Consult `src/app/api` when extending this table.
+
 ## Planned / not implemented API
 
-The following documented scope is not an implemented HTTP contract: category/supplier/master-data CRUD, receipt API payload, prescription or QRIS-image upload, return list/detail, stock-opname count entry/session reads, stock-card/expiry/low-stock endpoints, reporting, employee/settings endpoints, and payment-provider callbacks/webhooks. Transaction history is server-rendered rather than a duplicate list API.
+There is no payment-provider callback/webhook, dynamic QRIS endpoint, dedicated receipt JSON API, supplier-return UI workflow, formal purchase-order approval API, or native-printer bridge.
 
 An app-hosted static QRIS image is optional future display UX only. Pilot 1 uses an external/physical QRIS displayed at the counter; it has no dynamic QRIS, gateway, webhook, or polling integration.
 
@@ -82,5 +86,5 @@ An app-hosted static QRIS image is optional future display UX only. Pilot 1 uses
 
 - Critical stock and financial mutations run in PostgreSQL RPCs; browser clients cannot call protected RPCs or mutate operational tables directly.
 - Checkout has no idempotency key. Do not automatically retry an uncertain submission.
-- Stock-opname backend supports start, freeze, apply, and cancel. Full counting/admin UI is still planned.
+- Stock-opname supports active-session reads, count entry, apply, cancel, and an operational admin UI.
 - Customer Return UI is complete. Supplier Return Backend exists; Supplier Return UI remains deferred.

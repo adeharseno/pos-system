@@ -13,7 +13,7 @@ export type StockOpnameItemDetail = {
   productBarcode: string | null;
   batchId: string;
   batchNumber: string;
-  expiredDate: string;
+  expiredDate: string | null;
   systemQuantity: number;
   physicalQuantity: number | null;
   variance: number | null;
@@ -102,7 +102,7 @@ export async function getStockOpnameSession(sessionId: string): Promise<StockOpn
         productBarcode: barcodeByProductId.get(item.product_id) ?? null,
         batchId: item.batch_id,
         batchNumber: batch?.batch_number ?? "—",
-        expiredDate: batch?.expired_date ?? "",
+        expiredDate: batch?.expired_date ?? null,
         systemQuantity: item.system_quantity,
         physicalQuantity: item.physical_quantity,
         variance: item.variance,

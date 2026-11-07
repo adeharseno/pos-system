@@ -1,5 +1,8 @@
 # Desain ulang Daftar Barang dan Detail Barang
 
+> **Historical UI delivery note.** This records one redesign phase. It is not a
+> current project backlog; see `current-status.md` and inspect the live components.
+
 Perubahan UI yang diminta sebelum penyesuaian importer tetap dipertahankan pada
 branch yang sama. Form Tambah/Edit, Inventory, Reports, Employees dan Cashier
 tidak didesain ulang.

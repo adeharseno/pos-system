@@ -8,9 +8,9 @@
 
 Tech Stack: Next.js · Supabase · Vercel
 
-Version 1.1 | August 14, 2026
+Version 1.2 | November 5, 2026
 
-*Status: Architecture-Hardened Draft*
+*Status: Implementation-aligned Pilot 1 requirements. See `current-status.md` for delivery status and known gaps.*
 
 ---
 
@@ -20,7 +20,7 @@ Version 1.1 | August 14, 2026
 
 This document defines the product requirements for Pilot 1 of a Point of Sale system built specifically for pharmacy operations. Pilot 1 focuses on validating the core foundation — cashier, pharmaceutical product management (multi-unit, multi-batch, FEFO), and basic reporting — with a technical approach that is simple, low-cost, and fast to build and test in production.
 
-Rather than a separate backend service or microservice architecture, Pilot 1 uses a **modular monolith**: frontend and backend HTTP endpoints live in one Next.js codebase, while Supabase provides PostgreSQL, authentication, and file storage. The application is designed to deploy on Vercel without requiring a custom domain or VPS during development/demo validation. QRIS uses a static image uploaded by the pharmacy owner and manual cashier confirmation — no payment gateway integration. Critical stock-changing workflows execute atomically inside PostgreSQL functions/RPC rather than as several independent API-to-database calls.
+Rather than a separate backend service or microservice architecture, Pilot 1 uses a **modular monolith**: frontend and backend HTTP endpoints live in one Next.js codebase, while Supabase provides PostgreSQL, authentication, and file storage. The application is designed to deploy on Vercel without requiring a custom domain or VPS during development/demo validation. QRIS uses the pharmacy's external/physical counter QRIS and manual cashier confirmation—no payment gateway integration or app-hosted image is required. Critical stock-changing workflows execute atomically inside PostgreSQL functions/RPC rather than as several independent API-to-database calls.
 
 This approach is a deliberate choice to validate the concept as quickly and cheaply as possible. Features that add significant complexity but haven't been proven necessary at this stage — approval workflows, payment gateway integration, formal Purchase Orders, offline mode — are deferred to a later pilot, with migration considerations noted in Section 9.
 
@@ -44,7 +44,7 @@ Pilot 1 covers three feature modules:
 
 - **Reporting & Finance** — periodic sales reports, profit & loss, and tax (VAT) calculation.
 
-Plus basic operational capabilities: simple employee management and two access roles (Owner/Admin and Cashier).
+Plus purchasing/receiving, expenses, employee administration, and three employee positions (`owner_admin`, `kasir`, `staf`) with capability presets and individual overrides. Some legacy routes still use position-only guards; completing that migration is a stabilization requirement.
 
 ## 1.4 Out of Scope for Pilot 1
 
@@ -54,11 +54,11 @@ The following are intentionally excluded from Pilot 1, including their schemas �
 
 - **Approval workflows** for void, returns, and stock opname — in Pilot 1, these actions are recorded with a reason and actor, without a formal submit-review-decide mechanism.
 
-- **Purchase Order to Goods Receipt** — including the schema. Stock input remains entirely manual.
+- **Formal Purchase Order and approval workflow**. Pilot 1 implements supplier purchase invoices, invoice items, atomic receiving finalization, and a payment ledger, but not a separate PO approval lifecycle.
 
 - **Offline mode** — the app assumes a constant internet connection, consistent with the serverless architecture.
 
-- **Granular per-action RBAC** — simplified to two fixed roles: Owner/Admin and Cashier.
+- **A fully migrated granular RBAC system**. Capability definitions, position presets, and employee overrides exist, but do not yet replace every legacy position guard.
 
 - **Payroll and Loyalty/CRM** — these modules are independent and don't affect validation of the core foundation.
 
@@ -81,13 +81,13 @@ The following are intentionally excluded from Pilot 1, including their schemas �
 | File Storage | Supabase Storage | Prescription photos and product images |
 | Hosting | Vercel | Single Next.js deployment; `*.vercel.app` is sufficient during development/demo so a custom domain is not required |
 | Receipt Printing | Browser print dialog | Native thermal (ESC/POS/WebUSB/local service) integration is future scope |
-| Barcode Scanner | Future USB/Bluetooth HID workflow | Planned; no barcode lookup/scanner flow is implemented in Pilot 1 current scope |
+| Barcode Scanner | Keyboard-wedge/manual HID workflow | Exact `product_units.barcode` lookup is implemented; device-specific SDK integration is not required. |
 
 ## 2.2 Key Architecture Decisions
 
 ### 2.2.1 Modular Monolith: Next.js Full-Stack on Vercel
 
-Pilot 1 is a **modular monolith**, not a microservice system. There is one Next.js application, one deployment, and one PostgreSQL database. Business domains (catalog, inventory, sales, returns, cash drawer, reporting, employees) are kept as explicit code modules so the application remains maintainable without paying the complexity cost of distributed services.
+Pilot 1 is a **modular monolith**, not a microservice system. There is one Next.js application, one deployment, and one PostgreSQL database. Business domains (catalog, inventory, purchasing, sales, returns, reporting, expenses, and employees) are kept as explicit code modules so the application remains maintainable without paying the complexity cost of distributed services.
 
 - No separate application server or microservice deployment is required.
 - Next.js Route Handlers are the HTTP boundary; they authenticate, authorize, validate input, and call domain services.
@@ -241,7 +241,7 @@ Shelf locations are hierarchical (Zone → Rack → Level) for easy physical pro
 
 | Table | Notes |
 | --- | --- |
-| transactions | Sale transaction header: DB-generated invoice number, business date, cashier/drawer, totals, payment method, lifecycle status, QRIS confirmation, void audit |
+| transactions | Sale transaction header: DB-generated invoice number, business date, cashier, totals, payment method, lifecycle status, QRIS confirmation, void audit |
 | transaction_items | Customer-facing cart/receipt lines: product, selected unit, unit/base quantity, price/tax snapshots |
 | transaction_item_batches | FEFO allocation rows: one transaction item can draw stock from one or more source batches with cost snapshots |
 | transaction_prescriptions | Prescription data linked to a transaction: prescription number, doctor name, patient name, prescription photo |
@@ -256,12 +256,13 @@ Shelf locations are hierarchical (Zone → Rack → Level) for easy physical pro
 | Table | Notes |
 | --- | --- |
 | employees | Employee data: identity, position, join date |
-| shifts | Employee shift schedule and records |
-| attendances | Attendance: check-in/out, linked to shifts |
-| cash_drawer_sessions | Cashier shift cash open/close sessions, including variance reconciliation |
 | stock_opname_sessions | Stock opname sessions: date, physical vs system variance list, and applied adjustments |
+| purchase_invoices / purchase_invoice_items | Supplier invoice drafts, receiving snapshots, and finalized receiving state |
+| purchase_invoice_payments | Idempotent supplier-payment ledger used to derive unpaid/partial/paid status |
+| expenses | Operational expense records used by profit/loss reporting |
+| permission tables | Capability catalog, position presets, and employee overrides |
 
-> User roles (Owner/Admin and Cashier) are managed through Supabase Auth (user metadata), not a separate `roles`/`permissions` table as in the earlier granular RBAC design — per the decision to simplify to two fixed roles (Section 7.3).
+> Supabase Auth proves identity. Application position comes from `employees.position`, never Auth metadata. Permission tables refine access for migrated routes; remaining position-only routes are tracked in `current-status.md`.
 
 ---
 
@@ -275,8 +276,8 @@ Provide a fast and accurate cashier interface for processing sales transactions,
 
 ### 4.2.1 Barcode Scanning
 
-- The implemented cashier search is by product name or SKU.
-- Barcode lookup/scanner workflow is planned production backlog; product-unit barcode fields do not mean a lookup UI currently exists.
+- Cashier search supports product name or SKU.
+- Exact selling-unit barcode lookup is implemented for keyboard-wedge/manual HID scanners.
 
 ### 4.2.2 Sell Unit Selection
 
@@ -303,14 +304,15 @@ Provide a fast and accurate cashier interface for processing sales transactions,
 | --- | --- |
 | Cash | Cashier enters amount received, system calculates change automatically |
 | QRIS (manual) | Customer scans the pharmacy's external/physical counter QRIS. Cashier manually presses "Confirm Payment Received" after verifying payment externally (for example in the merchant app). |
+| Bank Transfer | Database/read-model compatibility exists, but cashier selection is disabled pending a complete lifecycle contract. |
 
-- Bank transfer and automatic e-wallets are not included in Pilot 1 — see Section 1.4 and Section 9 for plans to add more payment methods in a later phase.
+- Automatic e-wallet/payment-gateway integrations are not included in Pilot 1.
 - QRIS transactions record the confirmation time (`payment_confirmed_at`) and confirming cashier. Pending QRIS transactions are excluded from completed-sales revenue and can be voided to release stock if payment is abandoned.
 
 ### 4.2.6 Receipt Printing
 
 - A receipt can be opened after a successful transaction and printed through the browser print dialog, showing stored item labels, unit, price, tax, and payment method. Native thermal printing is future scope.
-- Receipt reprint from transaction history is planned for M2.8; the current receipt route is available immediately after checkout.
+- Receipt reprint is available from transaction history through the same authoritative receipt route.
 
 ### 4.2.7 Void & Cancel Transaction
 
@@ -320,24 +322,21 @@ Provide a fast and accurate cashier interface for processing sales transactions,
 
 > This simplification fits Pilot 1's scale assumptions: a single outlet with few cashiers, where the Owner/Admin is likely also directly overseeing daily operations. Approval workflows can be reconsidered in a later phase if the business grows (more cashiers, owner not directly supervising day-to-day).
 
-### 4.2.8 Cash Drawer (Shift Cash Management)
+### 4.2.8 Transaction Log (No Cash Drawer)
 
-- The cashier opens a cash session at the start of a shift by recording the opening balance (physical cash).
-- At the end of the shift, the cashier closes the session by counting physical cash; the system compares it to the expected amount (opening balance + cash sales) and records any variance.
-- Session history can be reviewed by Owner/Admin.
+Pilot 1 has no cash-drawer lifecycle or open/close/reconciliation precondition. Every sale, void, return, and refund records its actor and timestamp. The read-only transaction log and daily totals per cashier/payment method provide the operational audit trail. Physical cash reconciliation remains an external operating procedure unless a later requirement reintroduces it.
 
 ## 4.3 Happy Path Flow
 
-1. Cashier logs in via Supabase Auth and opens a cash drawer session at the start of shift.
+1. Cashier logs in via Supabase Auth and is resolved to an active employee.
 2. Cashier searches a product by name or SKU.
 3. System shows the product and available units; cashier selects the sell unit.
 4. If the product requires a prescription, the system requests prescription data before the item can be added to the cart.
 5. Cashier repeats steps 2–4 for all items.
-6. Cashier selects payment method (Cash or QRIS) and submits checkout.
-7. The checkout database RPC validates the cashier's open drawer, locks eligible batches, performs FEFO allocation, deducts stock, generates the invoice number, and records the transaction atomically. Cash becomes `completed`; QRIS becomes `pending_payment`.
+6. Cashier selects Cash or QRIS and submits checkout.
+7. The checkout database RPC validates the employee, locks eligible batches, performs FEFO allocation, deducts stock, generates the invoice number, and records the transaction atomically. Cash becomes `completed`; QRIS becomes `pending_payment`.
 8. For QRIS, the customer scans the external counter QRIS; after verifying payment in the merchant app, the cashier confirms the payment and the transaction transitions to `completed`.
 9. The receipt can be printed for the completed transaction.
-10. Cashier closes the cash drawer session at the end of shift with reconciliation.
 
 ## 4.4 Core Business Rules
 
@@ -345,7 +344,7 @@ Provide a fast and accurate cashier interface for processing sales transactions,
 - A transaction cannot be completed if available stock (across all active batches) is insufficient for the requested quantity.
 - QRIS checkout is created as `pending_payment`; it becomes `completed` only after manual cashier confirmation. Pending QRIS transactions do not count as completed sales revenue.
 - Products where all batches have expired cannot be sold.
-- Checkout requires an open cash drawer session owned by the authenticated cashier.
+- Checkout has no cash-drawer precondition.
 - Sales, voids, returns, and stock-opname apply must be atomic database transactions.
 
 ---
@@ -416,7 +415,7 @@ Provide control over product data, categories, suppliers, and stock — includin
 - Returns can be initiated from transaction history (customer returns) or independently (supplier returns for expired/defective products).
 - Customer returns reference the original `transaction_item_id` and restore stock only to batches used by that item's original FEFO allocations.
 - Cumulative partial returns may never exceed the originally sold quantity.
-- Customer returns snapshot refund values and returned COGS so net sales and P&L remain historically correct. The operator records whether the refund was paid via Cash or QRIS/manual non-cash. A cash refund is linked to the currently-open drawer that physically pays the refund, not the drawer from the original sale.
+- Customer returns snapshot refund values and returned COGS so net sales and P&L remain historically correct. The operator records whether the refund was paid via Cash or QRIS/manual non-cash. Cash refunds record actor, time, reason, and amount without drawer attribution.
 - Every return is recorded with a reason and processor and is applied atomically to stock — no approval workflow.
 - Supplier returns deduct stock from the selected batch and do not reduce customer sales revenue.
 
@@ -461,17 +460,17 @@ Support basic access management and employee operations for the pharmacy, with a
 ## 7.2 Employee Management
 
 - CRUD for employee data: identity, position, and join date.
-- Attendance recording (check-in/check-out) linked to shift sessions and the cash drawer (Section 4.2.8) for cashiers.
-- Shift scheduling per employee.
+- Account activation, username/email login, role changes, access overrides, and non-destructive deactivation are implemented. Attendance and shift scheduling are not current Pilot 1 application modules.
 
-## 7.3 Access Roles (Two Roles)
+## 7.3 Positions and Permissions
 
-Pilot 1 uses two fixed roles, managed through Supabase Auth, without a granular per-module/per-action permission matrix:
+Supabase Auth proves account identity. `employees.position` supplies one of three application positions, while database-owned capability definitions and presets may be refined by individual allow/deny overrides:
 
 | Role | Access |
 | --- | --- |
-| Owner/Admin | Current access includes protected operational workflows; master-data management, reports, employee management, and optional QRIS display settings remain planned where no UI/API is implemented. |
-| Cashier | Access to the cashier module (transactions, cash drawer) and read-only access to product data for search during transactions |
+| Owner/Admin | Full administrative and operational control; Owner overrides cannot reduce control. |
+| Cashier | Cashier operations and explicitly preset/migrated capabilities; no cost/margin administration. |
+| Staff | Authenticated limited access defined by presets/overrides; no implicit cashier authority. |
 
 - All significant actions (transactions, void, returns, stock adjustments) record the actor's identity (logged-in cashier/admin), regardless of the absence of an approval mechanism — so history remains traceable by Owner/Admin.
 
@@ -483,7 +482,7 @@ Pilot 1 uses two fixed roles, managed through Supabase Auth, without a granular 
 
 ## 8.1 Performance
 
-- If the planned barcode workflow is added, barcode scan to product appearing in the cart should be under 1 second.
+- Exact barcode scan/lookup to product appearing in the cart should be under 1 second under representative pilot load.
 - If optional app-hosted QRIS display UX is added later, it should appear promptly; it is not a Pilot 1 blocker.
 - API requests must remain short-running and compatible with the limits of the currently selected Vercel plan; potentially slow reports use database-side aggregation and pagination. Hosting limits must be re-checked before deployment because provider quotas can change.
 
@@ -524,10 +523,10 @@ Unlike the earlier approach of pre-designing schemas for deferred features, Pilo
 
 | Stage | Focus |
 | --- | --- |
-| M0 | Architecture/schema hardening: modular-monolith boundaries, transaction/batch allocation, composite FKs, payment lifecycle constraints, refund-drawer attribution, stock-opname freeze, return/void rules, invoice sequencing, timezone |
+| M0 | Architecture/schema hardening: modular-monolith boundaries, transaction/batch allocation, composite FKs, payment lifecycle constraints, stock-opname freeze, return/void rules, invoice sequencing, timezone |
 | M1 | Next.js + Supabase setup, schema/RLS, atomic PostgreSQL RPC/functions, database tests |
 | M2 | Auth, master data, product/unit/batch inventory basics |
-| M3 | Cashier core: drawer, name/SKU cart, atomic FEFO checkout, cash, browser receipt, void |
+| M3 | Cashier core: name/SKU/barcode cart, atomic FEFO checkout, Cash/manual QRIS, browser receipt, void; Bank Transfer remains disabled pending lifecycle completion |
 | M4 | Future optional QRIS display UX; manual external-counter QRIS is already the Pilot 1 payment model |
 | M5 | Customer/supplier returns, batch stock opname, stock card |
 | M6 | Reports/finance and employee operations |

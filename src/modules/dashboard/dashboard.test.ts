@@ -3,7 +3,7 @@ import test from "node:test";
 import { PERMISSIONS } from "@/modules/auth/permissions";
 import type { PermissionData } from "@/modules/auth/application/permission-policy";
 import { authorizedDashboardRead, canReadDashboardFinancials, canReadDashboardStock, cents, dashboardActions, dashboardFilters, dashboardLowStockRows, rupiah } from "./dashboard-model";
-import { productStockStatus } from "@/modules/catalog/product-stock-status";
+import { stockStatus } from "@/modules/shared/stock-status";
 
 const permissions: PermissionData = { definitions: PERMISSIONS, preset: [...PERMISSIONS], overrides: [] };
 
@@ -52,11 +52,11 @@ test("quick actions intersect permissions with unchanged legacy page role guards
   assert.deepEqual(dashboardActions("staf", { ...permissions, preset: [] }), []);
 });
 
-test("low stock keeps only the five most depleted items, then follows product-list thresholds and inventory permission", () => {
-  assert.equal(productStockStatus(0, 0), "out");
-  assert.equal(productStockStatus(1, 0), "normal");
-  assert.equal(productStockStatus(4, 5), "low");
-  assert.equal(productStockStatus(5, 5), "normal");
+test("low stock keeps only the five most depleted items and includes the minimum boundary", () => {
+  assert.equal(stockStatus(0, 0), "out");
+  assert.equal(stockStatus(1, 0), "normal");
+  assert.equal(stockStatus(4, 5), "low");
+  assert.equal(stockStatus(5, 5), "low");
   const input = [
     { id: "low-4c", name: "Menipis 4 C", baseUnit: "Tablet", availableStock: "4", minimumStock: 5, status: "low" },
     { id: "low-2", name: "Menipis 2", baseUnit: "Tablet", availableStock: "2", minimumStock: 5, status: "low" },
@@ -69,7 +69,7 @@ test("low stock keeps only the five most depleted items, then follows product-li
   const rows = dashboardLowStockRows(input);
   assert.deepEqual(rows.map(row => row.id), ["out", "low-1", "low-2", "low-3", "low-4a"]);
   assert.deepEqual(dashboardLowStockRows(input, 2).map(row => row.id), ["out", "low-1"]);
-  assert.throws(() => dashboardLowStockRows([{ id: "normal", name: "Normal", baseUnit: "Tablet", availableStock: "5", minimumStock: 5, status: "low" }]));
+  assert.deepEqual(dashboardLowStockRows([{ id: "equal", name: "Tepat Minimum", baseUnit: "Tablet", availableStock: "5", minimumStock: 5, status: "low" }]).map(row => row.id), ["equal"]);
   assert.equal(canReadDashboardStock("owner_admin", permissions), true);
   assert.equal(canReadDashboardStock("kasir", { ...permissions, preset: ["inventory.view"] }), true);
   assert.equal(canReadDashboardStock("kasir", { ...permissions, preset: ["inventory.view"], overrides: [{ permission: "inventory.view", effect: "deny" }] }), false);

@@ -1,13 +1,5 @@
-import { notFound, redirect } from "next/navigation";
-import { requireRole } from "@/modules/auth/application/auth-service";
-import { listActiveProductsForReceiving } from "@/modules/catalog/data/admin-product-queries";
-import { ReceiveStockForm } from "@/modules/inventory/components/receive-stock-form";
-import { Container } from "@/modules/ui/components";
+import { redirect } from "next/navigation";
 
-export default async function ReceiveStockPage({ searchParams }: { searchParams: Promise<{ product_id?: string }> }) {
-  try { await requireRole(["owner_admin"]); } catch { redirect("/products"); }
-  const products = await listActiveProductsForReceiving();
-  const { product_id: initialProductId } = await searchParams;
-  if (initialProductId && !products.some((product) => product.id === initialProductId)) notFound();
-  return <Container size="lg"><header><h1 className="text-2xl font-bold">Terima Stok</h1><p className="mt-1 text-sm text-[var(--text-muted)]">Penerimaan stok menambah batch baru tanpa mengubah harga modal produk.</p></header><ReceiveStockForm products={products} initialProductId={initialProductId}/></Container>;
+export default function ReceiveStockPage() {
+  redirect("/purchase-invoices/new");
 }

@@ -11,11 +11,15 @@ migrations and database tests.
 src/
 ├── app/
 │   ├── (protected)/cashier, transactions/[id]/receipt, transactions/[id]/return
-│   └── api/ inventory, products, returns, stock-opname, transactions
+│   └── api/ auth, employees, expenses, inventory, products, purchasing, returns, stock-opname, transactions
 ├── modules/
-│   ├── auth/           # employee session and position guards
-│   ├── catalog/        # cashier name/SKU search and inventory reads
-│   ├── inventory/      # stock-opname RPCs
+│   ├── auth/           # sessions, accounts, roles, permissions, invitations
+│   ├── catalog/        # product master, lookup, units, import, master data
+│   ├── dashboard/      # dashboard policy, analytics and presentation
+│   ├── expenses/       # operational expense reads/writes
+│   ├── inventory/      # overview, receiving and stock-opname
+│   ├── purchasing/     # purchase invoices, items, receiving and payments
+│   ├── reports/        # sales, product, payment/refund and P&L
 │   ├── returns/        # return RPCs
 │   ├── sales/          # cart, checkout, QRIS, receipt, transaction log, sales RPCs/reads
 │   └── shared/         # API boundary, validation, RPC/data helpers
@@ -23,13 +27,13 @@ src/
 └── types/database.types.ts
 
 supabase/
-├── migrations/         # 0001 through 0005
-└── tests/database/     # pgTAP constraints and core-function tests
+├── migrations/         # 0001 through 0033
+├── tests/database/     # pgTAP constraints, functions and reporting tests
+└── tests/concurrency/  # critical concurrency scenarios
 ```
 
-Planned product/admin, reporting, barcode, transaction-history, and full
-returns/opname UI modules should be added only when their milestone starts;
-their old proposed paths are not current implementation claims.
+The tree above is a summary, not an exhaustive manifest. Use `rg --files src/app
+src/modules supabase` before planning a new module or route.
 
 ## Dependency direction
 

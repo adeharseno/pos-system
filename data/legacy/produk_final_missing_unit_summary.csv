@@ -1,0 +1,20 @@
+token
+candidate
+missing_unit_rows
+observed_units_when_present
+recommendation
+"TAB","TAB","824","TAB 435; PCS 21; STRIP 3; LBR 1; CAP 1","admin may approve TAB auto-fill; review exceptions"
+"INJ","INJ","62","PCS 142; AMP 5; TAB 2","ambiguous convention; manual decision"
+"SACHET","SCT","27","PCS 7; SCT 3","insufficient evidence; manual decision"
+"PEN","PEN","12","PCS 3; PEN 2","insufficient evidence; manual decision"
+"SUPP","SUPP","10","PCS 11; TAB 1; SUPP 1","insufficient evidence; manual decision"
+"CAP","CAP","7","PCS 18; CAP 6; TAB 4; BTL 2","ambiguous convention; manual decision"
+"TUBE","TUBE","6","PCS 1","insufficient evidence; manual decision"
+"SPRAY","SPRAY","5","PCS 5; BTL 3; SPRAY 1","insufficient evidence; manual decision"
+"BOTOL","BTL","4","PCS 4; BTL 1","insufficient evidence; manual decision"
+"CAPS","CAP","4","TAB 15; CAP 7; PCS 3; STRIP 1","ambiguous convention; manual decision"
+"INJEKSI","INJ","2","PCS 2; AMP 1","insufficient evidence; manual decision"
+"TABLET","TAB","2","TAB 14; PCS 3","insufficient evidence; manual decision"
+"POT","POT","1","","insufficient evidence; manual decision"
+"KAPSUL","CAP","1","PCS 1; TAB 1","insufficient evidence; manual decision"
+"BOX","BOX","1","BOX 1","insufficient evidence; manual decision"

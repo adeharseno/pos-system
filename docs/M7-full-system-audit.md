@@ -1,5 +1,11 @@
 # M7.1 Full System QA Audit
 
+> **Historical audit snapshot (30 October 2026).** Findings and counts below
+> describe that audit date, not the current branch. Current status is maintained
+> in `current-status.md`. F-05's unused drawer query is no longer present because
+> the cash-drawer feature was subsequently removed. Other findings remain open
+> unless `current-status.md` explicitly says otherwise.
+
 Tanggal audit: 30 Oktober 2026  
 Lingkup: Pharmacy POS Fase 1–6 pada branch/worktree saat ini  
 Mode: audit-only; tidak ada perubahan kode aplikasi, schema, RPC, maupun data lokal utama

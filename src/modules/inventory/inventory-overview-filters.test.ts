@@ -19,6 +19,8 @@ test("inventory overview filters parse search, status, and page with a 10-row pa
     page: 1,
     limit: INVENTORY_PAGE_SIZE,
   });
+  assert.equal(parseInventoryOverviewFilters({ status: "normal" }).status, "normal");
+  assert.equal(parseInventoryOverviewFilters({ status: "safe" }).status, "normal");
   assert.deepEqual(parseInventoryOverviewFilters({ status: "unknown", page: "-2" }), {
     q: "",
     status: "all",

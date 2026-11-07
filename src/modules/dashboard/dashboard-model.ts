@@ -2,7 +2,7 @@ import { jakartaToday, reportPeriod, validateReportPeriod, type ReportPeriod } f
 import { hasPermission, type PermissionData } from "@/modules/auth/application/permission-policy";
 import type { EmployeeRole } from "@/modules/auth/types";
 import type { Permission } from "@/modules/auth/permissions";
-import { productStockStatus, type ProductStockStatus } from "@/modules/catalog/product-stock-status";
+import { stockStatus, type StockStatus } from "@/modules/shared/stock-status";
 
 export const presets = [
   { value: "today", label: "Hari Ini" }, { value: "week", label: "Minggu Ini" },
@@ -41,7 +41,7 @@ export function canReadDashboardStock(role: EmployeeRole, data: PermissionData) 
   return hasPermission(role, "inventory.view", data);
 }
 
-export type DashboardLowStockRow = { id: string; name: string; baseUnit: string; availableStock: number; minimumStock: number; status: Exclude<ProductStockStatus, "normal"> };
+export type DashboardLowStockRow = { id: string; name: string; baseUnit: string; availableStock: number; minimumStock: number; status: Exclude<StockStatus, "normal"> };
 
 export const DASHBOARD_LOW_STOCK_LIMIT = 5;
 
@@ -54,7 +54,7 @@ export function dashboardLowStockRows(value: unknown, limit = DASHBOARD_LOW_STOC
     const availableStock = typeof row.availableStock === "string" && /^\d+$/.test(row.availableStock) ? Number(row.availableStock) : Number.NaN;
     const minimumStock = typeof row.minimumStock === "number" ? row.minimumStock : Number.NaN;
     if (typeof row.id !== "string" || typeof row.name !== "string" || typeof row.baseUnit !== "string" || !Number.isSafeInteger(availableStock) || !Number.isSafeInteger(minimumStock)) throw new TypeError("Invalid low stock row");
-    const status = productStockStatus(availableStock, minimumStock);
+    const status = stockStatus(availableStock, minimumStock);
     if (status === "normal" || row.status !== status) throw new TypeError("Invalid low stock status");
     return { id: row.id, name: row.name, baseUnit: row.baseUnit, availableStock, minimumStock, status };
   }).sort((a,b) => (a.status === b.status ? a.availableStock - b.availableStock || a.name.localeCompare(b.name, "id-ID") : a.status === "out" ? -1 : 1)).slice(0, limit);

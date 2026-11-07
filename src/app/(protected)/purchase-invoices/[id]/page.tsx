@@ -30,6 +30,8 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const items = [
     ["Nama Pemasok", completed && snapshot ? snapshot.supplier : invoice.suppliers?.name ?? "Pemasok tersimpan"], ["Nomor Invoice", invoice.invoice_number],
     ["Tanggal Invoice", new Intl.DateTimeFormat("id-ID", { dateStyle: "long", timeZone: "Asia/Jakarta" }).format(new Date(`${invoice.invoice_date}T00:00:00+07:00`))],
+    ["Metode Pembayaran", invoice.payment_method === "cash" ? "TUNAI" : invoice.payment_method === "terms" ? "TEMPO" : "Belum dicatat"],
+    ["Jatuh Tempo", invoice.due_date ? new Intl.DateTimeFormat("id-ID", { dateStyle: "long", timeZone: "Asia/Jakarta" }).format(new Date(`${invoice.due_date}T00:00:00+07:00`)) : "—"],
     ["Total Belanja", formatInvoiceAmount(invoice.total_amount)], ["Jumlah Dibayarkan", formatInvoiceAmount(paid / 100)], ["Sisa Hutang", formatInvoiceAmount(remaining / 100)],
     ["Status Pembayaran", PAYMENT_LABELS[paymentStatus(total, paid)]], ["Status Invoice", completed ? "Selesai" : "Draft"],
   ];

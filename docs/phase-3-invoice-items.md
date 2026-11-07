@@ -1,5 +1,8 @@
 # Fase 3 — Produk dalam Invoice Draft
 
+> **Historical delivery note.** Phase 4 receiving finalization and later payment
+> work are now implemented. Statements below describe the Phase 3 boundary.
+
 ## Audit dan kontrak
 
 - Fase 2 menyediakan header invoice, pembayaran awal, dokumen private, version check, lock per invoice, serta ledger request untuk retry. Belum ada tabel item invoice.

@@ -1,5 +1,9 @@
 # M2.16D — Karyawan dan pengaturan akses
 
+> **Delivery record.** The feature remains implemented. Cross-module permission
+> migration is still incomplete; `permissions.md` and `current-status.md` are
+> authoritative for current enforcement status.
+
 ## Halaman dan komponen
 
 - `/employees`: server-guarded Owner page; client workspace loads/revalidates all

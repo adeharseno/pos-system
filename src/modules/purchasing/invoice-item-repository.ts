@@ -21,7 +21,7 @@ export async function searchInvoiceProducts(invoiceId: string, raw: string | nul
   await getPurchaseInvoice(invoiceId);
   const q = parseProductSearchQuery(raw);
   if (!q) return [];
-  const result = await listAdminProducts({ q, status: "active", prescription: "all", page: 1, limit: 20 });
+  const result = await listAdminProducts({ q, status: "active", prescription: "all", stock: "all", page: 1, limit: 20 });
   return result.rows.map(product => ({ id: product.id, name: product.name, sku: product.sku }));
 }
 export async function getInvoiceProduct(invoiceId: string, productId: string): Promise<InvoiceProduct> {
@@ -49,7 +49,7 @@ export async function writeInvoiceItem(request: Request, invoiceId: string, empl
   const payload = parsed ?? {};
   if (parsed && itemSubtotalCents(parsed.cost_price, parsed.quantity, parsed.tax_rate) > BigInt(99999999999999)) throw new PosInputError("Subtotal barang terlalu besar.");
   const result = await createAdminSupabaseClient().rpc("write_purchase_invoice_item", { p_invoice_id: invoiceId, p_item_id: itemId, p_request_id: requestId, p_employee_id: employeeId,
-    p_expected_version: version as number | null, p_action: action, p_payload: payload as Json });
+    p_expected_version: version as number, p_action: action, p_payload: payload as Json });
   if (result.error) invoiceDatabaseError(result.error);
   return { id: itemId };
 }

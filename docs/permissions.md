@@ -1,8 +1,10 @@
-# M2.16B: Permission foundation
+# Permission Model and Migration Status
 
 Authentication remains Supabase Auth -> user_profiles -> active employees.
-The existing `requireRole` and `requirePosOperator` contracts are unchanged.
-No existing route, sensitive response, or business workflow uses new grants yet.
+Position guards still exist for legacy compatibility. Capability guards are now
+used by employee administration and multiple catalog, inventory, purchasing,
+expense, report, and dashboard paths. Migration is incomplete: do not assume an
+individual override protects every route with the same visible feature label.
 
 ## Server use
 
@@ -28,7 +30,7 @@ The override RPC accepts a verified Auth user ID supplied by trusted server code
 requires an active mapped Owner, a known permission and a nonempty reason, and
 serializes changes per target employee. `null` effect removes an override.
 It rejects Owner overrides; real changes and their before/after audit event commit
-together. It is not exposed by an HTTP API in this milestone.
+together. It is exposed only through authenticated employee-administration HTTP routes.
 
 Employee update/delete statements serialize through an internal guard row;
 row triggers prevent deactivation, demotion, or deletion of the final active Owner.
@@ -37,17 +39,19 @@ the check. Role/activity changes produce audit events; direct maintenance writes
 have no attributed actor. Audits contain no product pricing, credentials, or tokens.
 This protects active employee roles, not future Auth bans or profile unlinking.
 
-## M2.16C integration
+## Remaining integration work
 
-Build controlled employee/account provisioning and invitation flows. Add trusted
-actor attribution to account-access RPCs, and protect the last usable Owner across
-Auth access changes and profile unlinking. Auth and database provisioning need
-retry/compensation because they do not share a transaction.
+Controlled employee/account provisioning, invitation, role/access management,
+trusted actor attribution, and last-owner protection are implemented. Auth and
+database provisioning still require retry/compensation because they do not
+share a transaction.
 
 Migrate each route/service explicitly before applying individual grants to it.
 Enforce field permissions using explicit read/write DTOs, not hidden UI elements.
 Existing SQL role requirements remain authoritative until deliberately migrated.
-Employee and product approval UI are not part of this foundation.
+Backend enforcement must be migrated before enabling a permission as a reliable
+user-facing control. Product submission/approval workflows are not part of the
+current implementation.
 
 ## Validation
 

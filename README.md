@@ -4,11 +4,19 @@ Low-cost pharmacy Point of Sale pilot using a **Next.js modular monolith + Supab
 
 ## Current Status
 
-The local implementation is complete through M2.7.1: atomic checkout/payment/
-void/return/opname RPCs, employee-position authorization, cashier checkout,
-manual QRIS confirmation, and authoritative browser-print receipts. Local
-migrations `0001`–`0005` and their tests are verified. Remote migration and
-deployment verification remain separate backlog work.
+The repository currently implements the local Pilot 1 workflow across cashier,
+product master, inventory and stock opname, purchasing/receiving, customer
+returns, reporting, expenses, dashboard, and employee administration. Atomic
+stock/financial workflows remain PostgreSQL RPCs. Checked-in migrations run
+from `0001` through `0033`.
+
+Cash drawer has been deliberately removed. Cash checkout/refund no longer needs
+a drawer session; the transaction log and immutable sale/return records provide
+the audit trail. Individual permissions exist, but migration of every legacy
+role-only route is still in progress. Remote deployment and production-readiness
+verification remain backlog work. See
+[`docs/current-status.md`](docs/current-status.md) for the canonical status,
+known gaps, and current priorities.
 
 ## Local Development
 
@@ -56,6 +64,7 @@ or the generated temporary state.
 ## Documentation
 
 - [`docs/prd.md`](docs/prd.md) — product requirements and scope
+- [`docs/current-status.md`](docs/current-status.md) — canonical implementation status, verification baseline, and backlog
 - [`docs/architecture.md`](docs/architecture.md) — modular-monolith architecture and deployment
 - [`docs/database-design.md`](docs/database-design.md) — database model and integrity rules
 - [`docs/business-logic.md`](docs/business-logic.md) — checkout, FEFO, QRIS, void, returns, stock opname, reports

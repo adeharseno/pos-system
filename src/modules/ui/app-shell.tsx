@@ -3,59 +3,19 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { EmployeeRole } from "@/modules/auth/types";
 import { UserMenu } from "./user-menu";
-import { BoxIcon, CartIcon, ChartIcon, CloseIcon, HomeIcon, MenuIcon, UsersIcon } from "./icons";
-
-type NavChild = { label: string; href: string; admin?: boolean };
-type NavItem = {
-  label: string;
-  href: string;
-  icon: ComponentType<SVGProps<SVGSVGElement>>;
-  admin?: boolean;
-  posOperator?: boolean;
-  children?: NavChild[];
-};
-
-const groups: Array<{ label: string; items: NavItem[] }> = [
-  {
-    label: "Operasional",
-    items: [
-      { label: "Beranda", href: "/dashboard", icon: HomeIcon },
-      { label: "Kasir", href: "/cashier", icon: CartIcon, posOperator: true },
-      { label: "Transaksi", href: "/transactions", icon: ChartIcon },
-    ],
-  },
-  {
-    label: "Persediaan",
-    items: [
-      {
-        label: "Daftar Barang",
-        href: "/products",
-        icon: BoxIcon,
-        children: [
-          { label: "Kelola Kategori", href: "/products/categories", admin: true },
-          { label: "Kelola Subkategori", href: "/products/subcategories", admin: true },
-          { label: "Kelola Pajak", href: "/products/taxes", admin: true },
-          { label: "Kelola Pemasok", href: "/products/suppliers", admin: true },
-        ],
-      },
-      { label: "Persediaan", href: "/inventory", icon: BoxIcon },
-    ],
-  },
-  {
-    label: "Pengelolaan",
-    items: [
-      { label: "Laporan", href: "/reports", icon: ChartIcon, admin: true },
-      { label: "Karyawan", href: "/employees", icon: UsersIcon, admin: true },
-    ],
-  },
-];
+import { BellIcon, CloseIcon, MenuIcon } from "./icons";
+import { navigationGroups } from "./app-navigation";
+import type { PurchaseDueReminder } from "@/modules/purchasing/due-reminder-model";
+import { dueReminderLabel } from "@/modules/purchasing/due-reminder-model";
+import { formatInvoiceAmount } from "@/modules/purchasing/invoice-presentation";
 
 // Presentation adapted from TailAdmin AppSidebar/AppHeader; role filtering is retained.
-export function AppShell({ employee, children }: { employee: { name: string; role: EmployeeRole }; children: React.ReactNode }) {
+export function AppShell({ employee, reminders = [], children }: { employee: { name: string; role: EmployeeRole }; reminders?: PurchaseDueReminder[]; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
+  const [bellOpen, setBellOpen] = useState(false);
   const pathname = usePathname();
   const menu = useRef<HTMLDialogElement>(null);
   const isOwner = employee.role === "owner_admin";
@@ -79,7 +39,7 @@ export function AppShell({ employee, children }: { employee: { name: string; rol
   }, [open]);
 
   const role = employee.role === "owner_admin" ? "Pemilik" : employee.role === "kasir" ? "Kasir" : "Staf";
-  const navigationItems = groups.flatMap(group => group.items.flatMap(item => [item, ...(item.children ?? [])]));
+  const navigationItems = navigationGroups.flatMap(group => group.items.flatMap(item => [item, ...(item.children ?? [])]));
   const currentItem = navigationItems
     .filter(item => item.href !== "#" && (pathname === item.href || pathname.startsWith(`${item.href}/`)))
     .sort((a, b) => b.href.length - a.href.length)[0];
@@ -93,7 +53,7 @@ export function AppShell({ employee, children }: { employee: { name: string; rol
       <strong className="text-lg leading-snug font-semibold text-gray-800">Apotek Cipayung Farma</strong>
     </Link>
     <nav aria-label="Menu utama" className="grid gap-7">
-      {groups.map(group => {
+      {navigationGroups.map(group => {
         const items = group.items
           .filter(item => (!item.admin || isOwner) && (!item.posOperator || isPosOperator))
           .map(item => ({
@@ -128,6 +88,7 @@ export function AppShell({ employee, children }: { employee: { name: string; rol
     <header className="fixed inset-x-0 top-0 z-30 flex h-20 items-center gap-3 border-b border-[var(--border)] bg-white px-4 sm:px-6 lg:left-[var(--sidebar-width)]">
       <button type="button" aria-expanded={open} aria-controls="mobile-navigation" aria-label="Buka menu" className="grid size-13 shrink-0 place-items-center rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 lg:hidden" onClick={() => setOpen(true)}><MenuIcon /></button>
       <p className="min-w-0 flex-1 text-lg leading-tight font-semibold sm:text-xl text-gray-800">{title}</p>
+      {isOwner ? <div className="relative"><button type="button" aria-label={`Pengingat hutang${reminders.length?` (${reminders.length})`:""}`} aria-expanded={bellOpen} onClick={()=>setBellOpen(value=>!value)} className="relative grid size-12 place-items-center rounded-lg text-gray-700 hover:bg-gray-100"><BellIcon className="size-6"/>{reminders.length?<span className="absolute right-1 top-1 min-w-5 rounded-full bg-red-600 px-1 text-center text-xs font-semibold text-white">{reminders.length>99?"99+":reminders.length}</span>:null}</button>{bellOpen?<div className="absolute right-0 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl"><div className="border-b border-gray-200 p-4"><p className="font-semibold">Jatuh Tempo Invoice</p><p className="mt-1 text-sm text-gray-600">{reminders.length} invoice perlu diperhatikan</p></div>{reminders.length?<ul className="max-h-96 divide-y divide-gray-100 overflow-y-auto">{reminders.slice(0,10).map(item=><li key={item.id}><Link href={`/purchase-invoices/${item.id}`} onClick={()=>setBellOpen(false)} className="block p-4 hover:bg-gray-50"><p className="font-medium">{item.supplier} · {item.invoiceNumber}</p><p className="mt-1 text-sm text-gray-600">{formatInvoiceAmount(item.outstanding)} · {item.dueDate}</p><p className={`mt-1 text-sm font-medium ${item.daysRemaining<0?"text-red-700":"text-amber-700"}`}>{dueReminderLabel(item.daysRemaining)}</p></Link></li>)}</ul>:<p className="p-5 text-sm text-gray-600">Tidak ada invoice yang mendekati jatuh tempo.</p>}</div>:null}</div> : null}
       <UserMenu name={employee.name} role={role} />
     </header>
     <dialog ref={menu} id="mobile-navigation" aria-label="Menu utama" onCancel={() => setOpen(false)} onClick={event => { if (event.target === event.currentTarget) setOpen(false); }} className="fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none bg-transparent p-0 backdrop:bg-gray-900/40">

@@ -7,6 +7,7 @@ import { requireResultObject, resultNumber, resultString } from "@/modules/share
 import { mapDatabaseError } from "@/modules/shared/errors/pos-domain-error";
 import type { Json } from "@/types/database.types";
 import { authorizedDashboardRead, canReadDashboardFinancials, canReadDashboardStock, cents, dashboardActions, dashboardLowStockRows, dateLabel, rupiah, type ChartPoint, type DashboardFilters } from "./dashboard-model";
+import { listStockReadModel } from "@/modules/inventory/data/stock-list-read-model";
 import { inventoryBusinessDate } from "@/modules/inventory/inventory-rules";
 
 export const getDashboardContext = cache(async () => {
@@ -18,9 +19,15 @@ export const getDashboardContext = cache(async () => {
 export async function getDashboardLowStock() {
   const { employee, permissions } = await getDashboardContext();
   if (!canReadDashboardStock(employee.role, permissions)) throw new Error("FORBIDDEN");
-  const { data, error } = await createAdminSupabaseClient().rpc("dashboard_low_stock", { p_business_date: inventoryBusinessDate() });
-  if (error) throw mapDatabaseError(error);
-  return dashboardLowStockRows(data);
+  const { rows } = await listStockReadModel({ businessDate: inventoryBusinessDate(), activeStatus: "active", stockStatus: "needs_restock", sort: "stock_asc", page: 1, limit: 5 });
+  return dashboardLowStockRows(rows.map(row => ({
+    id: row.id,
+    name: row.name,
+    baseUnit: row.baseUnit,
+    availableStock: String(row.availableStock),
+    minimumStock: row.minimumStock,
+    status: row.stockStatus,
+  })));
 }
 
 export async function getDashboardAnalytics(filters: DashboardFilters) {

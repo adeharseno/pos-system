@@ -4,8 +4,8 @@ import type { CartLine } from "./sales/cart";
 import { buildCashCheckoutPayload,buildQrisCheckoutPayload,canSubmitCheckout,canVoidQris,cartAfterCheckout,checkoutErrorMessage,qrisActionPayload,qrisConfirmUrl,qrisVoidUrl,transactionStatusUrl } from "./sales/checkout-ui";
 
 const cart:CartLine[]=[{productId:"p",productName:"Obat",productUnitId:"u",unitLabel:"Tablet",quantity:1,conversionToBase:1,displayedUnitPrice:10000,requiresPrescription:false}];
-test("QRIS can be selected as a payment method",()=>assert.equal(buildQrisCheckoutPayload(cart).payment_method,"qris"));
-test("QRIS checkout omits cash received and change",()=>{const payload=buildQrisCheckoutPayload(cart);assert.equal("cash_received" in payload,false);assert.equal("cash_change" in payload,false);});
+test("QRIS can be selected as a payment method",()=>assert.equal(buildQrisCheckoutPayload(cart,{category:"umum"}).payment_method,"qris"));
+test("QRIS checkout omits cash received and change",()=>{const payload=buildQrisCheckoutPayload(cart,{category:"umum"});assert.equal("cash_received" in payload,false);assert.equal("cash_change" in payload,false);});
 test("pending QRIS result retains authoritative invoice and total",()=>{const result={status:"pending_payment",invoiceNumber:"INV-1",totalAmount:11000};assert.equal(result.status,"pending_payment");assert.equal(result.invoiceNumber,"INV-1");assert.equal(result.totalAmount,11000);});
 test("cart is not cleared while QRIS is pending",()=>assert.equal(cartAfterCheckout(cart,false),cart));
 test("confirm action targets authenticated confirmation API",()=>assert.equal(qrisConfirmUrl("tx"),"/api/transactions/tx/confirm-payment"));
@@ -20,5 +20,5 @@ test("confirmed QRIS hides void eligibility",()=>assert.equal(canVoidQris("compl
 test("paid QRIS gives return guidance",()=>assert.match(checkoutErrorMessage("PAID_TRANSACTION_REQUIRES_RETURN"),/retur dan pengembalian uang/));
 test("uncertain state blocks automatic submit",()=>assert.equal(canSubmitCheckout("uncertain"),false));
 test("status refresh targets authoritative transaction endpoint",()=>assert.equal(transactionStatusUrl("tx"),"/api/transactions/tx"));
-test("cash payload remains unchanged",()=>assert.deepEqual(buildCashCheckoutPayload(cart,20000),{payment_method:"cash",cash_received:20000,items:[{product_unit_id:"u",quantity:1}]}));
-test("QRIS preserves prescription fields",()=>assert.deepEqual(buildQrisCheckoutPayload([{...cart[0],requiresPrescription:true}],{doctorName:"dr. A",patientName:"B"}).prescription,{prescription_number:undefined,doctor_name:"dr. A",patient_name:"B"}));
+test("cash payload keeps existing payment data and adds default prescription category",()=>assert.deepEqual(buildCashCheckoutPayload(cart,20000,{category:"umum"}),{payment_method:"cash",cash_received:20000,items:[{product_unit_id:"u",quantity:1}],prescription:{prescription_category:"umum",patient_name:undefined,bpjs_number:undefined,prescription_number:undefined,prescription_origin:undefined,prescription_date:undefined}}));
+test("QRIS preserves prescription fields",()=>assert.deepEqual(buildQrisCheckoutPayload([{...cart[0],requiresPrescription:true}],{category:"umum",prescriptionOrigin:"dr. A",patientName:"B"}).prescription,{prescription_category:"umum",patient_name:"B",bpjs_number:undefined,prescription_number:undefined,prescription_origin:"dr. A",prescription_date:undefined}));

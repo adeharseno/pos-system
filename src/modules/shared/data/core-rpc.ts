@@ -7,6 +7,7 @@ import type { Database, Json } from "@/types/database.types";
 type Functions = Database["public"]["Functions"];
 export type CoreRpcName = Extract<keyof Functions,
   | "checkout_transaction"
+  | "checkout_transaction_with_prescription"
   | "confirm_qris_payment"
   | "void_transaction"
   | "create_customer_return"
@@ -14,6 +15,7 @@ export type CoreRpcName = Extract<keyof Functions,
   | "create_product_with_base_unit_and_initial_stock"
   | "create_supplier_return"
   | "receive_product_stock"
+  | "receive_product_stock_manual"
   | "start_stock_opname"
   | "apply_stock_opname"
   | "cancel_stock_opname">;

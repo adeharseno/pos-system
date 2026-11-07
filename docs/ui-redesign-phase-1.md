@@ -1,5 +1,9 @@
 ﻿# TailAdmin UI redesign — Phase 1
 
+> **Historical UI delivery note.** Later simplification and feature work has
+> superseded parts of this description. See `ui-sederhana-60-plus.md`,
+> `dashboard-transactions-redesign.md`, and `current-status.md`.
+
 Implemented on the existing branch. Primary reference: the supplied
 `free-nextjs-admin-dashboard-main.zip`. No dependencies added.
 

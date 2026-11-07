@@ -29,7 +29,7 @@ Do **not** introduce microservices, a separate Express/Nest/Go backend, queues, 
 8. **Invoice numbers are generated DB-side inside checkout** using a concurrency-safe daily sequence.
 9. **Business timezone is Asia/Jakarta.** Store timestamps as UTC, but use WIB business dates for invoice/report/day boundaries.
 10. **Transactional tables are server-only.** Never expose `SUPABASE_SERVICE_ROLE_KEY`; browser database access to operational tables is denied by RLS.
-11. **Role model stays simple**: resolve `auth.users -> user_profiles -> employees`; `employees.position` is the authority (`owner_admin` | `kasir` | `staf`). Do not use Auth `app_metadata` as the application role authority or create granular RBAC tables in Pilot 1.
+11. **Identity and role authority stays simple**: resolve `auth.users -> user_profiles -> employees`; `employees.position` is the role authority (`owner_admin` | `kasir` | `staf`). Do not use Auth `app_metadata` as application authority. Capability definitions, role presets, and employee allow/deny overrides now exist; use the shared permission policy for migrated routes and do not invent a second authorization model. Some legacy routes remain role-only and are tracked in `docs/current-status.md`.
 12. **Stock opname is batch-level with operational freeze** in Pilot 1; `physical_quantity` is nullable until counted, only one session may be `in_progress`, frozen batches reject normal stock mutations, and apply is blocked while any item is uncounted.
 13. **Cash refunds are recorded in the transaction log** with employee, timestamp, and reason; there is no refund-drawer attribution.
 14. **Product/unit/batch consistency is enforced by composite foreign keys**, not only by RPC validation.
@@ -50,28 +50,19 @@ Do **not** introduce microservices, a separate Express/Nest/Go backend, queues, 
 
 ## Implementation Status
 
-- Architecture and schema documentation have completed a second hardening pass based on concurrency/integrity review.
-- `0001_init.sql` and `0002_rls_policies.sql` have been updated to the hardened data model.
-- Local Supabase CLI configuration is available. Remote project linking remains
-  developer-local and must never commit credentials.
-- `0001_init.sql` through `0005_transaction_item_receipt_snapshots.sql` have
-  been applied successfully by a clean local `supabase db reset`,
-  catalog-verified, and schema-linted. Remote migration/deployment verification
-  remains backlog work.
-- M1.3 database integrity tests use pgTAP against real local PostgreSQL and
-  cover relational, numeric, payment lifecycle, void, return, stock-opname,
-  and RLS constraints. Run them with `npm run db:test`.
-- Core functions implement atomic checkout, payment, void, return,
-  stock-opname, and the transaction-log RPCs and have passed local deterministic and
-  concurrency verification.
-- M1.1 application foundation is implemented: Next.js App Router, strict
-  TypeScript, Tailwind CSS, ESLint, modular domain directories, and foundational
-  Supabase browser/server/admin client factories.
-- Authentication, server-only data adapters, implemented API routes, cashier
-  checkout, manual QRIS, and browser-print receipts are implemented. See
-  `docs/roadmap.md` for deliberate UI/API gaps and backlog.
-
-Start with `docs/roadmap.md` M1. Do not skip the database concurrency tests listed there.
+- The active schema is migrations `0001` through `0033`; do not assume the
+  original `0001`–`0005` baseline describes the current database.
+- Implemented modules include authentication/employees, catalog/import,
+  cashier/transactions/returns, inventory/opname, purchasing/receiving/payment,
+  dashboard, expenses, and reports.
+- Cash drawer was removed in `0031_remove_cash_drawer.sql`; do not reintroduce a
+  drawer precondition without a new approved requirement.
+- Remote migration/deployment verification remains backlog. Supabase linking is
+  developer-local and credentials must never be committed.
+- Database tests require local Supabase and should be run against disposable or
+  known-clean fixtures; concurrency tests remain mandatory for critical RPC work.
+- Read `docs/current-status.md` before planning work. It is the canonical status
+  and backlog; `docs/roadmap.md` is the milestone view.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

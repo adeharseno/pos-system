@@ -105,6 +105,11 @@ This avoids fractional sell-unit values such as `0.3 Box` and keeps the receipt/
 
 ## 3. Payment Lifecycle
 
+The active cashier methods are Cash and manual QRIS. `bank_transfer` exists in
+the database enum and transaction read models, but the cashier control is
+disabled. Do not treat it as an operational method until its authoritative
+completion/confirmation lifecycle is designed and implemented.
+
 ### 3.1 Cash
 
 Cash checkout is immediately completed.

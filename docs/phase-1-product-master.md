@@ -1,5 +1,9 @@
 # Fase 1 — Master Produk
 
+> **Historical delivery note.** Later phases—purchase invoices, items, receiving
+> finalization, and payments—are now implemented. See `current-status.md` and
+> `roadmap.md`; statements below describe the boundary when Phase 1 shipped.
+
 ## Audit
 
 - Create lama: `POST /api/products` memerlukan harga modal, harga jual dan pajak. RPC membuat produk dan unit dasar secara atomik. Kontrak lama tetap tersedia untuk impor dan pemanggil existing.

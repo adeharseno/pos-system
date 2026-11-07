@@ -11,5 +11,5 @@ export function DeactivateProductButton({ productId }: { productId: string }) {
     setBusy(true); setError("");
     try { const response = await fetch(`/api/products/${productId}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ is_active: false }) }); if (!response.ok) { setError("Barang gagal dinonaktifkan."); return; } router.push(`/products/${productId}`); router.refresh(); } catch { setError("Barang gagal dinonaktifkan."); } finally { setBusy(false); }
   }
-  return <div className="grid gap-2">{error ? <p className="text-sm text-[var(--danger)]" role="alert">{error}</p> : null}<Button type="button" variant="danger" disabled={busy} onClick={deactivate}>{busy ? "Menonaktifkan…" : "Nonaktifkan Barang"}</Button></div>;
+  return <div className="grid gap-2">{error ? <p className="text-sm text-[var(--danger)]" role="alert">{error}</p> : null}<Button type="button" variant="secondary" className="border-red-200 text-red-700 hover:bg-red-50" disabled={busy} onClick={deactivate}>{busy ? "Menonaktifkan…" : "Nonaktifkan Barang"}</Button></div>;
 }

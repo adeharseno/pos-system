@@ -1,5 +1,8 @@
 # Dashboard cleanup dan desain ulang transaksi
 
+> **Historical design record.** Current delivery status, verification and known
+> gaps are maintained in `current-status.md`.
+
 Pekerjaan ini dilakukan langsung pada branch lokal saat ini. Perubahan dari
 tahap sebelumnya dipertahankan.
 

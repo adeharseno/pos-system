@@ -9,170 +9,6 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      employee_invitations: {
-        Row: {
-          accepted_at: string | null
-          attempt_id: string | null
-          attempts: number
-          auth_user_id: string
-          email: string
-          employee_id: string
-          failure_code: string | null
-          invited_at: string | null
-          lease_until: string | null
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          accepted_at?: string | null
-          attempt_id?: string | null
-          attempts?: number
-          auth_user_id?: string
-          email: string
-          employee_id: string
-          failure_code?: string | null
-          invited_at?: string | null
-          lease_until?: string | null
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          accepted_at?: string | null
-          attempt_id?: string | null
-          attempts?: number
-          auth_user_id?: string
-          email?: string
-          employee_id?: string
-          failure_code?: string | null
-          invited_at?: string | null
-          lease_until?: string | null
-          status?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "employee_invitations_employee_id_fkey"
-            columns: ["employee_id"]
-            isOneToOne: true
-            referencedRelation: "employees"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-
-      security_audit_events: {
-        Row: {
-          action: string
-          actor_employee_id: string | null
-          after_value: Json | null
-          before_value: Json | null
-          created_at: string
-          id: number
-          reason: string | null
-          target_id: string
-        }
-        Insert: {
-          action: string
-          actor_employee_id?: string | null
-          after_value?: Json | null
-          before_value?: Json | null
-          created_at?: string
-          id?: never
-          reason?: string | null
-          target_id: string
-        }
-        Update: {
-          action?: string
-          actor_employee_id?: string | null
-          after_value?: Json | null
-          before_value?: Json | null
-          created_at?: string
-          id?: never
-          reason?: string | null
-          target_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "security_audit_events_actor_employee_id_fkey"
-            columns: ["actor_employee_id"]
-            isOneToOne: false
-            referencedRelation: "employees"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-
-      role_permissions: {
-        Row: {
-          permission_code: string
-          role: Database["public"]["Enums"]["employee_position"]
-        }
-        Insert: {
-          permission_code: string
-          role: Database["public"]["Enums"]["employee_position"]
-        }
-        Update: {
-          permission_code?: string
-          role?: Database["public"]["Enums"]["employee_position"]
-        }
-        Relationships: [
-          {
-            foreignKeyName: "role_permissions_permission_code_fkey"
-            columns: ["permission_code"]
-            isOneToOne: false
-            referencedRelation: "permission_definitions"
-            referencedColumns: ["code"]
-          },
-        ]
-      }
-
-      permission_definitions: {
-        Row: {
-          code: string
-        }
-        Insert: {
-          code: string
-        }
-        Update: {
-          code?: string
-        }
-        Relationships: []
-      }
-
-      employee_permission_overrides: {
-        Row: {
-          effect: string
-          employee_id: string
-          permission_code: string
-        }
-        Insert: {
-          effect: string
-          employee_id: string
-          permission_code: string
-        }
-        Update: {
-          effect?: string
-          employee_id?: string
-          permission_code?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "employee_permission_overrides_employee_id_fkey"
-            columns: ["employee_id"]
-            isOneToOne: false
-            referencedRelation: "employees"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "employee_permission_overrides_permission_code_fkey"
-            columns: ["permission_code"]
-            isOneToOne: false
-            referencedRelation: "permission_definitions"
-            referencedColumns: ["code"]
-          },
-        ]
-      }
-
       app_settings: {
         Row: {
           expiry_alert_days: number
@@ -277,6 +113,104 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_access_guard: {
+        Row: {
+          id: boolean
+          revision: number
+        }
+        Insert: {
+          id: boolean
+          revision: number
+        }
+        Update: {
+          id?: boolean
+          revision?: number
+        }
+        Relationships: []
+      }
+      employee_invitations: {
+        Row: {
+          accepted_at: string | null
+          attempt_id: string | null
+          attempts: number
+          auth_user_id: string
+          email: string
+          employee_id: string
+          failure_code: string | null
+          invited_at: string | null
+          lease_until: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          attempt_id?: string | null
+          attempts?: number
+          auth_user_id?: string
+          email: string
+          employee_id: string
+          failure_code?: string | null
+          invited_at?: string | null
+          lease_until?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          attempt_id?: string | null
+          attempts?: number
+          auth_user_id?: string
+          email?: string
+          employee_id?: string
+          failure_code?: string | null
+          invited_at?: string | null
+          lease_until?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_invitations_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: true
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_permission_overrides: {
+        Row: {
+          effect: string
+          employee_id: string
+          permission_code: string
+        }
+        Insert: {
+          effect: string
+          employee_id: string
+          permission_code: string
+        }
+        Update: {
+          effect?: string
+          employee_id?: string
+          permission_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_permission_overrides_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_permission_overrides_permission_code_fkey"
+            columns: ["permission_code"]
+            isOneToOne: false
+            referencedRelation: "permission_definitions"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       employees: {
         Row: {
           created_at: string
@@ -288,6 +222,7 @@ export type Database = {
           phone: string | null
           position: Database["public"]["Enums"]["employee_position"]
           updated_at: string
+          username: string
         }
         Insert: {
           created_at?: string
@@ -299,6 +234,7 @@ export type Database = {
           phone?: string | null
           position?: Database["public"]["Enums"]["employee_position"]
           updated_at?: string
+          username?: string
         }
         Update: {
           created_at?: string
@@ -310,8 +246,41 @@ export type Database = {
           phone?: string | null
           position?: Database["public"]["Enums"]["employee_position"]
           updated_at?: string
+          username?: string
         }
         Relationships: []
+      }
+      initial_product_import_requests: {
+        Row: {
+          actor_id: string
+          created_at: string
+          payload: Json
+          request_id: string
+          result: Json
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          payload: Json
+          request_id: string
+          result: Json
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          payload?: Json
+          request_id?: string
+          result?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "initial_product_import_requests_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       invoice_sequences: {
         Row: {
@@ -327,6 +296,157 @@ export type Database = {
           last_number?: number
         }
         Relationships: []
+      }
+      login_attempts: {
+        Row: {
+          failures: number
+          identifier: string
+          locked_until: string | null
+          updated_at: string
+        }
+        Insert: {
+          failures?: number
+          identifier: string
+          locked_until?: string | null
+          updated_at?: string
+        }
+        Update: {
+          failures?: number
+          identifier?: string
+          locked_until?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      manual_stock_receiving_events: {
+        Row: {
+          actor_id: string
+          batch_id: string
+          id: string
+          occurred_at: string
+          product_id: string
+          quantity_base: number
+          reason: string | null
+          reference: string | null
+          request_id: string
+          source: string
+          supplier_id: string | null
+        }
+        Insert: {
+          actor_id: string
+          batch_id: string
+          id?: string
+          occurred_at: string
+          product_id: string
+          quantity_base: number
+          reason?: string | null
+          reference?: string | null
+          request_id: string
+          source: string
+          supplier_id?: string | null
+        }
+        Update: {
+          actor_id?: string
+          batch_id?: string
+          id?: string
+          occurred_at?: string
+          product_id?: string
+          quantity_base?: number
+          reason?: string | null
+          reference?: string | null
+          request_id?: string
+          source?: string
+          supplier_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manual_stock_receiving_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "manual_stock_receiving_events_batch_id_product_id_fkey"
+            columns: ["batch_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "batch_supplier"
+            referencedColumns: ["batch_id", "product_id"]
+          },
+          {
+            foreignKeyName: "manual_stock_receiving_events_batch_id_product_id_fkey"
+            columns: ["batch_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "product_batches"
+            referencedColumns: ["id", "product_id"]
+          },
+          {
+            foreignKeyName: "manual_stock_receiving_events_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "manual_stock_receiving_events_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "manual_stock_receiving_requests"
+            referencedColumns: ["request_id"]
+          },
+          {
+            foreignKeyName: "manual_stock_receiving_events_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      manual_stock_receiving_requests: {
+        Row: {
+          actor_id: string
+          created_at: string
+          payload: Json
+          product_id: string
+          request_id: string
+          result: Json
+          source: string
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          payload: Json
+          product_id: string
+          request_id: string
+          result: Json
+          source: string
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          payload?: Json
+          product_id?: string
+          request_id?: string
+          result?: Json
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manual_stock_receiving_requests_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "manual_stock_receiving_requests_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       operational_expenses: {
         Row: {
@@ -366,12 +486,24 @@ export type Database = {
           },
         ]
       }
+      permission_definitions: {
+        Row: {
+          code: string
+        }
+        Insert: {
+          code: string
+        }
+        Update: {
+          code?: string
+        }
+        Relationships: []
+      }
       product_batches: {
         Row: {
-          batch_number: string
+          batch_number: string | null
           cost_price: number
           created_at: string
-          expired_date: string
+          expired_date: string | null
           id: string
           product_id: string
           purchase_invoice_item_id: string | null
@@ -380,10 +512,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          batch_number: string
+          batch_number?: string | null
           cost_price: number
           created_at?: string
-          expired_date: string
+          expired_date?: string | null
           id?: string
           product_id: string
           purchase_invoice_item_id?: string | null
@@ -392,10 +524,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          batch_number?: string
+          batch_number?: string | null
           cost_price?: number
           created_at?: string
-          expired_date?: string
+          expired_date?: string | null
           id?: string
           product_id?: string
           purchase_invoice_item_id?: string | null
@@ -464,6 +596,116 @@ export type Database = {
           },
         ]
       }
+      products: {
+        Row: {
+          base_unit: string | null
+          category_id: string | null
+          classification_pending: boolean
+          cost_price: number | null
+          created_at: string
+          default_supplier_id: string | null
+          description: string | null
+          drug_classification: Database["public"]["Enums"]["drug_classification"]
+          generic_name: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean
+          is_taxable: boolean
+          legacy_supplier_text: string | null
+          manufacturer: string | null
+          minimum_stock: number
+          name: string
+          requires_prescription: boolean | null
+          sku: string
+          storage_location_id: string | null
+          subcategory_id: string | null
+          tax_rate: number
+          unit_confirmed: boolean
+          updated_at: string
+        }
+        Insert: {
+          base_unit?: string | null
+          category_id?: string | null
+          classification_pending?: boolean
+          cost_price?: number | null
+          created_at?: string
+          default_supplier_id?: string | null
+          description?: string | null
+          drug_classification?: Database["public"]["Enums"]["drug_classification"]
+          generic_name?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          is_taxable?: boolean
+          legacy_supplier_text?: string | null
+          manufacturer?: string | null
+          minimum_stock?: number
+          name: string
+          requires_prescription?: boolean | null
+          sku: string
+          storage_location_id?: string | null
+          subcategory_id?: string | null
+          tax_rate?: number
+          unit_confirmed?: boolean
+          updated_at?: string
+        }
+        Update: {
+          base_unit?: string | null
+          category_id?: string | null
+          classification_pending?: boolean
+          cost_price?: number | null
+          created_at?: string
+          default_supplier_id?: string | null
+          description?: string | null
+          drug_classification?: Database["public"]["Enums"]["drug_classification"]
+          generic_name?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          is_taxable?: boolean
+          legacy_supplier_text?: string | null
+          manufacturer?: string | null
+          minimum_stock?: number
+          name?: string
+          requires_prescription?: boolean | null
+          sku?: string
+          storage_location_id?: string | null
+          subcategory_id?: string | null
+          tax_rate?: number
+          unit_confirmed?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_products_category"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_products_subcategory"
+            columns: ["subcategory_id"]
+            isOneToOne: false
+            referencedRelation: "subcategories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_default_supplier_id_fkey"
+            columns: ["default_supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_storage_location_id_fkey"
+            columns: ["storage_location_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       purchase_invoice_items: {
         Row: {
           base_unit_snapshot: string
@@ -473,7 +715,7 @@ export type Database = {
           created_at: string
           created_by: string
           deleted_at: string | null
-          expired_date: string
+          expired_date: string | null
           id: string
           invoice_id: string
           margin_percent: number | null
@@ -499,7 +741,7 @@ export type Database = {
           created_at?: string
           created_by: string
           deleted_at?: string | null
-          expired_date: string
+          expired_date?: string | null
           id: string
           invoice_id: string
           margin_percent?: number | null
@@ -525,7 +767,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           deleted_at?: string | null
-          expired_date?: string
+          expired_date?: string | null
           id?: string
           invoice_id?: string
           margin_percent?: number | null
@@ -550,6 +792,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "batch_supplier"
+            referencedColumns: ["invoice_id"]
           },
           {
             foreignKeyName: "purchase_invoice_items_invoice_id_fkey"
@@ -613,6 +862,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "purchase_invoice_payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "batch_supplier"
+            referencedColumns: ["invoice_id"]
+          },
           {
             foreignKeyName: "purchase_invoice_payments_invoice_id_fkey"
             columns: ["invoice_id"]
@@ -686,8 +942,22 @@ export type Database = {
             foreignKeyName: "purchase_invoice_receipts_batch_id_fkey"
             columns: ["batch_id"]
             isOneToOne: false
+            referencedRelation: "batch_supplier"
+            referencedColumns: ["batch_id"]
+          },
+          {
+            foreignKeyName: "purchase_invoice_receipts_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
             referencedRelation: "product_batches"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_invoice_receipts_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "batch_supplier"
+            referencedColumns: ["invoice_id"]
           },
           {
             foreignKeyName: "purchase_invoice_receipts_invoice_id_fkey"
@@ -753,6 +1023,13 @@ export type Database = {
             foreignKeyName: "purchase_invoice_requests_invoice_id_fkey"
             columns: ["invoice_id"]
             isOneToOne: false
+            referencedRelation: "batch_supplier"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "purchase_invoice_requests_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
             referencedRelation: "purchase_invoices"
             referencedColumns: ["id"]
           },
@@ -767,10 +1044,13 @@ export type Database = {
           document_name: string | null
           document_path: string | null
           document_type: string | null
+          due_date: string | null
+          due_days: number | null
           finalization_snapshot: Json | null
           id: string
           invoice_date: string
           invoice_number: string
+          payment_method: string | null
           status: string
           supplier_id: string
           total_amount: number
@@ -786,10 +1066,13 @@ export type Database = {
           document_name?: string | null
           document_path?: string | null
           document_type?: string | null
+          due_date?: string | null
+          due_days?: number | null
           finalization_snapshot?: Json | null
           id: string
           invoice_date: string
           invoice_number: string
+          payment_method?: string | null
           status?: string
           supplier_id: string
           total_amount: number
@@ -805,10 +1088,13 @@ export type Database = {
           document_name?: string | null
           document_path?: string | null
           document_type?: string | null
+          due_date?: string | null
+          due_days?: number | null
           finalization_snapshot?: Json | null
           id?: string
           invoice_date?: string
           invoice_number?: string
+          payment_method?: string | null
           status?: string
           supplier_id?: string
           total_amount?: number
@@ -847,107 +1133,6 @@ export type Database = {
           },
         ]
       }
-      products: {
-        Row: {
-          base_unit: string
-          category_id: string | null
-          cost_price: number | null
-          created_at: string
-          default_supplier_id: string | null
-          description: string | null
-          drug_classification: Database["public"]["Enums"]["drug_classification"]
-          generic_name: string | null
-          id: string
-          image_url: string | null
-          is_active: boolean
-          is_taxable: boolean
-          manufacturer: string | null
-          minimum_stock: number
-          name: string
-          requires_prescription: boolean | null
-          sku: string
-          storage_location_id: string | null
-          subcategory_id: string | null
-          tax_rate: number
-          updated_at: string
-        }
-        Insert: {
-          base_unit: string
-          category_id?: string | null
-          cost_price?: number | null
-          created_at?: string
-          default_supplier_id?: string | null
-          description?: string | null
-          drug_classification?: Database["public"]["Enums"]["drug_classification"]
-          generic_name?: string | null
-          id?: string
-          image_url?: string | null
-          is_active?: boolean
-          is_taxable?: boolean
-          manufacturer?: string | null
-          minimum_stock?: number
-          name: string
-          requires_prescription?: boolean | null
-          sku: string
-          storage_location_id?: string | null
-          subcategory_id?: string | null
-          tax_rate?: number
-          updated_at?: string
-        }
-        Update: {
-          base_unit?: string
-          category_id?: string | null
-          cost_price?: number | null
-          created_at?: string
-          default_supplier_id?: string | null
-          description?: string | null
-          drug_classification?: Database["public"]["Enums"]["drug_classification"]
-          generic_name?: string | null
-          id?: string
-          image_url?: string | null
-          is_active?: boolean
-          is_taxable?: boolean
-          manufacturer?: string | null
-          minimum_stock?: number
-          name?: string
-          requires_prescription?: boolean | null
-          sku?: string
-          storage_location_id?: string | null
-          subcategory_id?: string | null
-          tax_rate?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fk_products_category"
-            columns: ["category_id"]
-            isOneToOne: false
-            referencedRelation: "categories"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_products_subcategory"
-            columns: ["subcategory_id"]
-            isOneToOne: false
-            referencedRelation: "subcategories"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "products_default_supplier_id_fkey"
-            columns: ["default_supplier_id"]
-            isOneToOne: false
-            referencedRelation: "suppliers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "products_storage_location_id_fkey"
-            columns: ["storage_location_id"]
-            isOneToOne: false
-            referencedRelation: "storage_locations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       return_item_batches: {
         Row: {
           batch_id: string
@@ -977,6 +1162,13 @@ export type Database = {
           return_item_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_return_item_batches_batch_product"
+            columns: ["batch_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "batch_supplier"
+            referencedColumns: ["batch_id", "product_id"]
+          },
           {
             foreignKeyName: "fk_return_item_batches_batch_product"
             columns: ["batch_id", "product_id"]
@@ -1108,6 +1300,70 @@ export type Database = {
           },
         ]
       }
+      role_permissions: {
+        Row: {
+          permission_code: string
+          role: Database["public"]["Enums"]["employee_position"]
+        }
+        Insert: {
+          permission_code: string
+          role: Database["public"]["Enums"]["employee_position"]
+        }
+        Update: {
+          permission_code?: string
+          role?: Database["public"]["Enums"]["employee_position"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_permissions_permission_code_fkey"
+            columns: ["permission_code"]
+            isOneToOne: false
+            referencedRelation: "permission_definitions"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      security_audit_events: {
+        Row: {
+          action: string
+          actor_employee_id: string | null
+          after_value: Json | null
+          before_value: Json | null
+          created_at: string
+          id: number
+          reason: string | null
+          target_id: string
+        }
+        Insert: {
+          action: string
+          actor_employee_id?: string | null
+          after_value?: Json | null
+          before_value?: Json | null
+          created_at?: string
+          id?: never
+          reason?: string | null
+          target_id: string
+        }
+        Update: {
+          action?: string
+          actor_employee_id?: string | null
+          after_value?: Json | null
+          before_value?: Json | null
+          created_at?: string
+          id?: never
+          reason?: string | null
+          target_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "security_audit_events_actor_employee_id_fkey"
+            columns: ["actor_employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shifts: {
         Row: {
           created_at: string
@@ -1181,6 +1437,13 @@ export type Database = {
           variance?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_stock_opname_items_batch_product"
+            columns: ["batch_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "batch_supplier"
+            referencedColumns: ["batch_id", "product_id"]
+          },
           {
             foreignKeyName: "fk_stock_opname_items_batch_product"
             columns: ["batch_id", "product_id"]
@@ -1305,33 +1568,6 @@ export type Database = {
         }
         Relationships: []
       }
-      tax_rates: {
-        Row: {
-          created_at: string
-          id: string
-          is_active: boolean
-          name: string
-          rate: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          is_active?: boolean
-          name: string
-          rate: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          is_active?: boolean
-          name?: string
-          rate?: number
-          updated_at?: string
-        }
-        Relationships: []
-      }
       subcategories: {
         Row: {
           created_at: string
@@ -1398,6 +1634,33 @@ export type Database = {
         }
         Relationships: []
       }
+      tax_rates: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          rate: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          rate: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          rate?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       transaction_item_batches: {
         Row: {
           batch_id: string
@@ -1427,6 +1690,13 @@ export type Database = {
           transaction_item_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_transaction_item_batches_batch_product"
+            columns: ["batch_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "batch_supplier"
+            referencedColumns: ["batch_id", "product_id"]
+          },
           {
             foreignKeyName: "fk_transaction_item_batches_batch_product"
             columns: ["batch_id", "product_id"]
@@ -1524,30 +1794,42 @@ export type Database = {
       }
       transaction_prescriptions: {
         Row: {
+          bpjs_number: string | null
           created_at: string
-          doctor_name: string
+          doctor_name: string | null
           id: string
-          patient_name: string
+          patient_name: string | null
           photo_url: string | null
+          prescription_category: string | null
+          prescription_date: string | null
           prescription_number: string | null
+          prescription_origin: string | null
           transaction_id: string
         }
         Insert: {
+          bpjs_number?: string | null
           created_at?: string
-          doctor_name: string
+          doctor_name?: string | null
           id?: string
-          patient_name: string
+          patient_name?: string | null
           photo_url?: string | null
+          prescription_category?: string | null
+          prescription_date?: string | null
           prescription_number?: string | null
+          prescription_origin?: string | null
           transaction_id: string
         }
         Update: {
+          bpjs_number?: string | null
           created_at?: string
-          doctor_name?: string
+          doctor_name?: string | null
           id?: string
-          patient_name?: string
+          patient_name?: string | null
           photo_url?: string | null
+          prescription_category?: string | null
+          prescription_date?: string | null
           prescription_number?: string | null
+          prescription_origin?: string | null
           transaction_id?: string
         }
         Relationships: [
@@ -1681,179 +1963,59 @@ export type Database = {
     Views: {
       batch_supplier: {
         Row: {
-          batch_id: string
+          batch_id: string | null
           invoice_id: string | null
           invoice_number: string | null
-          product_id: string
-          received_at: string
+          product_id: string | null
+          received_at: string | null
           supplier_id: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "product_batches_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_invoices_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       daily_sales_totals: {
         Row: {
-          business_date: string
-          cashier_id: string
-          cashier_name: string
-          completed_total: number
-          gross_total: number
-          payment_method: Database["public"]["Enums"]["payment_method"]
-          sale_count: number
-          voided_total: number
+          business_date: string | null
+          cashier_id: string | null
+          cashier_name: string | null
+          completed_total: number | null
+          gross_total: number | null
+          payment_method: Database["public"]["Enums"]["payment_method"] | null
+          sale_count: number | null
+          voided_total: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "transactions_cashier_id_fkey"
+            columns: ["cashier_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Functions: {
-      dashboard_analytics_report: {
-        Args: { p_from: string; p_to: string; p_year: number }
-        Returns: Json
-      }
-      dashboard_low_stock: {
-        Args: { p_business_date: string }
-        Returns: Json
-      }
-      require_employee_admin: { Args: { p_actor: string }; Returns: string }
-
-      other_usable_owner: { Args: { p_excluded: string }; Returns: boolean }
-
-      employee_account_access: {
-        Args: { p_auth_user: string }
-        Returns: boolean
-      }
-
-      employee_invitation_accept: {
-        Args: { p_auth_user: string; p_complete?: boolean }
-        Returns: undefined
-      }
-
-      employee_invitation_command: {
-        Args: {
-          p_actor: string
-          p_attempt?: string
-          p_email?: string
-          p_employee: string
-          p_failure?: string
-          p_operation: string
-        }
-        Returns: Json
-      }
-
-      employee_permission_read: {
-        Args: { p_actor: string; p_employee: string }
-        Returns: Json
-      }
-
-      employee_admin_write: {
-        Args: {
-          p_actor: string
-          p_employee: string
-          p_operation: string
-          p_reason: string
-          p_values: Json
-        }
-        Returns: string
-      }
-
-      employee_admin_read: {
-        Args: {
-          p_actor: string
-          p_employee?: string
-          p_limit?: number
-          p_offset?: number
-        }
-        Returns: Json
-      }
-
-      set_employee_permission_override: {
-        Args: {
-          p_actor_auth_user_id: string
-          p_effect: string
-          p_employee_id: string
-          p_permission_code: string
-          p_reason: string
-        }
-        Returns: undefined
-      }
-
-      get_employee_permissions: {
-        Args: {
-          p_employee_id: string
-          p_role: Database["public"]["Enums"]["employee_position"]
-        }
-        Returns: Json
-      }
-
-      profit_loss_report: {
-        Args: { p_from: string; p_to: string }
-        Returns: Json
-      }
-      payment_refund_report: {
-        Args: { p_from: string; p_to: string }
-        Returns: Json
-      }
-      product_performance_report: {
-        Args: { p_from: string; p_to: string; p_sort?: string }
-        Returns: Json
-      }
-      sales_gross_profit_report: {
-        Args: { p_from: string; p_to: string }
-        Returns: Json
-      }
       apply_stock_opname: {
         Args: { p_employee_id: string; p_session_id: string }
         Returns: Json
       }
       cancel_stock_opname: {
         Args: { p_employee_id: string; p_session_id: string }
-        Returns: Json
-      }
-
-      write_purchase_invoice_item: {
-        Args: {
-          p_action: string
-          p_employee_id: string
-          p_expected_version: number | null
-          p_invoice_id: string
-          p_item_id: string
-          p_payload: Json
-          p_request_id: string
-        }
-        Returns: Json
-      }
-      preview_purchase_receiving: {
-        Args: { p_employee_id: string; p_invoice_id: string }
-        Returns: Json
-      }
-      finalize_purchase_receiving: {
-        Args: {
-          p_acknowledge_difference: boolean
-          p_employee_id: string
-          p_expected_version: number
-          p_invoice_id: string
-          p_request_id: string
-          p_token: string
-        }
-        Returns: Json
-      }
-      record_purchase_invoice_payment: {
-        Args: {
-          p_amount: number | string
-          p_employee_id: string
-          p_invoice_id: string
-          p_payment_date: string
-          p_request_id: string
-        }
-        Returns: Json
-      }
-      save_purchase_invoice_draft: {
-        Args: {
-          p_employee_id: string
-          p_expected_version: number | null
-          p_id: string
-          p_payload: Json
-          p_request_id: string
-        }
         Returns: Json
       }
       checkout_transaction: {
@@ -1863,6 +2025,26 @@ export type Database = {
           p_items: Json
           p_payment_method: Database["public"]["Enums"]["payment_method"]
           p_prescription?: Json
+        }
+        Returns: Json
+      }
+      checkout_transaction_with_prescription: {
+        Args: {
+          p_cash_received?: number
+          p_employee_id: string
+          p_items: Json
+          p_payment_method: Database["public"]["Enums"]["payment_method"]
+          p_prescription?: Json
+        }
+        Returns: Json
+      }
+      confirm_initial_product_unit: {
+        Args: {
+          p_employee_id: string
+          p_expected_stock: number
+          p_product_id: string
+          p_selling_price: number
+          p_unit_name: string
         }
         Returns: Json
       }
@@ -1935,14 +2117,215 @@ export type Database = {
         Args: { p_employee_id: string; p_items: Json; p_reason: string }
         Returns: Json
       }
+      dashboard_analytics_report: {
+        Args: { p_from: string; p_to: string; p_year: number }
+        Returns: Json
+      }
+      dashboard_low_stock: { Args: { p_business_date: string }; Returns: Json }
+      employee_account_access: {
+        Args: { p_auth_user: string }
+        Returns: boolean
+      }
+      employee_admin_read: {
+        Args: {
+          p_actor: string
+          p_employee?: string
+          p_limit?: number
+          p_offset?: number
+        }
+        Returns: Json
+      }
+      employee_admin_write: {
+        Args: {
+          p_actor: string
+          p_employee: string
+          p_operation: string
+          p_reason: string
+          p_values: Json
+        }
+        Returns: string
+      }
+      employee_invitation_accept: {
+        Args: { p_auth_user: string; p_complete?: boolean }
+        Returns: undefined
+      }
+      employee_invitation_command: {
+        Args: {
+          p_actor: string
+          p_attempt?: string
+          p_email?: string
+          p_employee: string
+          p_failure?: string
+          p_operation: string
+        }
+        Returns: Json
+      }
+      employee_permission_read: {
+        Args: { p_actor: string; p_employee: string }
+        Returns: Json
+      }
+      finalize_purchase_receiving: {
+        Args: {
+          p_acknowledge_difference: boolean
+          p_employee_id: string
+          p_expected_version: number
+          p_invoice_id: string
+          p_request_id: string
+          p_token: string
+        }
+        Returns: Json
+      }
+      find_login_email_by_username: {
+        Args: { p_username: string }
+        Returns: string
+      }
+      get_employee_permissions: {
+        Args: {
+          p_employee_id: string
+          p_role: Database["public"]["Enums"]["employee_position"]
+        }
+        Returns: Json
+      }
+      import_initial_products: {
+        Args: { p_employee_id: string; p_request_id: string; p_rows: Json }
+        Returns: Json
+      }
+      login_attempt_get: { Args: { p_identifier: string }; Returns: Json }
+      login_attempt_set: {
+        Args: {
+          p_failures: number
+          p_identifier: string
+          p_locked_until: string
+        }
+        Returns: undefined
+      }
+      other_usable_owner: { Args: { p_excluded: string }; Returns: boolean }
+      payment_refund_report: {
+        Args: { p_from: string; p_to: string }
+        Returns: Json
+      }
+      preview_purchase_receiving: {
+        Args: { p_employee_id: string; p_invoice_id: string }
+        Returns: Json
+      }
+      product_performance_report: {
+        Args: { p_from: string; p_sort?: string; p_to: string }
+        Returns: Json
+      }
+      product_stock_movement_read_model:
+        | {
+            Args: { p_limit?: number; p_page?: number; p_product_id: string }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_end_date: string
+              p_limit: number
+              p_movement_type: string
+              p_page: number
+              p_product_id: string
+              p_start_date: string
+            }
+            Returns: Json
+          }
+      profit_loss_report: {
+        Args: { p_from: string; p_to: string }
+        Returns: Json
+      }
+      purchase_invoice_due_reminders: {
+        Args: { p_today: string }
+        Returns: Json
+      }
+      purchase_receiving_plan: { Args: { p_invoice_id: string }; Returns: Json }
+      receive_initial_product_stock: {
+        Args: {
+          p_cost_price: number
+          p_employee_id: string
+          p_product_id: string
+          p_quantity: number
+          p_reference?: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
       receive_product_stock: {
         Args: { p_batches: Json; p_employee_id: string; p_product_id: string }
         Returns: Json
+      }
+      receive_product_stock_manual: {
+        Args: {
+          p_batches: Json
+          p_employee_id: string
+          p_product_id: string
+          p_reason?: string
+          p_reference?: string
+          p_request_id: string
+          p_supplier_id?: string
+        }
+        Returns: Json
+      }
+      record_purchase_invoice_payment: {
+        Args: {
+          p_amount: number
+          p_employee_id: string
+          p_invoice_id: string
+          p_payment_date: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      require_employee_admin: { Args: { p_actor: string }; Returns: string }
+      sales_gross_profit_report: {
+        Args: { p_from: string; p_to: string }
+        Returns: Json
+      }
+      save_purchase_invoice_draft: {
+        Args: {
+          p_employee_id: string
+          p_expected_version: number
+          p_id: string
+          p_payload: Json
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      save_purchase_invoice_draft_v2: {
+        Args: {
+          p_employee_id: string
+          p_expected_version: number
+          p_id: string
+          p_payload: Json
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      set_employee_permission_override: {
+        Args: {
+          p_actor_auth_user_id: string
+          p_effect: string
+          p_employee_id: string
+          p_permission_code: string
+          p_reason: string
+        }
+        Returns: undefined
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       start_stock_opname: {
         Args: { p_employee_id: string; p_storage_location_id?: string }
+        Returns: Json
+      }
+      stock_list_read_model: {
+        Args: {
+          p_active_status?: string
+          p_business_date: string
+          p_limit?: number
+          p_page?: number
+          p_prescription_status?: string
+          p_query?: string
+          p_sort?: string
+          p_stock_status?: string
+        }
         Returns: Json
       }
       void_transaction: {
@@ -1953,11 +2336,23 @@ export type Database = {
         }
         Returns: Json
       }
+      write_purchase_invoice_item: {
+        Args: {
+          p_action: string
+          p_employee_id: string
+          p_expected_version: number
+          p_invoice_id: string
+          p_item_id: string
+          p_payload: Json
+          p_request_id: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       drug_classification: "otc" | "otc_limited" | "prescription_required"
       employee_position: "owner_admin" | "kasir" | "staf"
-      payment_method: "cash" | "qris"
+      payment_method: "cash" | "qris" | "bank_transfer"
       return_source: "customer" | "supplier"
       transaction_status: "pending_payment" | "completed" | "voided"
     }
@@ -2089,7 +2484,7 @@ export const Constants = {
     Enums: {
       drug_classification: ["otc", "otc_limited", "prescription_required"],
       employee_position: ["owner_admin", "kasir", "staf"],
-      payment_method: ["cash", "qris"],
+      payment_method: ["cash", "qris", "bank_transfer"],
       return_source: ["customer", "supplier"],
       transaction_status: ["pending_payment", "completed", "voided"],
     },

@@ -1,6 +1,7 @@
 # Architecture — Pharmacy POS (Pilot 1)
 
 > Source of truth for system architecture and deployment decisions. See also `database-design.md`, `api-contract.md`, `business-logic.md`, and `folder-structure.md`.
+> Implementation status and known gaps are maintained in `current-status.md`.
 
 ## 1. Architecture Style
 
@@ -18,10 +19,11 @@ Next.js modular monolith (Vercel)
   |- Domain modules
   |   |- catalog
   |   |- inventory
+  |   |- purchasing
   |   |- sales
-  |   |- payments
   |   |- returns
   |   |- reporting
+  |   |- expenses
   |   `- employees
   |
   v
@@ -50,7 +52,7 @@ Responsible for:
 
 - UI and navigation.
 - Authentication/session boundary.
-- Authorization checks (`owner_admin` / `kasir`).
+- Position and capability authorization checks (`owner_admin` / `kasir` / `staf`).
 - Request validation through the shared typed boundary validators.
 - Normal CRUD orchestration.
 - Calling database RPCs for critical transactional workflows.
@@ -68,7 +70,7 @@ presentation / Route Handler
   -> PostgreSQL RPC
 ```
 
-Critical mutations are exposed by the `sales`, `returns`, and `inventory`
+Critical mutations are exposed by the `sales`, `returns`, `inventory`, and `purchasing`
 application services. Callers must not bypass these services with browser-side
 table writes or reimplement FEFO, invoice, returnability, restoration, or
 stock-opname algorithms in TypeScript.
@@ -113,6 +115,7 @@ Critical workflows that must execute as **one database transaction**:
 3. Void + stock restoration.
 4. Customer/supplier return + stock movement + refund snapshots.
 5. Stock opname start/freeze, apply, and cancel.
+6. Purchase-invoice receiving finalization and supplier-payment recording.
 
 Multiple independent `supabase.from(...).insert/update/select()` calls from a Route Handler must **not** be treated as one transaction.
 
@@ -130,6 +133,9 @@ the stable `auth.users -> user_profiles -> employees` UUID relationship and
 confirms that the employee is active. Role and employee identity are never
 accepted from browser input. Next.js Proxy refreshes cookies; authoritative
 authorization remains in server layouts, actions, and application services.
+Capability definitions, position presets, and employee overrides refine access
+on migrated routes. Legacy position-only guards are a documented stabilization
+gap and must not be treated as evidence that an override applies everywhere.
 
 ### Supabase Storage
 

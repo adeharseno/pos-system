@@ -4,11 +4,11 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { mapDatabaseError } from "@/modules/shared/errors/pos-domain-error";
 import { inventoryBusinessDate, inventoryExpiryStatus, summarizeInventoryBatches, type InventoryExpiryStatus, type InventoryStockStatus } from "../inventory-rules";
 
-export type InventoryBatchDetail = { id: string; batchNumber: string; quantity: number; receivedDate: string; expiredDate: string; expiryStatus: InventoryExpiryStatus; costPrice?: number };
+export type InventoryBatchDetail = { id: string; batchNumber: string | null; quantity: number; receivedDate: string; expiredDate: string | null; expiryStatus: InventoryExpiryStatus; costPrice?: number };
 export type InventoryProductDetail = { id: string; sku: string; name: string; category: string; subcategory: string; baseUnit: string; availableStock: number; minimumStock: number; stockStatus: InventoryStockStatus; nearestExpiry: string | null; batches: InventoryBatchDetail[] };
-type BatchRead = { id: string; batch_number: string; quantity: number; received_date: string; expired_date: string; cost_price?: number };
+type BatchRead = { id: string; batch_number: string | null; quantity: number; received_date: string; expired_date: string | null; cost_price?: number };
 
-function buildDetail(product: { id: string; sku: string; name: string; base_unit: string; minimum_stock: number }, category: string, subcategory: string, rows: BatchRead[], includeSensitivePricing: boolean): InventoryProductDetail {
+function buildDetail(product: { id: string; sku: string; name: string; base_unit: string | null; minimum_stock: number }, category: string, subcategory: string, rows: BatchRead[], includeSensitivePricing: boolean): InventoryProductDetail {
   const businessDate = inventoryBusinessDate();
   const summary = summarizeInventoryBatches(rows.map((batch) => ({ quantity: batch.quantity, expiredDate: batch.expired_date })), product.minimum_stock, businessDate);
   const batches = rows.map((batch) => {
@@ -16,7 +16,7 @@ function buildDetail(product: { id: string; sku: string; name: string; base_unit
     if (includeSensitivePricing && batch.cost_price !== undefined) detail.costPrice = batch.cost_price;
     return detail;
   });
-  return { id: product.id, sku: product.sku, name: product.name, category, subcategory, baseUnit: product.base_unit, availableStock: summary.availableStock, minimumStock: product.minimum_stock, stockStatus: summary.stockStatus, nearestExpiry: summary.nearestExpiry, batches };
+  return { id: product.id, sku: product.sku, name: product.name, category, subcategory, baseUnit: product.base_unit ?? "Belum Ditentukan", availableStock: summary.availableStock, minimumStock: product.minimum_stock, stockStatus: summary.stockStatus, nearestExpiry: summary.nearestExpiry, batches };
 }
 
 export async function getInventoryProductDetail(productId: string, includeSensitivePricing: boolean): Promise<InventoryProductDetail | null> {
@@ -36,11 +36,11 @@ export async function getInventoryProductDetail(productId: string, includeSensit
   const category = categoryResult.data?.name ?? "—";
   const subcategory = subcategoryResult.data?.name ?? "—";
   if (includeSensitivePricing) {
-    const batchesResult = await admin.from("product_batches").select("id,batch_number,quantity,cost_price,received_date,expired_date").eq("product_id", product.id).order("expired_date").order("created_at").order("id");
+    const batchesResult = await admin.from("product_batches").select("id,batch_number,quantity,cost_price,received_date,expired_date").eq("product_id", product.id).order("expired_date", { nullsFirst: false }).order("created_at").order("id");
     if (batchesResult.error) throw mapDatabaseError(batchesResult.error);
     return buildDetail(product, category, subcategory, batchesResult.data ?? [], true);
   }
-  const batchesResult = await admin.from("product_batches").select("id,batch_number,quantity,received_date,expired_date").eq("product_id", product.id).order("expired_date").order("created_at").order("id");
+  const batchesResult = await admin.from("product_batches").select("id,batch_number,quantity,received_date,expired_date").eq("product_id", product.id).order("expired_date", { nullsFirst: false }).order("created_at").order("id");
   if (batchesResult.error) throw mapDatabaseError(batchesResult.error);
   return buildDetail(product, category, subcategory, batchesResult.data ?? [], false);
 }

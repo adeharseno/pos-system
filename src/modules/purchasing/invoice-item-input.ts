@@ -43,8 +43,11 @@ export function parseInvoiceItem(value: unknown, businessDate = new Intl.DateTim
   const batch = text("batch_number");
   if (!batch || batch.length > 100) throw new PosInputError("Nomor batch wajib diisi, maksimal 100 karakter.");
   const expiry = text("expired_date");
-  const date = new Date(`${expiry}T00:00:00Z`);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(expiry) || !Number.isFinite(date.valueOf()) || date.toISOString().slice(0, 10) !== expiry || expiry < businessDate || body.expiry_confirmed !== true) throw new PosInputError("Isi tanggal kedaluwarsa yang valid dan konfirmasi ulang sesuai kemasan.");
+  if (!expiry && body.expiry_confirmed === true) throw new PosInputError("Hapus konfirmasi jika tanggal kedaluwarsa belum dicatat.");
+  if (expiry) {
+    const date = new Date(`${expiry}T00:00:00Z`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(expiry) || !Number.isFinite(date.valueOf()) || date.toISOString().slice(0, 10) !== expiry || expiry < businessDate || body.expiry_confirmed !== true) throw new PosInputError("Isi tanggal kedaluwarsa yang valid dan konfirmasi ulang sesuai kemasan.");
+  }
   const mode = body.pricing_mode;
   if (mode !== "margin" && mode !== "selling_price") throw new PosInputError("Perhitungan harga tidak valid.");
   let selling: number;
@@ -63,7 +66,7 @@ export function parseInvoiceItem(value: unknown, businessDate = new Intl.DateTim
   const productUnitId = body.product_unit_id === null ? null : requireUuid(text("product_unit_id"), "product_unit_id");
   return { product_id: requireUuid(text("product_id"), "product_id"), product_unit_id: productUnitId,
     cost_price: cost.toFixed(2), tax_rate: tax.toFixed(2), margin_percent: margin === null ? null : String(margin), selling_price: selling.toFixed(2), pricing_mode: mode,
-    quantity: String(quantity), batch_number: batch, expired_date: expiry };
+    quantity: String(quantity), batch_number: batch, expired_date: expiry || null };
 }
 
 export function itemSubtotalCents(cost: string, quantity: string, tax: string): bigint {

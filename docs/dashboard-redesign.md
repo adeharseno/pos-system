@@ -1,5 +1,8 @@
 # Dashboard Pharmacy POS
 
+> **Historical design record.** Current delivery status, verification and known
+> gaps are maintained in `current-status.md`.
+
 The UI described below is the initial analytics implementation. The current,
 simplified interface is documented in [UI sederhana 60+](ui-sederhana-60-plus.md).
 The data sources, calculations and authorization described here remain unchanged.

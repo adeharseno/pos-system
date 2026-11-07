@@ -17,8 +17,10 @@ function batchFromBody(value: unknown): ReceiveStockBatch {
   if (!Number.isSafeInteger(quantity) || quantity <= 0) throw new PosDomainError("INVALID_QUANTITY");
   const costPrice = typeof body.cost_price === "number" ? body.cost_price : Number.NaN;
   if (!Number.isFinite(costPrice) || costPrice < 0) throw new PosDomainError("INVALID_COST");
-  const expiredDate = text(body, "expired_date");
-  if (!validDate(expiredDate)) throw new PosDomainError("INVALID_EXPIRY");
+  if (body.expired_date !== undefined && body.expired_date !== null && typeof body.expired_date !== "string") throw new PosDomainError("INVALID_EXPIRY");
+  const expiredDateText = text(body, "expired_date");
+  const expiredDate = expiredDateText === "" ? null : expiredDateText;
+  if (expiredDate !== null && !validDate(expiredDate)) throw new PosDomainError("INVALID_EXPIRY");
   const receivedDate = body.received_date === undefined || body.received_date === null ? undefined : text(body, "received_date");
   if (receivedDate !== undefined && !validDate(receivedDate)) throw new PosDomainError("INVALID_EXPIRY");
   return { batchNumber, expiredDate, quantity, costPrice, ...(receivedDate ? { receivedDate } : {}) };
@@ -29,7 +31,8 @@ export async function POST(request: Request) {
     const employee = await requireRole(["owner_admin"]);
     const body = await request.json() as Record<string, unknown>;
     if (!Array.isArray(body.batches) || body.batches.length === 0) throw new PosInputError("Batches are required");
+    const requestId = requireUuid(text(body, "request_id"), "request_id");
     const productId = requireUuid(text(body, "product_id"), "product_id");
-    return receiveStock({ employeeId: employee.employeeId, productId, batches: body.batches.map(batchFromBody) });
+    return receiveStock({ requestId, employeeId: employee.employeeId, productId, batches: body.batches.map(batchFromBody) });
   }, 201);
 }

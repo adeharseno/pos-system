@@ -93,7 +93,7 @@ against the original sale, so a refund never references a physical drawer.
 Transaction status values:
 
 - `pending_payment` — QRIS created, stock deducted, manual payment confirmation not yet received.
-- `completed` — cash sale or confirmed QRIS sale.
+- `completed` — cash sale, confirmed QRIS sale, or historically/administratively completed compatible method.
 - `voided` — transaction cancelled and stock restored.
 
 Only `completed` transactions contribute to sales revenue.
@@ -106,6 +106,8 @@ Database constraints enforce valid state shapes, including:
 - QRIS `pending_payment` has no confirmation actor/time
 - QRIS `completed` has confirmation actor/time
 - QRIS `voided` has no confirmation actor/time; only unconfirmed pending QRIS may be voided
+- `bank_transfer` exists as a schema/read-model value, but cashier checkout keeps
+  it disabled until a complete confirmation/completion contract is implemented
 - confirmation actor/time are always both null or both non-null
 - `voided` requires void actor/time/nonblank reason; non-voided rows cannot carry void metadata
 
@@ -499,16 +501,16 @@ Storage has separate bucket policies for signed/direct browser uploads.
 
 ## 12. Auth Model
 
-```jsonc
-{
-  "role": "owner_admin" | "kasir",
-  "employee_id": "uuid-employee"
-}
+```text
+auth.users.id -> user_profiles.id -> employees.id
+employees.position = owner_admin | kasir | staf
 ```
 
-- Middleware protects page groups for UX/navigation.
-- API Route Handlers re-check the session and role.
+- Proxy protects page groups for UX/session refresh.
+- API Route Handlers re-check the active employee and required position or capability.
 - Database mutation functions receive/resolve the employee identity only after server-side authentication.
+- `permission_definitions`, `role_permissions`, and employee overrides support
+  migrated capability guards; some legacy routes remain position-only.
 
 ---
 
@@ -517,7 +519,6 @@ Storage has separate bucket policies for signed/direct browser uploads.
 No schema for:
 
 - payment gateway references/webhooks
-- granular permission matrix
 - formal approval workflow
 - purchase orders (goods receiving is modeled through purchase invoices)
 - multi-branch / `outlet_id`

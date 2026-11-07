@@ -1,5 +1,9 @@
 # Fase 4 — Finalisasi Penerimaan
 
+> **Delivery record.** Finalization remains implemented and is followed by a
+> purchase-payment ledger/history. Current status and open QA work are in
+> `current-status.md`.
+
 ## Audit dan keputusan kontrak
 
 - Penerimaan existing `receive_product_stock` memvalidasi owner aktif, produk aktif, jumlah/batch/tanggal/harga, dan memakai advisory lock `73194001` yang sama dengan stock opname. RPC tersebut hanya menerima batch baru dan menolak batch existing.

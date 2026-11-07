@@ -9,10 +9,9 @@ export function validateCheckoutInput(input: CheckoutInput): CheckoutInput {
     requirePositiveInteger(item.quantity, `items[${index}].quantity`);
   });
   if (input.cashReceived !== undefined) requireNonNegativeMoney(input.cashReceived, "cashReceived");
-  if (input.prescription) {
-    requireNonBlank(input.prescription.doctorName, "prescription.doctorName");
-    requireNonBlank(input.prescription.patientName, "prescription.patientName");
-  }
+  if (!input.prescription || !["umum","bpjs"].includes(input.prescription.category)) throw new TypeError("prescription category is required");
+  if (input.prescription.category === "bpjs") requireNonBlank(input.prescription.bpjsNumber ?? "", "prescription.bpjsNumber");
+  if (input.prescription.prescriptionDate && !/^\d{4}-\d{2}-\d{2}$/.test(input.prescription.prescriptionDate)) throw new TypeError("invalid prescription date");
   return input;
 }
 

@@ -1,12 +1,17 @@
 # M2.16C: Employee management backend
 
+> **Historical delivery note.** Employee UI, invitation/activation, username
+> login, account lifecycle, and permission administration now exist. Use
+> `authentication.md`, `permissions.md`, `employee-ui.md`, and
+> `current-status.md` for current behavior.
+
 M2.16D now provides the Karyawan and account activation UI. See
 [employee-ui.md](employee-ui.md) for the current callback behavior: `/auth/invite`
 redirects to a clean activation page; the JSON acceptance API remains available.
 The backend-only UI notes below describe the original M2.16C delivery.
 
-No Employee UI or product approval workflow is included. Existing POS role guards
-remain unchanged. The Auth repository additionally denies pending invitations,
+At the time of M2.16C, no Employee UI or product approval workflow was included;
+the Employee UI was added in M2.16D. Some POS role guards remain unchanged. The Auth repository additionally denies pending invitations,
 banned Auth users and inactive employees on every protected request.
 
 ## API contract

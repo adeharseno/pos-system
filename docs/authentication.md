@@ -15,16 +15,21 @@ Operational POS access is granted only to the role required by the server-side
 guard; `staf` has no cashier/transactional authority.
 
 `src/proxy.ts` refreshes SSR auth cookies. Business authorization is performed
-again in server layouts/actions with `requireEmployee()` or `requireRole()`.
-Future business actions must overwrite any caller identity with the returned
+again in server layouts/actions through request-employee, position, or shared
+capability guards. New routes should use capabilities when a definition exists;
+legacy position-only routes are tracked in `current-status.md`. Business actions
+must overwrite any caller identity with the returned
 `EmployeeSession.employeeId`; browser-supplied employee IDs are untrusted.
 
 ## Controlled provisioning
 
-1. An administrator creates the user in Supabase Dashboard → Authentication → Users. Disable public/self signup for the operational workflow.
-2. Create the corresponding `employees` row with the correct `position` and `is_active=true`.
-3. Insert one `user_profiles` row where `id` is the Auth user UUID and `employee_id` is the employee UUID; choose the required `display_name`.
-4. Verify the mapping IDs carefully before sharing credentials. Do not use email matching or expose the service-role key.
-5. To revoke business access without deleting history, set `employees.is_active=false`.
+Owner Admin manages employees and account invitations through `/employees`. The
+server-side workflow reserves identity, provisions/links the Auth account, sends
+activation, and records retryable delivery state without returning tokens or
+credentials. Public/self signup remains outside the operational workflow.
 
-No registration, password-reset, or employee-management UI is part of M2.1.
+To revoke business access without deleting history, deactivate the employee or
+account through the supported admin workflow. Login accepts normalized email or
+username and uses throttled/recorded failed-attempt handling. Activation and
+password setup are implemented; a general public password-reset workflow is not
+documented as a completed operational feature.

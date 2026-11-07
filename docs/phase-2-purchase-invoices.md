@@ -1,5 +1,9 @@
 # Fase 2 — Invoice Pembelian Draft
 
+> **Historical delivery note.** Invoice items, finalization, payment APIs,
+> history filters and pagination now exist. Statements below describe Phase 2 at
+> delivery time; use `current-status.md` for current scope.
+
 ## Audit dan migration
 
 Schema sebelumnya hanya memiliki nomor invoice untuk transaksi penjualan, bukan invoice pembelian atau ledger pembayaran supplier. Supplier CRUD, role guard, komponen TailAdmin, dan pola API/server Supabase existing digunakan kembali.

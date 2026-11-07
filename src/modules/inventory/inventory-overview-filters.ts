@@ -14,8 +14,9 @@ export function parseInventoryOverviewFilters(
 ): InventoryOverviewFilters {
   const raw = (input.q ?? "").trim().slice(0, 80);
   const q = /^[-.\p{L}\p{N}_ ]*$/u.test(raw) ? raw : "";
-  const status =
-    input.status === "out" || input.status === "low" || input.status === "safe"
+  const status = input.status === "safe"
+    ? "normal"
+    : input.status === "out" || input.status === "low" || input.status === "normal"
       ? input.status
       : "all";
   const page =

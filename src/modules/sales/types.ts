@@ -2,10 +2,12 @@ export type PaymentMethod = "cash" | "qris";
 
 export interface CheckoutItemInput { productUnitId: string; quantity: number }
 export interface PrescriptionInput {
+  category: "umum" | "bpjs";
   prescriptionNumber?: string;
-  doctorName: string;
-  patientName: string;
-  photoUrl?: string;
+  patientName?: string;
+  bpjsNumber?: string;
+  prescriptionOrigin?: string;
+  prescriptionDate?: string;
 }
 export interface CheckoutInput {
   employeeId: string;

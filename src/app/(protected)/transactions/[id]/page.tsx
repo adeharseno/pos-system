@@ -2,7 +2,7 @@
 import { notFound } from "next/navigation";
 import { requirePosOperator } from "@/modules/auth/application/auth-service";
 import { getCustomerReturns, getTransaction } from "@/modules/sales/data/transaction-queries";
-import { buildReceiptViewModel, formatReceiptDate, type ReceiptTransactionRow } from "@/modules/sales/receipt";
+import { buildReceiptViewModel, formatPrescriptionDate, formatReceiptDate, type ReceiptTransactionRow } from "@/modules/sales/receipt";
 import { TransactionActions } from "@/modules/sales/components/transaction-actions";
 import { paymentLabel, TransactionStatusBadge, transactionLinkClass } from "@/modules/sales/components/transaction-presentation";
 import { transactionActionVisibility } from "@/modules/sales/transaction-detail-ui";
@@ -42,6 +42,7 @@ export default async function TransactionDetailPage({ params }: { params: Promis
       </dl>
       {state === "partial" ? <p className="mt-6 border-t border-gray-200 pt-5 text-base font-medium text-gray-700">Sebagian barang sudah diretur.</p> : state === "full" ? <p className="mt-6 border-t border-gray-200 pt-5 text-base font-medium text-gray-700">Semua barang sudah diretur.</p> : null}
     </CardContent></Card>
+    <Card><CardHeader><h2 className="text-lg font-semibold text-gray-900">Informasi Resep</h2></CardHeader><CardContent><dl className="grid gap-6 text-base sm:grid-cols-2 xl:grid-cols-3"><div><dt className="text-gray-600">Kategori Resep</dt><dd className="mt-2 font-semibold">{transaction.prescription.category.toUpperCase()}</dd></div><div><dt className="text-gray-600">Nama Pasien</dt><dd className="mt-2 break-words">{transaction.prescription.patientName||"-"}</dd></div>{transaction.prescription.category==="bpjs"?<div><dt className="text-gray-600">No BPJS</dt><dd className="mt-2 break-all">{transaction.prescription.bpjsNumber||"-"}</dd></div>:null}<div><dt className="text-gray-600">No Resep</dt><dd className="mt-2 break-all">{transaction.prescription.prescriptionNumber||"-"}</dd></div><div><dt className="text-gray-600">Asal Resep</dt><dd className="mt-2 break-words">{transaction.prescription.prescriptionOrigin||"-"}</dd></div><div><dt className="text-gray-600">Tanggal Resep</dt><dd className="mt-2">{transaction.prescription.prescriptionDate?formatPrescriptionDate(transaction.prescription.prescriptionDate):"-"}</dd></div></dl></CardContent></Card>
     <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
       <Card className="min-w-0"><CardHeader><h2 className="text-lg font-semibold text-gray-900">Barang yang Dibeli</h2></CardHeader>
         <ul className="divide-y divide-gray-200">{transaction.items.map((item, index) => {

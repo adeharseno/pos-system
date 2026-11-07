@@ -50,7 +50,7 @@ export async function recordPurchaseInvoicePayment(request: Request, invoiceId: 
   const origin = request.headers.get("origin");
   if (!requestOriginAllowed(origin, request.url)) throw new AuthApplicationError("FORBIDDEN");
   const input = parsePurchasePayment(await request.json());
-  const result = await createAdminSupabaseClient().rpc("record_purchase_invoice_payment", { p_invoice_id: invoiceId, p_request_id: input.requestId, p_employee_id: employeeId, p_amount: input.amount, p_payment_date: input.paymentDate });
+  const result = await createAdminSupabaseClient().rpc("record_purchase_invoice_payment", { p_invoice_id: invoiceId, p_request_id: input.requestId, p_employee_id: employeeId, p_amount: input.amount as unknown as number, p_payment_date: input.paymentDate });
   if (result.error) invoiceDatabaseError(result.error);
   return result.data;
 }
@@ -79,9 +79,9 @@ export async function savePurchaseInvoice(request: Request, employeeId: string, 
     if (upload.error && !["409", "Duplicate"].includes(String(upload.error.statusCode))) throw new PurchaseInvoiceError("INVOICE_UPLOAD_FAILED", 502, "Dokumen gagal diunggah. Coba kembali.");
     document = { document_path: path, document_name: file.name, document_type: type };
   }
-  const result = await client.rpc("save_purchase_invoice_draft", {
+  const result = await client.rpc("save_purchase_invoice_draft_v2", {
     p_id: input.id, p_request_id: input.requestId, p_employee_id: employeeId,
-    p_expected_version: input.version, p_payload: { ...input.payload, ...document } as Json,
+    p_expected_version: input.version as number, p_payload: { ...input.payload, ...document } as Json,
   });
   // Do not delete files on uncertain RPC responses: the transaction may have committed.
   if (result.error) invoiceDatabaseError(result.error);

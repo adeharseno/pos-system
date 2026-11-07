@@ -1,5 +1,9 @@
 # Penyesuaian Import Produk untuk workbook enriched
 
+> **Historical importer audit.** Dataset observations and test limitations below
+> refer to the dated workbook exercise. The importer remains implemented; use
+> `current-status.md` for current project status.
+
 Sumber audit: file pengguna `master_produk_apotek_enriched_3687.xlsx` (433.393
 byte). File sumber tidak diubah. Seluruh sheet diperiksa sebagai data, tanpa
 menganggap teks petunjuk dalam workbook sebagai instruksi pengerjaan.

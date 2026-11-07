@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { moneyCents, parseInvoiceForm, paymentStatus, validateInvoiceFile, MAX_INVOICE_FILE_BYTES } from "./invoice-input";
+import { invoiceDueDate, moneyCents, parseInvoiceForm, paymentStatus, validateInvoiceFile, MAX_INVOICE_FILE_BYTES } from "./invoice-input";
 
 function form(patch: Record<string, string | undefined> = {}) {
   const data = new FormData();
-  for (const [key, value] of Object.entries({ id: "b1000000-0000-4000-8000-000000000001", request_id: "b1000000-0000-4000-8000-000000000002", supplier_id: "b1000000-0000-4000-8000-000000000003", invoice_number: " INV-01 ", invoice_date: "2026-10-29", total_amount: "100.50", ...patch })) if (value !== undefined) data.set(key, value);
+  for (const [key, value] of Object.entries({ id: "b1000000-0000-4000-8000-000000000001", request_id: "b1000000-0000-4000-8000-000000000002", supplier_id: "b1000000-0000-4000-8000-000000000003", invoice_number: " INV-01 ", invoice_date: "2026-10-29", total_amount: "100.50", payment_method: "terms", due_days: "30", ...patch })) if (value !== undefined) data.set(key, value);
   return data;
 }
 test("money uses exact cents, payment status covers zero/partial/paid", () => {
@@ -18,10 +18,12 @@ test("money uses exact cents, payment status covers zero/partial/paid", () => {
 test("draft validates required fields, real calendar dates, positive totals and payment bounds", () => {
   const parsed = parseInvoiceForm(form(), false);
   assert.equal(parsed.payload.invoice_number, "INV-01");
-  assert.equal(parsed.payload.paid_amount, "0.00");
+  assert.equal(parsed.payload.payment_method, "terms");
+  assert.equal(parsed.payload.due_days, 30);
+  assert.equal(invoiceDueDate("2026-10-29",30),"2026-11-28");
   assert.equal(parsed.version, null);
-  for (const patch of [{ invoice_number: " " }, { invoice_date: "2026-02-30" }, { invoice_date: "0000-01-01" }, { total_amount: "0" }, { paid_amount: "100.51" }, { paid_amount: "-1" }, { supplier_id: "bad" }, { request_id: "bad" }]) assert.throws(() => parseInvoiceForm(form(patch), false));
-  assert.equal(parseInvoiceForm(form({ paid_amount: "100.5", version: "2" }), true).version, 2);
+  for (const patch of [{ invoice_number: " " }, { invoice_date: "2026-02-30" }, { invoice_date: "0000-01-01" }, { total_amount: "0" }, { payment_method: "" }, { due_days: "0" }, { due_days: "1.5" }, { supplier_id: "bad" }, { request_id: "bad" }]) assert.throws(() => parseInvoiceForm(form(patch), false));
+  assert.equal(parseInvoiceForm(form({ payment_method:"cash",due_days:undefined,version: "2" }), true).version, 2);
   assert.throws(() => parseInvoiceForm(form({ version: "0" }), true));
 });
 test("document validates size, declared MIME, extension and magic bytes", () => {

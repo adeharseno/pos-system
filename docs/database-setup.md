@@ -1,4 +1,4 @@
-# Database Setup — M1.2
+# Database Setup — Current Local and Remote Workflow
 
 The local Supabase stack is controlled by `supabase/config.toml`. The database
 is reproducible from the checked-in migrations; no dashboard SQL is required.
@@ -13,14 +13,11 @@ npm run db:reset
 npm run db:lint
 ```
 
-`db:reset` recreates the local database and applies, in order:
-
-1. `supabase/migrations/0001_init.sql`
-2. `supabase/migrations/0002_rls_policies.sql`
-3. `supabase/migrations/0003_core_functions.sql`
-4. `supabase/migrations/0005_transaction_item_receipt_snapshots.sql`
-
-Seeding is disabled for M1.2 because seed data belongs to a later milestone.
+`db:reset` recreates the local database and applies every checked-in migration
+in lexical order, currently `0001_init.sql` through
+`0033_supplier_legacy_and_batch_traceability.sql`. Never maintain a manual
+partial list here; `supabase/migrations` is authoritative. Local seed behavior
+is controlled by `supabase/config.toml` and `supabase/seed.sql`.
 
 ## Remote workflow
 
@@ -37,7 +34,7 @@ Never commit the access token, project database password, generated temporary
 CLI state, or application secrets. Review the pending migrations before every
 remote `db push`.
 
-## M1.2 migration fix
+## Historical M1.2 privilege fix
 
 An actual PostgreSQL catalog verification showed that, with the current
 Supabase default that does not auto-expose new public tables, `service_role`

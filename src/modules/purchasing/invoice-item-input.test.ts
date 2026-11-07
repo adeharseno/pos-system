@@ -9,6 +9,12 @@ test("reference prices use selected unit, expiry is never copied or confirmed au
   assert.equal(values.cost_price, "10000"); assert.equal(values.selling_price, "13320"); assert.equal(values.margin_percent, "20");
   assert.equal(values.expired_date, ""); assert.equal(values.expiry_confirmed, false);
 });
+
+test("expiry may be omitted only when it is not confirmed", () => {
+  const withoutExpiry = parseInvoiceItem({ ...fields(), expired_date: "", expiry_confirmed: false }, "2026-10-29");
+  assert.equal(withoutExpiry.expired_date, null);
+  assert.throws(() => parseInvoiceItem({ ...fields(), expired_date: "", expiry_confirmed: true }, "2026-10-29"));
+});
 test("unpriced master leaves prices empty and uses only an invoice base-unit snapshot", () => {
   const values = fieldsForProduct({ ...product, costPrice: null, units: [{ id: null, name: "Tablet", conversion: 1, sellingPrice: null }] }, null);
   assert.equal(values.cost_price, ""); assert.equal(values.selling_price, ""); assert.equal(values.product_unit_id, null);
