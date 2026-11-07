@@ -1,7 +1,7 @@
 ﻿import Link from "next/link";
 import { Suspense } from "react";
 import { getDashboardAnalytics, getDashboardContext, getDashboardLowStock } from "@/modules/dashboard/dashboard-service";
-import { dashboardFilters, dateLabel, presets, type DashboardFilters, type DashboardQuery } from "@/modules/dashboard/dashboard-model";
+import { cashierDashboardGreeting, dashboardFilters, dateLabel, presets, type DashboardFilters, type DashboardQuery } from "@/modules/dashboard/dashboard-model";
 import { MonthlySalesChart } from "@/modules/dashboard/dashboard-charts";
 import { DashboardSkeleton } from "@/modules/dashboard/dashboard-skeleton";
 import { jakartaToday } from "@/modules/reports/sales-report";
@@ -98,7 +98,9 @@ async function LowStock() {
 }
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<DashboardQuery> }) {
-  await requireRole(["owner_admin", "staf"]);
+  const employee = await requireRole(["owner_admin", "kasir", "staf"]);
+  const cashierGreeting = cashierDashboardGreeting(employee.role, employee.name);
+  if (cashierGreeting) return <Container size="xl"><h1 className="text-2xl font-semibold text-gray-900 sm:text-3xl">{cashierGreeting}</h1></Container>;
   const context = await getDashboardContext();
   const dueReminders=context.employee.role==="owner_admin"?await getPurchaseDueReminders().catch(()=>[]):[];
   const query = await searchParams;

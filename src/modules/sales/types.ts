@@ -1,4 +1,6 @@
 export type PaymentMethod = "cash" | "qris" | "bank_transfer" | "bpjs";
+export const DEFAULT_PRESCRIPTION_CATEGORY = "bebas" as const;
+export const PRESCRIPTION_CATEGORY_DISPLAY_ORDER = ["bebas", "umum", "bpjs"] as const;
 
 export interface CheckoutItemInput { productUnitId: string; quantity: number }
 export interface PrescriptionInput {

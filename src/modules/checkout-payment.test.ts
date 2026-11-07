@@ -3,9 +3,13 @@ import test from "node:test";
 import type { CartLine } from "./sales/cart";
 import { buildBankTransferCheckoutPayload,buildBpjsCheckoutPayload,buildCashCheckoutPayload,buildQrisCheckoutPayload,canOpenCheckout,canSubmitCheckout,cartAfterCheckout,checkoutErrorMessage,previewChange,quickCashAmounts,validateCashReceived } from "./sales/checkout-ui";
 import { checkoutInputFromBody } from "./sales/checkout-request";
+import { validateCheckoutInput } from "./sales/schemas";
+import { DEFAULT_PRESCRIPTION_CATEGORY, PRESCRIPTION_CATEGORY_DISPLAY_ORDER } from "./sales/types";
 import { formatRupiah,parseRupiahInput } from "./ui/currency";
 
 const line:CartLine={productId:"p",productName:"Obat",productUnitId:"11111111-1111-4111-8111-111111111111",unitLabel:"Tablet",quantity:2,conversionToBase:1,displayedUnitPrice:5000,requiresPrescription:false};
+test("new checkout defaults to BEBAS in the requested display order",()=>{assert.equal(DEFAULT_PRESCRIPTION_CATEGORY,"bebas");assert.deepEqual(PRESCRIPTION_CATEGORY_DISPLAY_ORDER,["bebas","umum","bpjs"]);});
+test("server validation applies BEBAS when category metadata is absent",()=>{const input=validateCheckoutInput({employeeId:"22222222-2222-4222-8222-222222222222",paymentMethod:"cash",cashReceived:10000,items:[{productUnitId:line.productUnitId,quantity:1}]});assert.equal(input.prescription?.category,"bebas");});
 test("empty cart cannot open checkout",()=>assert.equal(canOpenCheckout([]),false));
 test("valid cart opens checkout",()=>assert.equal(canOpenCheckout([line]),true));
 test("cash input handles rupiah and invalid values",()=>{assert.equal(parseRupiahInput("Rp 100.000"),100000);assert.equal(parseRupiahInput("abc"),null);assert.ok(validateCashReceived(null,10000));});

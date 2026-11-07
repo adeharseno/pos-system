@@ -1,18 +1,21 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path=public,extensions;
-select plan(19);
+select plan(23);
 
 insert into categories(id,name) values('e5000000-0000-4000-8000-000000000001','Cashier prescription metadata');
 insert into products(id,sku,name,base_unit,category_id,minimum_stock,drug_classification) values
 ('e5000000-0000-4000-8000-000000000002','RX-META-1','Prescription metadata product','Tablet','e5000000-0000-4000-8000-000000000001',0,'otc'),
-('e5000000-0000-4000-8000-000000000003','RX-META-2','Required prescription product','Tablet','e5000000-0000-4000-8000-000000000001',0,'prescription_required');
+('e5000000-0000-4000-8000-000000000003','RX-META-2','Required prescription product','Tablet','e5000000-0000-4000-8000-000000000001',0,'prescription_required'),
+('e5000000-0000-4000-8000-000000000009','BEBAS-58000','BEBAS cash regression product','Unit','e5000000-0000-4000-8000-000000000001',0,'otc');
 insert into product_units(id,product_id,unit_name,conversion_to_base,selling_price,is_base_unit) values
 ('e5000000-0000-4000-8000-000000000004','e5000000-0000-4000-8000-000000000002','Tablet',1,100,true),
-('e5000000-0000-4000-8000-000000000005','e5000000-0000-4000-8000-000000000003','Tablet',1,100,true);
+('e5000000-0000-4000-8000-000000000005','e5000000-0000-4000-8000-000000000003','Tablet',1,100,true),
+('e5000000-0000-4000-8000-000000000010','e5000000-0000-4000-8000-000000000009','Unit',1,58000,true);
 insert into product_batches(id,product_id,batch_number,expired_date,quantity,cost_price) values
 ('e5000000-0000-4000-8000-000000000006','e5000000-0000-4000-8000-000000000002','META-1','2035-01-01',10,50),
-('e5000000-0000-4000-8000-000000000007','e5000000-0000-4000-8000-000000000003','META-2','2035-01-01',10,50);
+('e5000000-0000-4000-8000-000000000007','e5000000-0000-4000-8000-000000000003','META-2','2035-01-01',10,50),
+('e5000000-0000-4000-8000-000000000011','e5000000-0000-4000-8000-000000000009','BEBAS-CASH','2035-01-01',2,50000);
 insert into employees(id,full_name,position) values('e5000000-0000-4000-8000-000000000008','Kasir Metadata','kasir');
 
 create temporary table umum_sale as select checkout_transaction_with_prescription(
@@ -55,6 +58,16 @@ select is((select count(*)::integer from bebas_sales),3,'BEBAS supports cash, QR
 select is((select count(*)::integer from transaction_prescriptions p join bebas_sales s on p.transaction_id=(s.data->>'transaction_id')::uuid where p.prescription_category='bebas'),3,'BEBAS category persists for every payment method');
 select ok(not exists(select 1 from transaction_prescriptions p join bebas_sales s on p.transaction_id=(s.data->>'transaction_id')::uuid where p.patient_name is not null or p.prescription_origin is not null),'BEBAS clears patient and prescription fields');
 select is((select quantity from product_batches where id='e5000000-0000-4000-8000-000000000006'),5,'BEBAS checkout deducts stock once for each transaction');
+
+create temporary table bebas_cash_58000 as select checkout_transaction_with_prescription(
+  'e5000000-0000-4000-8000-000000000008','cash',
+  '[{"product_unit_id":"e5000000-0000-4000-8000-000000000010","quantity":1}]',60000,
+  '{"prescription_category":"bebas"}'
+) data;
+select is((select data->>'status' from bebas_cash_58000),'completed','BEBAS cash checkout completes');
+select is((select data->>'total_amount' from bebas_cash_58000),'58000.00','BEBAS cash keeps authoritative total');
+select is((select data->>'cash_change' from bebas_cash_58000),'2000.00','BEBAS cash returns correct change');
+select is((select quantity from product_batches where id='e5000000-0000-4000-8000-000000000011'),1,'BEBAS cash deducts stock exactly once');
 
 create temporary table bebas_required as select checkout_transaction_with_prescription(
   'e5000000-0000-4000-8000-000000000008','cash',

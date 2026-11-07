@@ -4,6 +4,10 @@ import type { EmployeeRole } from "@/modules/auth/types";
 import type { Permission } from "@/modules/auth/permissions";
 import { stockStatus, type StockStatus } from "@/modules/shared/stock-status";
 
+export function cashierDashboardGreeting(role: EmployeeRole, name: string) {
+  return role === "kasir" ? `Selamat datang, ${name}!` : null;
+}
+
 export const presets = [
   { value: "today", label: "Hari Ini" }, { value: "week", label: "Minggu Ini" },
   { value: "month", label: "Bulan Ini" }, { value: "custom", label: "Rentang Tanggal" },

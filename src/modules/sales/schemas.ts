@@ -1,7 +1,8 @@
 import { requireNonBlank, requireNonNegativeMoney, requirePositiveInteger, requireUuid } from "@/modules/shared/validation/input";
-import type { CheckoutInput, TransactionActionInput, VoidTransactionInput } from "./types";
+import { DEFAULT_PRESCRIPTION_CATEGORY, type CheckoutInput, type TransactionActionInput, type VoidTransactionInput } from "./types";
 
 export function validateCheckoutInput(input: CheckoutInput): CheckoutInput {
+  const normalized = input.prescription ? input : { ...input, prescription: { category: DEFAULT_PRESCRIPTION_CATEGORY } };
   requireUuid(input.employeeId, "employeeId");
   if (!input.items.length) throw new TypeError("items must not be empty");
   input.items.forEach((item, index) => {
@@ -9,12 +10,12 @@ export function validateCheckoutInput(input: CheckoutInput): CheckoutInput {
     requirePositiveInteger(item.quantity, `items[${index}].quantity`);
   });
   if (input.cashReceived !== undefined) requireNonNegativeMoney(input.cashReceived, "cashReceived");
-  if (!input.prescription || !["umum","bpjs","bebas"].includes(input.prescription.category)) throw new TypeError("prescription category is required");
-  if ((input.prescription.category === "bpjs") !== (input.paymentMethod === "bpjs")) throw new TypeError("payment method does not match prescription category");
+  if (!normalized.prescription || !["umum","bpjs","bebas"].includes(normalized.prescription.category)) throw new TypeError("prescription category is required");
+  if ((normalized.prescription.category === "bpjs") !== (input.paymentMethod === "bpjs")) throw new TypeError("payment method does not match prescription category");
   if (input.paymentMethod === "bpjs" && input.cashReceived !== 0) throw new TypeError("BPJS cash received must be zero");
-  if (input.prescription.category === "bpjs") requireNonBlank(input.prescription.bpjsNumber ?? "", "prescription.bpjsNumber");
-  if (input.prescription.prescriptionDate && !/^\d{4}-\d{2}-\d{2}$/.test(input.prescription.prescriptionDate)) throw new TypeError("invalid prescription date");
-  return input;
+  if (normalized.prescription.category === "bpjs") requireNonBlank(normalized.prescription.bpjsNumber ?? "", "prescription.bpjsNumber");
+  if (normalized.prescription.prescriptionDate && !/^\d{4}-\d{2}-\d{2}$/.test(normalized.prescription.prescriptionDate)) throw new TypeError("invalid prescription date");
+  return normalized;
 }
 
 export function validateTransactionAction(input: TransactionActionInput): TransactionActionInput {

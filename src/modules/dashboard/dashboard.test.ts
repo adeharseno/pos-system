@@ -2,10 +2,16 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { PERMISSIONS } from "@/modules/auth/permissions";
 import type { PermissionData } from "@/modules/auth/application/permission-policy";
-import { authorizedDashboardRead, canReadDashboardFinancials, canReadDashboardStock, cents, dashboardActions, dashboardFilters, dashboardLowStockRows, rupiah } from "./dashboard-model";
+import { authorizedDashboardRead, cashierDashboardGreeting, canReadDashboardFinancials, canReadDashboardStock, cents, dashboardActions, dashboardFilters, dashboardLowStockRows, rupiah } from "./dashboard-model";
 import { stockStatus } from "@/modules/shared/stock-status";
 
 const permissions: PermissionData = { definitions: PERMISSIONS, preset: [...PERMISSIONS], overrides: [] };
+
+test("cashier dashboard exposes only the session greeting model", () => {
+  assert.equal(cashierDashboardGreeting("kasir", "Ani Kasir"), "Selamat datang, Ani Kasir!");
+  assert.equal(cashierDashboardGreeting("owner_admin", "Pemilik"), null);
+  assert.equal(cashierDashboardGreeting("staf", "Staf"), null);
+});
 
 test("dashboard periods match reports full week/month and use Jakarta rollover", () => {
   const now = new Date("2026-01-04T18:00:00Z");

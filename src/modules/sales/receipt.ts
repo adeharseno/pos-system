@@ -1,5 +1,6 @@
 export type ReceiptStatus="pending_payment"|"completed"|"voided";
 export interface PrescriptionMetadata{category:"umum"|"bpjs"|"bebas";patientName?:string;bpjsNumber?:string;prescriptionNumber?:string;prescriptionOrigin?:string;prescriptionDate?:string}
+export const RECEIPT_PHARMACY_ADDRESS = ["Jln. KSR Dadi Kusmayati No. 26", "CIBINONG"] as const;
 export interface ReceiptItem{productName:string;unitName:string;quantity:number;unitPrice:number;lineTotal:number}
 export interface ReceiptViewModel{transactionId:string;invoiceNumber:string;createdAt:string;cashierName:string;prescription:PrescriptionMetadata;items:ReceiptItem[];subtotal:number;taxAmount:number;total:number;paymentMethod:"cash"|"qris"|"bank_transfer"|"bpjs";cashReceived?:number;cashChange?:number;status:ReceiptStatus}
 type PrescriptionRow={prescription_category:string|null;patient_name:string|null;bpjs_number:string|null;prescription_number:string|null;prescription_origin:string|null;prescription_date:string|null};

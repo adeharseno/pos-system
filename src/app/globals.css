@@ -135,6 +135,11 @@ button:disabled { cursor: not-allowed; }
   color: var(--text-muted);
 }
 
+/* Visual order for the existing responsive checkout category grid: BEBAS | UMUM | BPJS. */
+[aria-labelledby="checkout-title"] fieldset:first-of-type > div:first-of-type > button:nth-child(1) { order: 2; }
+[aria-labelledby="checkout-title"] fieldset:first-of-type > div:first-of-type > button:nth-child(2) { order: 3; }
+[aria-labelledby="checkout-title"] fieldset:first-of-type > div:first-of-type > button:nth-child(3) { order: 1; }
+
 @media print {
   @page { margin: 6mm; }
   body { background: white !important; }

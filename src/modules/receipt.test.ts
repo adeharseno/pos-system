@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildReceiptViewModel,formatReceiptDate,receiptStatusLabel,type ReceiptTransactionRow } from "./sales/receipt";
+import { buildReceiptViewModel,formatReceiptDate,RECEIPT_PHARMACY_ADDRESS,receiptStatusLabel,type ReceiptTransactionRow } from "./sales/receipt";
 import { formatRupiah } from "./ui/currency";
 import { requireRoleWith,type AuthDependencies } from "./auth/application/auth-policy";
 import { AuthApplicationError } from "./auth/errors";
 import type { EmployeeRecord } from "./auth/types";
 
 const base:ReceiptTransactionRow={id:"tx",invoice_number:"INV-1",created_at:"2026-08-18T06:42:00.000Z",subtotal:10000,tax_amount:1000,total_amount:11000,payment_method:"cash",cash_received:20000,cash_change:9000,status:"completed",employees:{full_name:"Ayu"},transaction_prescriptions:[{prescription_category:"umum",patient_name:"Budi",bpjs_number:null,prescription_number:"R-1",prescription_origin:"dr. Ani",prescription_date:"2026-08-18"}],transaction_items:[{quantity_in_unit:2,unit_price:5000,total_amount:11000,product_name_snapshot:"Paracetamol",unit_name_snapshot:"Tablet"}]};
+test("receipt header uses the pharmacy thermal-print address",()=>assert.deepEqual(RECEIPT_PHARMACY_ADDRESS,["Jln. KSR Dadi Kusmayati No. 26","CIBINONG"]));
 test("cash receipt maps authoritative financial values",()=>{const model=buildReceiptViewModel(base);assert.equal(model.total,11000);assert.equal(model.cashReceived,20000);assert.equal(model.cashChange,9000);});
 test("receipt item maps quantity unit price and stored line total",()=>assert.deepEqual(buildReceiptViewModel(base).items[0],{productName:"Paracetamol",unitName:"Tablet",quantity:2,unitPrice:5000,lineTotal:11000}));
 test("receipt uses immutable transaction-time labels",()=>{const renamedMaster={name:"Paracetamol Generic",unit:"Kaplet"};const model=buildReceiptViewModel(base);assert.deepEqual(model.items[0],{productName:"Paracetamol",unitName:"Tablet",quantity:2,unitPrice:5000,lineTotal:11000});assert.notEqual(model.items[0].productName,renamedMaster.name);assert.notEqual(model.items[0].unitName,renamedMaster.unit);});
