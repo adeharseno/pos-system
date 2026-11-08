@@ -2038,6 +2038,17 @@ export type Database = {
         }
         Returns: Json
       }
+      checkout_transaction_idempotent: {
+        Args: {
+          p_cash_received?: number
+          p_employee_id: string
+          p_items: Json
+          p_payment_method: Database["public"]["Enums"]["payment_method"]
+          p_prescription?: Json
+          p_request_id: string
+        }
+        Returns: Json
+      }
       confirm_initial_product_unit: {
         Args: {
           p_employee_id: string
@@ -2311,6 +2322,10 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      resolve_employee_session: {
+        Args: { p_auth_user: string }
+        Returns: Json
+      }
       start_stock_opname: {
         Args: { p_employee_id: string; p_storage_location_id?: string }
         Returns: Json

@@ -3,6 +3,7 @@ import { DEFAULT_PRESCRIPTION_CATEGORY, type CheckoutInput, type TransactionActi
 
 export function validateCheckoutInput(input: CheckoutInput): CheckoutInput {
   const normalized = input.prescription ? input : { ...input, prescription: { category: DEFAULT_PRESCRIPTION_CATEGORY } };
+  requireUuid(input.requestId, "requestId");
   requireUuid(input.employeeId, "employeeId");
   if (!input.items.length) throw new TypeError("items must not be empty");
   input.items.forEach((item, index) => {

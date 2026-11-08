@@ -8,6 +8,7 @@ type Functions = Database["public"]["Functions"];
 export type CoreRpcName = Extract<keyof Functions,
   | "checkout_transaction"
   | "checkout_transaction_with_prescription"
+  | "checkout_transaction_idempotent"
   | "confirm_qris_payment"
   | "void_transaction"
   | "create_customer_return"

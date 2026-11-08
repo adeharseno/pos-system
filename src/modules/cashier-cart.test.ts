@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildCashierProductResults,parseBarcode,parseProductSearchQuery } from "./catalog/search";
+import { buildCashierProductResults,cashierUnitSaleState,parseBarcode,parseProductSearchQuery } from "./catalog/search";
 import { addCartItem,cartSubtotalPreview,decreaseCartQuantity,increaseCartQuantity,removeCartItem,setCartQuantity,type CartCandidate } from "./sales/cart";
 
 const product={id:"p1",name:"Paracetamol",sku:"PAR-01",requires_prescription:true,product_units:[{id:"u1",unit_name:"Tablet",conversion_to_base:1,selling_price:1000,barcode:null},{id:"u2",unit_name:"Box",conversion_to_base:10,selling_price:9000,barcode:"BOX"}]};
 const tablet:CartCandidate={productId:"p1",productName:"Paracetamol",productUnitId:"u1",unitLabel:"Tablet",conversionToBase:1,displayedUnitPrice:1000,requiresPrescription:true};
 const box:CartCandidate={...tablet,productUnitId:"u2",unitLabel:"Box",conversionToBase:10,displayedUnitPrice:9000};
 test("successful product search mapping includes units and aggregate stock",()=>{const result=buildCashierProductResults([product],[{product_id:"p1",quantity:4},{product_id:"p1",quantity:6}]);assert.equal(result[0].availableStockBase,10);assert.equal(result[0].units.length,2);});
+test("selling eligibility depends on positive stock and price, not the unit label",()=>{assert.deepEqual(cashierUnitSaleState(10,58000),{enabled:true,label:"+ Tambah"});assert.deepEqual(cashierUnitSaleState(10,0),{enabled:false,label:"Harga belum diatur"});assert.deepEqual(cashierUnitSaleState(0,58000),{enabled:false,label:"Stok habis"});assert.equal(addCartItem([],{...tablet,unitLabel:""})[0].conversionToBase,1);});
+test("cart rejects missing or zero-price selling units",()=>{assert.throws(()=>addCartItem([],{...tablet,displayedUnitPrice:0}));assert.throws(()=>addCartItem([],{...tablet,productUnitId:""}));});
 test("empty product search result stays empty",()=>assert.deepEqual(buildCashierProductResults([],[]),[]));
 test("malformed search query is rejected safely",()=>assert.throws(()=>parseProductSearchQuery("bad,(query)")));
 test("barcode keeps leading zeroes and trims scanner terminators",()=>assert.equal(parseBarcode(" 0012345678905\r\n"),"0012345678905"));

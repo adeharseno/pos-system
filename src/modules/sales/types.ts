@@ -12,6 +12,7 @@ export interface PrescriptionInput {
   prescriptionDate?: string;
 }
 export interface CheckoutInput {
+  requestId: string;
   employeeId: string;
   paymentMethod: PaymentMethod;
   items: CheckoutItemInput[];

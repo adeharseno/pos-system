@@ -12,29 +12,18 @@ export async function getVerifiedAuthUser(): Promise<AuthenticatedUser | null> {
 }
 
 export async function findEmployeeByAuthUserId(authUserId: string): Promise<EmployeeRecord | null> {
+  // Single RPC replaces the previous three sequential queries:
+  //   employee_account_access → user_profiles SELECT → employees SELECT
   const admin = createAdminSupabaseClient();
-  const access = await admin.rpc("employee_account_access", { p_auth_user: authUserId });
-  if (access.error) throw new PosDataAccessError(access.error);
-  if (!access.data) {
-    // Preserve the existing inactive/missing mapping errors from the policy layer.
-    const profile = await admin.from("user_profiles").select("employee_id").eq("id", authUserId).maybeSingle();
-    if (profile.error) throw new PosDataAccessError(profile.error);
-    if (!profile.data?.employee_id) return null;
-    return { employeeId: profile.data.employee_id, name: "", role: "staf", isActive: false };
-  }
-  const profile = await admin.from("user_profiles").select("employee_id").eq("id", authUserId).maybeSingle();
-  if (profile.error) throw new PosDataAccessError(profile.error);
-  if (!profile.data?.employee_id) return null;
-
-  const employee = await admin.from("employees").select("id,full_name,position,is_active")
-    .eq("id", profile.data.employee_id).maybeSingle();
-  if (employee.error) throw new PosDataAccessError(employee.error);
-  if (!employee.data) return null;
+  const result = await admin.rpc("resolve_employee_session", { p_auth_user: authUserId });
+  if (result.error) throw new PosDataAccessError(result.error);
+  const row = result.data as { employee_id: string; name: string; role: string; is_active: boolean } | null;
+  if (!row) return null;
   return {
-    employeeId: employee.data.id,
-    name: employee.data.full_name,
-    role: employee.data.position,
-    isActive: employee.data.is_active,
+    employeeId: row.employee_id,
+    name: row.name,
+    role: row.role as EmployeeRecord["role"],
+    isActive: row.is_active,
   };
 }
 

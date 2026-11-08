@@ -1,8 +1,9 @@
 import type { CoreRpcArgs } from "@/modules/shared/data/core-rpc";
 import { DEFAULT_PRESCRIPTION_CATEGORY, type CheckoutInput } from "./types";
 
-export function toCheckoutRpcArgs(input: CheckoutInput): CoreRpcArgs<"checkout_transaction_with_prescription"> {
+export function toCheckoutRpcArgs(input: CheckoutInput): CoreRpcArgs<"checkout_transaction_idempotent"> {
   return {
+    p_request_id: input.requestId,
     p_employee_id: input.employeeId,
     p_payment_method: input.paymentMethod,
     p_items: input.items.map((item) => ({ product_unit_id: item.productUnitId, quantity: item.quantity })),
