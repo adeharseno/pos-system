@@ -26,6 +26,17 @@ export async function findCashierProductByBarcode(barcode:string) {
   if(batches.error)throw mapDatabaseError(batches.error);return {inactive:false as const,product:{id:product.id,name:product.name,sku:product.sku,requiresPrescription:product.requires_prescription===true,availableStockBase:(batches.data??[]).reduce((total,batch)=>total+batch.quantity,0),units:[{id:unit.data.id,label:unit.data.unit_name,conversionToBase:unit.data.conversion_to_base,displayedUnitPrice:unit.data.selling_price,barcode:unit.data.barcode}]},unitId:unit.data.id};
 }
 
+export async function getCashierProductAvailability(productIds:string[]) {
+  if(!productIds.length)return [];
+  const admin=createAdminSupabaseClient();
+  const businessDate=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Jakarta",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+  const batches=await admin.from("product_batches").select("product_id,quantity").in("product_id",productIds).gt("quantity",0).or(`expired_date.is.null,expired_date.gte.${businessDate}`);
+  if(batches.error)throw mapDatabaseError(batches.error);
+  const totals=new Map(productIds.map(id=>[id,0]));
+  for(const batch of batches.data??[])totals.set(batch.product_id,(totals.get(batch.product_id)??0)+batch.quantity);
+  return [...totals].map(([productId,availableStockBase])=>({productId,availableStockBase}));
+}
+
 export async function listProductInventory(productId:string) {
   const {data,error}=await createAdminSupabaseClient().from("product_batches")
     .select("id,product_id,batch_number,expired_date,quantity,received_date")

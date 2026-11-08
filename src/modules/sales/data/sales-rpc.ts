@@ -6,7 +6,7 @@ import { toCheckoutRpcArgs } from "../rpc-contract";
 import type { CheckoutInput, CheckoutResult, TransactionActionInput, TransactionStatusResult, VoidTransactionInput } from "../types";
 
 export async function checkoutRpc(input: CheckoutInput): Promise<CheckoutResult> {
-  const data = requireResultObject(await callCoreRpc("checkout_transaction_with_prescription", toCheckoutRpcArgs(input)));
+  const data = requireResultObject(await callCoreRpc("checkout_transaction_idempotent", toCheckoutRpcArgs(input)));
   return {
     transactionId: resultString(data, "transaction_id"), invoiceNumber: resultString(data, "invoice_number"),
     status: resultString(data, "status") as CheckoutResult["status"], subtotal: resultNumber(data, "subtotal"),
