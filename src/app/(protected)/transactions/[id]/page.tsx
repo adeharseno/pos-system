@@ -1,11 +1,12 @@
 ﻿import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireOwnerPermission } from "@/modules/auth/application/auth-service";
+import { requirePermission } from "@/modules/auth/application/auth-service";
 import { getCustomerReturns, getTransaction } from "@/modules/sales/data/transaction-queries";
 import { buildReceiptViewModel, formatPrescriptionDate, formatReceiptDate, type ReceiptTransactionRow } from "@/modules/sales/receipt";
 import { TransactionActions } from "@/modules/sales/components/transaction-actions";
+import { AutoPrintReceipt } from "@/modules/sales/components/auto-print-receipt";
 import { paymentLabel, TransactionStatusBadge, transactionLinkClass } from "@/modules/sales/components/transaction-presentation";
-import { transactionActionVisibility } from "@/modules/sales/transaction-detail-ui";
+import { transactionActionVisibility, transactionPrintLabel } from "@/modules/sales/transaction-detail-ui";
 import { requireUuid } from "@/modules/shared/validation/input";
 import { formatRupiah } from "@/modules/ui/currency";
 import { Card, CardContent, CardHeader, Container } from "@/modules/ui/components";
@@ -17,7 +18,8 @@ type ReturnRecord = { return_items: ReturnItem[] | null };
 type DetailItem = { id: string; quantity_in_base: number; conversion_to_base_snapshot: number };
 
 export default async function TransactionDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireOwnerPermission("transactions.view");
+  const employee = await requirePermission("transactions.view");
+  const canManagePayments = employee.role === "owner_admin";
   const { id } = await params;
   let transactionId: string;
   try { transactionId = requireUuid(id, "transactionId"); } catch { notFound(); }
@@ -65,12 +67,13 @@ export default async function TransactionDetailPage({ params }: { params: Promis
           {transaction.paymentMethod === "cash" || transaction.paymentMethod === "bpjs" ? <>
             <div className="flex flex-wrap justify-between gap-3"><dt className="text-gray-600">Uang diterima</dt><dd className="tabular">{formatRupiah(transaction.cashReceived ?? 0)}</dd></div>
             <div className="flex flex-wrap justify-between gap-3"><dt className="text-gray-600">Kembalian</dt><dd className="tabular">{formatRupiah(transaction.cashChange ?? 0)}</dd></div>{transaction.paymentMethod === "bpjs" ? <div className="flex flex-wrap justify-between gap-3"><dt className="text-gray-600">Status pembayaran</dt><dd className="font-medium">Ditanggung BPJS</dd></div> : null}
-          </> : <div><dt className="text-gray-600">Pembayaran</dt><dd className="mt-2 font-medium">{transaction.status === "completed" ? "Sudah dikonfirmasi" : transaction.status === "voided" ? "Transaksi dibatalkan" : "Menunggu konfirmasi"}</dd></div>}
+          </> : <div><dt className="text-gray-600">Status pembayaran</dt><dd className={`mt-2 font-medium ${transaction.status === "pending_payment" ? "text-amber-800" : ""}`}>{transaction.status === "completed" ? "Sudah dikonfirmasi" : transaction.status === "voided" ? "Transaksi dibatalkan" : "MENUNGGU PEMBAYARAN"}</dd></div>}
         </dl>
         <div className="grid gap-3 border-t border-gray-200 pt-6">
-          <Link href={`/transactions/${transaction.transactionId}/receipt`} className={`${transactionLinkClass} w-full`}>Lihat / Cetak Struk</Link>
+          <AutoPrintReceipt transactionId={transaction.transactionId} label={transactionPrintLabel(transaction.status, row.payment_method)} autoPrint={false} />
+          <Link href={`/transactions/${transaction.transactionId}/receipt`} className={`${transactionLinkClass} w-full`}>Lihat {transaction.status === "pending_payment" ? "Invoice" : "Struk"} di Tab Baru</Link>
           {canStartReturn(transaction.status, state) ? <Link href={`/transactions/${transaction.transactionId}/return`} className={`${transactionLinkClass} w-full`}>Retur Barang</Link> : null}
-          <TransactionActions transactionId={transaction.transactionId} invoice={transaction.invoiceNumber} total={transaction.total} status={transaction.status} paymentMethod={row.payment_method} canConfirm={actions.confirm} canVoid={actions.void} />
+          <TransactionActions transactionId={transaction.transactionId} invoice={transaction.invoiceNumber} total={transaction.total} status={transaction.status} paymentMethod={row.payment_method} canConfirm={canManagePayments && actions.confirm} canVoid={canManagePayments && actions.void} />
         </div>
       </CardContent></Card>
     </div>

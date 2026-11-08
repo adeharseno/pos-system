@@ -58,6 +58,16 @@ test("cashier cannot use owner transaction actions even with an individual grant
   });
   assert.equal(owner.role, "owner_admin");
 });
+test("cashier may read permitted transactions but not manage payments", async () => {
+  const cashierDeps: PermissionDependencies = {
+    ...deps,
+    loadPermissions: async () => ({ definitions: PERMISSIONS, preset: ["transactions.view"], overrides: [] }),
+  };
+  const employee = await requireAllPermissionsWith(["transactions.view"], cashierDeps);
+  assert.equal(employee.role, "kasir");
+  await assert.rejects(() => requireOwnerPermissionWith("transactions.confirm_payment", cashierDeps), denied("FORBIDDEN"));
+  await assert.rejects(() => requireOwnerPermissionWith("transactions.void", cashierDeps), denied("FORBIDDEN"));
+});
 test("inactive employees are rejected before permission loading", async () => {
   await assert.rejects(() => requireAllPermissionsWith(["products.view"], {
     ...deps, findEmployee: async () => ({ employeeId: "employee", name: "Owner", role: "owner_admin", isActive: false }),

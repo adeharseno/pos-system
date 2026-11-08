@@ -281,7 +281,7 @@ export default async function TransactionsPage({
                         Status
                       </th>
                       <th scope="col" className="w-[14%] px-4 py-5 font-medium">
-                        <span className="sr-only">Tindakan</span>
+                        Aksi
                       </th>
                     </tr>
                   </thead>
@@ -303,13 +303,13 @@ export default async function TransactionsPage({
                           <TransactionStatusBadge status={row.status} />
                         </td>
                         <td className="px-4 py-6">
-                          {isOwner ? <Link
+                          <Link
                             href={`/transactions/${row.id}`}
                             aria-label={`Lihat detail transaksi ${row.invoice_number}`}
                             className={`${transactionLinkClass} px-3! text-sm!`}
                           >
-                            Detail
-                          </Link> : null}
+                            Lihat Detail
+                          </Link>
                         </td>
                       </tr>
                     ))}
@@ -347,13 +347,13 @@ export default async function TransactionsPage({
                           </dd>
                         </div>
                       </dl>
-                      {isOwner ? <Link
+                      <Link
                         href={`/transactions/${row.id}`}
                         aria-label={`Lihat detail transaksi ${row.invoice_number}`}
                         className={`${transactionLinkClass} w-full`}
                       >
                         Lihat Detail
-                      </Link> : null}
+                      </Link>
                     </CardContent>
                   </Card>
                 ))}
