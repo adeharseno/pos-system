@@ -36,6 +36,6 @@ export function parseMasterProductInput(value: unknown): Database["public"]["Tab
     subcategory_id: requireUuid(text("subcategory_id", true), "subcategory_id"),
     drug_classification: classification, minimum_stock: minimumStock,
     default_supplier_id: supplier ? requireUuid(supplier, "default_supplier_id") : null,
-    cost_price: null, is_active: true,
+    cost_price: null, is_active: true, is_taxable: false,
   };
 }

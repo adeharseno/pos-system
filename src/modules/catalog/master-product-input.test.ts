@@ -12,6 +12,7 @@ test("master defaults to minimum 5 with unknown cost, no sale unit, price, or ba
   assert.equal(input.minimum_stock, 5);
   assert.equal(input.cost_price, null);
   assert.equal(input.sku, "MASTER-01");
+  assert.equal(input.is_taxable, false);
   assert.equal(input.default_supplier_id, null);
   for (const key of ["selling_price", "initial_stock", "barcode", "storage_location_id"]) assert.equal(key in input, false);
 });
