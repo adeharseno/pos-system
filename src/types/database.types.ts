@@ -83,6 +83,86 @@ export type Database = {
           },
         ]
       }
+      bpjs_susulan_items: {
+        Row: {
+          created_at: string
+          created_by: string
+          delivery_date: string
+          drug_name: string
+          fulfilled_at: string | null
+          fulfilled_by: string | null
+          fulfillment_status: string
+          id: string
+          line_total: number | null
+          product_id: string | null
+          quantity: number
+          request_key: string
+          transaction_id: string
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          delivery_date: string
+          drug_name: string
+          fulfilled_at?: string | null
+          fulfilled_by?: string | null
+          fulfillment_status?: string
+          id?: string
+          line_total?: number | null
+          product_id?: string | null
+          quantity: number
+          request_key: string
+          transaction_id: string
+          unit_price: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          delivery_date?: string
+          drug_name?: string
+          fulfilled_at?: string | null
+          fulfilled_by?: string | null
+          fulfillment_status?: string
+          id?: string
+          line_total?: number | null
+          product_id?: string | null
+          quantity?: number
+          request_key?: string
+          transaction_id?: string
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bpjs_susulan_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bpjs_susulan_items_fulfilled_by_fkey"
+            columns: ["fulfilled_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bpjs_susulan_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bpjs_susulan_items_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           created_at: string
@@ -112,6 +192,51 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      checkout_requests: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          employee_id: string
+          fingerprint: Json
+          request_id: string
+          result: Json | null
+          transaction_id: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          employee_id: string
+          fingerprint: Json
+          request_id: string
+          result?: Json | null
+          transaction_id?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          employee_id?: string
+          fingerprint?: Json
+          request_id?: string
+          result?: Json | null
+          transaction_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checkout_requests_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checkout_requests_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: true
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       employee_access_guard: {
         Row: {
@@ -2028,16 +2153,6 @@ export type Database = {
         }
         Returns: Json
       }
-      checkout_transaction_with_prescription: {
-        Args: {
-          p_cash_received?: number
-          p_employee_id: string
-          p_items: Json
-          p_payment_method: Database["public"]["Enums"]["payment_method"]
-          p_prescription?: Json
-        }
-        Returns: Json
-      }
       checkout_transaction_idempotent: {
         Args: {
           p_cash_received?: number
@@ -2046,6 +2161,16 @@ export type Database = {
           p_payment_method: Database["public"]["Enums"]["payment_method"]
           p_prescription?: Json
           p_request_id: string
+        }
+        Returns: Json
+      }
+      checkout_transaction_with_prescription: {
+        Args: {
+          p_cash_received?: number
+          p_employee_id: string
+          p_items: Json
+          p_payment_method: Database["public"]["Enums"]["payment_method"]
+          p_prescription?: Json
         }
         Returns: Json
       }
@@ -2190,6 +2315,19 @@ export type Database = {
         Args: { p_username: string }
         Returns: string
       }
+      fulfill_bpjs_susulan_item:
+        | {
+            Args: { p_employee_id: string; p_susulan_id: string }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_employee_id: string
+              p_product_id?: string
+              p_susulan_id: string
+            }
+            Returns: undefined
+          }
       get_employee_permissions: {
         Args: {
           p_employee_id: string
@@ -2200,6 +2338,15 @@ export type Database = {
       import_initial_products: {
         Args: { p_employee_id: string; p_request_id: string; p_rows: Json }
         Returns: Json
+      }
+      insert_bpjs_susulan_items: {
+        Args: {
+          p_delivery_date: string
+          p_employee_id: string
+          p_items: Json
+          p_transaction_id: string
+        }
+        Returns: undefined
       }
       login_attempt_get: { Args: { p_identifier: string }; Returns: Json }
       login_attempt_set: {
@@ -2286,6 +2433,7 @@ export type Database = {
         Returns: Json
       }
       require_employee_admin: { Args: { p_actor: string }; Returns: string }
+      resolve_employee_session: { Args: { p_auth_user: string }; Returns: Json }
       sales_gross_profit_report: {
         Args: { p_from: string; p_to: string }
         Returns: Json
@@ -2322,10 +2470,6 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
-      resolve_employee_session: {
-        Args: { p_auth_user: string }
-        Returns: Json
-      }
       start_stock_opname: {
         Args: { p_employee_id: string; p_storage_location_id?: string }
         Returns: Json

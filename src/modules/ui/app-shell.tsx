@@ -11,14 +11,28 @@ import { navigationGroups, navigationGroupsForRole } from "./app-navigation";
 import type { PurchaseDueReminder } from "@/modules/purchasing/due-reminder-model";
 import { dueReminderLabel } from "@/modules/purchasing/due-reminder-model";
 import { formatInvoiceAmount } from "@/modules/purchasing/invoice-presentation";
+import type { BpjsSusulanNotification } from "@/modules/sales/bpjs-susulan";
 
 // Presentation adapted from TailAdmin AppSidebar/AppHeader; role filtering is retained.
-export function AppShell({ employee, reminders = [], children }: { employee: { name: string; role: EmployeeRole }; reminders?: PurchaseDueReminder[]; children: React.ReactNode }) {
+export function AppShell({
+  employee,
+  reminders = [],
+  susulanNotifications = [],
+  children,
+}: {
+  employee: { name: string; role: EmployeeRole };
+  reminders?: PurchaseDueReminder[];
+  susulanNotifications?: BpjsSusulanNotification[];
+  children: React.ReactNode;
+}) {
   const [open, setOpen] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
   const pathname = usePathname();
   const menu = useRef<HTMLDialogElement>(null);
   const isOwner = employee.role === "owner_admin";
+
+  const susulanCount = susulanNotifications.reduce((acc, curr) => acc + curr.pendingCount, 0);
+  const totalBadgeCount = reminders.length + susulanCount;
 
   useEffect(() => {
     if (!open) return;
@@ -82,7 +96,81 @@ export function AppShell({ employee, reminders = [], children }: { employee: { n
     <header className="fixed inset-x-0 top-0 z-30 flex h-20 items-center gap-3 border-b border-[var(--border)] bg-white px-4 sm:px-6 lg:left-[var(--sidebar-width)]">
       <button type="button" aria-expanded={open} aria-controls="mobile-navigation" aria-label="Buka menu" className="grid size-13 shrink-0 place-items-center rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 lg:hidden" onClick={() => setOpen(true)}><MenuIcon /></button>
       <p className="min-w-0 flex-1 text-lg leading-tight font-semibold sm:text-xl text-gray-800">{title}</p>
-      {isOwner ? <div className="relative"><button type="button" aria-label={`Pengingat hutang${reminders.length?` (${reminders.length})`:""}`} aria-expanded={bellOpen} onClick={()=>setBellOpen(value=>!value)} className="relative grid size-12 place-items-center rounded-lg text-gray-700 hover:bg-gray-100"><BellIcon className="size-6"/>{reminders.length?<span className="absolute right-1 top-1 min-w-5 rounded-full bg-red-600 px-1 text-center text-xs font-semibold text-white">{reminders.length>99?"99+":reminders.length}</span>:null}</button>{bellOpen?<div className="absolute right-0 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl"><div className="border-b border-gray-200 p-4"><p className="font-semibold">Jatuh Tempo Invoice</p><p className="mt-1 text-sm text-gray-600">{reminders.length} invoice perlu diperhatikan</p></div>{reminders.length?<ul className="max-h-96 divide-y divide-gray-100 overflow-y-auto">{reminders.slice(0,10).map(item=><li key={item.id}><Link href={`/purchase-invoices/${item.id}`} onClick={()=>setBellOpen(false)} className="block p-4 hover:bg-gray-50"><p className="font-medium">{item.supplier} · {item.invoiceNumber}</p><p className="mt-1 text-sm text-gray-600">{formatInvoiceAmount(item.outstanding)} · {item.dueDate}</p><p className={`mt-1 text-sm font-medium ${item.daysRemaining<0?"text-red-700":"text-amber-700"}`}>{dueReminderLabel(item.daysRemaining)}</p></Link></li>)}</ul>:<p className="p-5 text-sm text-gray-600">Tidak ada invoice yang mendekati jatuh tempo.</p>}</div>:null}</div> : null}
+      {isOwner ? <div className="relative">
+        <button
+          type="button"
+          aria-label={`Notifikasi${totalBadgeCount ? ` (${totalBadgeCount})` : ""}`}
+          aria-expanded={bellOpen}
+          onClick={() => setBellOpen(value => !value)}
+          className="relative grid size-12 place-items-center rounded-lg text-gray-700 hover:bg-gray-100"
+        >
+          <BellIcon className="size-6" />
+          {totalBadgeCount ? (
+            <span className="absolute right-1 top-1 min-w-5 rounded-full bg-red-600 px-1 text-center text-xs font-semibold text-white">
+              {totalBadgeCount > 99 ? "99+" : totalBadgeCount}
+            </span>
+          ) : null}
+        </button>
+        {bellOpen ? (
+          <div className="absolute right-0 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
+            {totalBadgeCount === 0 ? (
+              <p className="p-5 text-sm text-gray-600">Tidak ada notifikasi saat ini.</p>
+            ) : (
+              <div>
+                {susulanNotifications.length > 0 ? (
+                  <div>
+                    <div className="border-b border-amber-200 bg-amber-50/70 p-3.5">
+                      <p className="text-sm font-semibold text-amber-950">Produk Susulan BPJS</p>
+                      <p className="text-xs text-amber-800">{susulanCount} produk belum diserahkan</p>
+                    </div>
+                    <ul className="max-h-48 divide-y divide-gray-100 overflow-y-auto">
+                      {susulanNotifications.map(item => (
+                        <li key={item.transactionId}>
+                          <Link
+                            href={`/transactions/${item.transactionId}`}
+                            onClick={() => setBellOpen(false)}
+                            className="block p-3 hover:bg-amber-50/40 text-xs transition-colors"
+                          >
+                            <p className="font-semibold text-gray-900">Invoice: {item.invoiceNumber}</p>
+                            <p className="text-gray-600">Pasien: {item.patientName || "Pasien BPJS"}</p>
+                            <p className="mt-0.5 font-medium text-amber-800">{item.pendingCount} produk pending</p>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+
+                {reminders.length > 0 ? (
+                  <div>
+                    <div className="border-b border-gray-200 border-t p-3.5 bg-gray-50/70">
+                      <p className="text-sm font-semibold text-gray-900">Jatuh Tempo Invoice</p>
+                      <p className="text-xs text-gray-600">{reminders.length} invoice perlu diperhatikan</p>
+                    </div>
+                    <ul className="max-h-48 divide-y divide-gray-100 overflow-y-auto">
+                      {reminders.slice(0, 10).map(item => (
+                        <li key={item.id}>
+                          <Link
+                            href={`/purchase-invoices/${item.id}`}
+                            onClick={() => setBellOpen(false)}
+                            className="block p-3 hover:bg-gray-50 text-xs transition-colors"
+                          >
+                            <p className="font-medium text-gray-900">{item.supplier} · {item.invoiceNumber}</p>
+                            <p className="text-gray-600">{formatInvoiceAmount(item.outstanding)} · {item.dueDate}</p>
+                            <p className={`mt-0.5 font-medium ${item.daysRemaining < 0 ? "text-red-700" : "text-amber-700"}`}>
+                              {dueReminderLabel(item.daysRemaining)}
+                            </p>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+            )}
+          </div>
+        ) : null}
+      </div> : null}
       <UserMenu name={employee.name} role={role} />
     </header>
     <dialog ref={menu} id="mobile-navigation" aria-label="Menu utama" onCancel={() => setOpen(false)} onClick={event => { if (event.target === event.currentTarget) setOpen(false); }} className="fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none bg-transparent p-0 backdrop:bg-gray-900/40">

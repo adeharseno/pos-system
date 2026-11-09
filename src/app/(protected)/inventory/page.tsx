@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireRole } from "@/modules/auth/application/auth-service";
 import { listInventoryOverview, parseInventoryOverviewFilters, type InventoryStockStatus } from "@/modules/inventory/data/inventory-overview-queries";
+import { countPendingSusulanItems } from "@/modules/sales/data/bpjs-susulan-queries";
 import { Button, Card, CardContent, Container, FormField, Input, Label } from "@/modules/ui/components";
 import { SearchForm } from "@/modules/ui/search-form";
 
@@ -15,7 +16,10 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
   const employee = await requireRole(["owner_admin"]);
   const parsedFilters = parseInventoryOverviewFilters(await searchParams);
   const filters = { ...parsedFilters, status: "all" as const };
-  const { rows, total } = await listInventoryOverview(filters);
+  const [{ rows, total }, pendingSusulanCount] = await Promise.all([
+    listInventoryOverview(filters),
+    countPendingSusulanItems().catch(() => 0),
+  ]);
   const pages = Math.max(1, Math.ceil(total / filters.limit));
   const href = (page: number) => {
     const params = new URLSearchParams();
@@ -25,7 +29,35 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
   };
 
   return <Container size="xl">
-    <header className="mb-6 flex flex-wrap items-center justify-between gap-4"><div><h1 className="text-2xl font-bold">Manajemen Stok</h1><p className="mt-2 text-base text-[var(--text-muted)]">Pantau ketersediaan stok dan kedaluwarsa barang.</p></div>{employee.role === "owner_admin" ? <Link href="/inventory/receive" className="inline-flex min-h-12 items-center justify-center rounded-lg bg-[var(--accent)] px-5 py-3 text-base font-semibold text-white">Terima Barang</Link> : null}</header>
+    <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <h1 className="text-2xl font-bold">Manajemen Stok</h1>
+        <p className="mt-2 text-base text-[var(--text-muted)]">Pantau ketersediaan stok dan kedaluwarsa barang.</p>
+      </div>
+      {employee.role === "owner_admin" ? (
+        <Link href="/inventory/receive" className="inline-flex min-h-12 items-center justify-center rounded-lg bg-[var(--accent)] px-5 py-3 text-base font-semibold text-white">
+          Terima Barang
+        </Link>
+      ) : null}
+    </header>
+
+    {pendingSusulanCount > 0 ? (
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900 shadow-sm">
+        <div className="flex items-center gap-3">
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-amber-200 text-xs font-bold text-amber-800">!</span>
+          <p className="text-sm font-medium">
+            Ada <strong className="font-semibold">{pendingSusulanCount} produk</strong> yang harus diisi untuk pesanan BPJS susulan.
+          </p>
+        </div>
+        <Link
+          href="/inventory/receive"
+          className="shrink-0 rounded-md bg-amber-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-amber-700"
+        >
+          Terima Barang
+        </Link>
+      </div>
+    ) : null}
+
     <Card className="mb-5"><CardContent><SearchForm key={href(filters.page)} action="/inventory" className="flex flex-col gap-4 sm:flex-row sm:items-end"><FormField className="min-w-0 flex-1"><Label htmlFor="inventory-search">Cari nama barang, SKU, atau barcode</Label><Input id="inventory-search" name="q" defaultValue={filters.q} placeholder="Ketik nama barang, SKU, atau barcode" maxLength={80}/></FormField><Button type="submit">Cari Barang</Button><Link href="/inventory" className={pageLinkClass}>Atur Ulang</Link></SearchForm></CardContent></Card>
     {total === 0 ? <Card><CardContent className="p-8 text-center"><h2>Tidak ada barang yang cocok.</h2><p className="mt-2 text-sm text-[var(--text-muted)]">Coba gunakan nama barang, SKU, atau barcode lain.</p></CardContent></Card> : <>
       {rows.length === 0 ? <Card><CardContent className="p-8 text-center"><h2>Tidak ada produk di halaman ini.</h2><p className="mt-2 text-sm text-[var(--text-muted)]">Halaman ini berada di luar jumlah hasil yang tersedia.</p><Link href={href(1)} className={`${pageLinkClass} mt-5`}>Ke Halaman Pertama</Link></CardContent></Card> : <>

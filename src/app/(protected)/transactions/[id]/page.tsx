@@ -1,10 +1,12 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePermission } from "@/modules/auth/application/auth-service";
 import { getCustomerReturns, getTransaction } from "@/modules/sales/data/transaction-queries";
+import { getSusulanItemsForTransaction } from "@/modules/sales/data/bpjs-susulan-queries";
 import { buildReceiptViewModel, formatPrescriptionDate, formatReceiptDate, type ReceiptTransactionRow } from "@/modules/sales/receipt";
 import { TransactionActions } from "@/modules/sales/components/transaction-actions";
 import { AutoPrintReceipt } from "@/modules/sales/components/auto-print-receipt";
+import { FulfillSusulanButton } from "@/modules/sales/components/fulfill-susulan-button";
 import { paymentLabel, TransactionStatusBadge, transactionLinkClass } from "@/modules/sales/components/transaction-presentation";
 import { transactionActionVisibility, transactionPrintLabel } from "@/modules/sales/transaction-detail-ui";
 import { requireUuid } from "@/modules/shared/validation/input";
@@ -23,18 +25,37 @@ export default async function TransactionDetailPage({ params }: { params: Promis
   const { id } = await params;
   let transactionId: string;
   try { transactionId = requireUuid(id, "transactionId"); } catch { notFound(); }
-  const row = await getTransaction(transactionId);
+  const [row, records, susulanItems] = await Promise.all([
+    getTransaction(transactionId),
+    getCustomerReturns(transactionId) as Promise<ReturnRecord[]>,
+    getSusulanItemsForTransaction(transactionId).catch(() => []),
+  ]);
   if (!row) notFound();
   const transaction = buildReceiptViewModel(row as unknown as ReceiptTransactionRow);
-  const records = await getCustomerReturns(transactionId) as ReturnRecord[];
   const returned = new Map<string, number>();
   for (const record of records) for (const item of record.return_items ?? []) returned.set(item.transaction_item_id, (returned.get(item.transaction_item_id) ?? 0) + item.quantity_in_base);
   const quantities = (row.transaction_items as DetailItem[]).map(item => ({ id: item.id, source: item, ...returnQuantity({ purchasedBase: item.quantity_in_base, returnedBase: returned.get(item.id) ?? 0, conversionToBase: item.conversion_to_base_snapshot }) }));
   const state = detailReturnState(quantities.map(item => ({ purchasedBase: item.source.quantity_in_base, returnedBase: returned.get(item.id) ?? 0, conversionToBase: item.source.conversion_to_base_snapshot, remainingBase: item.remainingBase })));
   const actions = transactionActionVisibility(transaction.status, row.payment_method, records.length > 0);
+  const pendingSusulan = susulanItems.filter(item => item.fulfillmentStatus === "pending_fulfillment");
 
   return <Container size="xl" className="space-y-7">
     <header className="flex flex-wrap items-center justify-between gap-4"><h1 className="text-2xl font-semibold text-gray-900">Detail Transaksi</h1><Link href="/transactions" className={transactionLinkClass}>Kembali ke Transaksi</Link></header>
+
+    {pendingSusulan.length > 0 ? (
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900 shadow-sm">
+        <div className="flex items-center gap-3">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-amber-200 text-sm font-bold text-amber-800">!</span>
+          <div>
+            <p className="font-semibold text-amber-950">Ada produk yang harus segera dikirim</p>
+            <p className="text-sm text-amber-900">
+              Terdapat {pendingSusulan.length} produk susulan yang belum diserahkan. Janji penyerahan: {formatReceiptDate(pendingSusulan[0].deliveryDate)}.
+            </p>
+          </div>
+        </div>
+      </div>
+    ) : null}
+
     <Card><CardHeader><h2 className="text-lg font-semibold text-gray-900">Informasi Transaksi</h2></CardHeader><CardContent>
       <dl className="grid gap-6 text-base sm:grid-cols-2 xl:grid-cols-4">
         <div><dt className="text-gray-600">Nomor transaksi</dt><dd className="mt-2 break-all font-semibold text-gray-900">{transaction.invoiceNumber}</dd></div>
@@ -56,7 +77,47 @@ export default async function TransactionDetailPage({ params }: { params: Promis
             {baseReturned > 0 ? <p className="text-sm text-gray-600">Dibeli {q.purchasedUnits ?? q.source.quantity_in_base} {q.exact ? item.unitName : "unit dasar"} · Diretur {q.returnedUnits ?? baseReturned} · Sisa {q.remainingUnits ?? q.remainingBase}</p> : null}
             {q.remainingBase === 0 ? <p className="text-base font-medium text-gray-700">Sudah diretur seluruhnya</p> : null}
           </li>;
-        })}</ul>
+        })}
+        {susulanItems.map((item) => (
+          <li key={item.id} className="space-y-3 bg-blue-50/20 px-5 py-6 sm:px-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="break-words text-base font-semibold text-gray-900">{item.drugName}</h3>
+                  <span className="inline-flex rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
+                    Produk Susulan
+                  </span>
+                </div>
+              </div>
+              <p className="break-words text-base font-semibold text-gray-900 tabular">{formatRupiah(item.lineTotal)}</p>
+            </div>
+            <p className="text-base text-gray-700">{item.quantity} unit × {formatRupiah(item.unitPrice)}</p>
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+              <div>
+                {item.fulfillmentStatus === "completed" ? (
+                  <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700">
+                    <span className="size-2 rounded-full bg-emerald-600"></span>
+                    Sudah diserahkan {item.fulfilledAt ? `· ${formatReceiptDate(item.fulfilledAt)}` : ""}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 text-sm font-medium text-amber-800">
+                    <span className="size-2 rounded-full bg-amber-500"></span>
+                    Belum diserahkan (Janji penyerahan: {formatReceiptDate(item.deliveryDate)})
+                  </span>
+                )}
+              </div>
+              {item.fulfillmentStatus === "pending_fulfillment" && canManagePayments ? (
+                <FulfillSusulanButton
+                  transactionId={transactionId}
+                  susulanId={item.id}
+                  drugName={item.drugName}
+                  quantity={item.quantity}
+                />
+              ) : null}
+            </div>
+          </li>
+        ))}
+        </ul>
       </Card>
       <Card className="min-w-0"><CardHeader><h2 className="text-lg font-semibold text-gray-900">Pembayaran</h2></CardHeader><CardContent className="space-y-6">
         <dl className="space-y-4 text-base">
