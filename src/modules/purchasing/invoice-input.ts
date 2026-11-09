@@ -61,3 +61,34 @@ export function validateInvoiceFile(file: { name: string; size: number; type: st
   if (file.type !== type || !new RegExp(`\\.${extension === "jpg" ? "jpe?g" : extension}$`, "i").test(file.name)) throw new PosInputError("Jenis dan isi dokumen tidak sesuai.");
   return { type, extension };
 }
+
+export type InvoiceDeleteEligibility = {
+  canDelete: boolean;
+  reason?: string;
+};
+
+export function checkInvoiceDeleteEligibility(invoice: {
+  status: string;
+  paymentsCount?: number;
+  totalPaid?: number;
+}): InvoiceDeleteEligibility {
+  const paymentsCount = invoice.paymentsCount ?? 0;
+  const totalPaid = invoice.totalPaid ?? 0;
+
+  if (paymentsCount > 0 || totalPaid > 0) {
+    return {
+      canDelete: false,
+      reason: "Invoice sudah memiliki histori pembayaran tercatat. Hapus atau batalkan pembayaran terlebih dahulu sebelum menghapus invoice.",
+    };
+  }
+
+  if (invoice.status === "completed") {
+    return {
+      canDelete: false,
+      reason: "Invoice sudah selesai dan barang sudah diterima ke dalam stok. Invoice yang sudah mempengaruhi stok dan audit inventaris tidak dapat dihapus.",
+    };
+  }
+
+  return { canDelete: true };
+}
+

@@ -16,5 +16,10 @@ export function toCheckoutRpcArgs(input: CheckoutInput): CoreRpcArgs<"checkout_t
       prescription_origin: input.prescription?.prescriptionOrigin,
       prescription_date: input.prescription?.prescriptionDate,
     },
+    p_supplementary_items: input.supplementaryItems?.map((it) => ({
+      drug_name: it.drugName,
+      quantity: it.quantity,
+      unit_price: it.unitPrice,
+    })),
   };
 }

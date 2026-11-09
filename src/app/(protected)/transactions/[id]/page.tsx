@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePermission } from "@/modules/auth/application/auth-service";
 import { getCustomerReturns, getTransaction } from "@/modules/sales/data/transaction-queries";
+import { resolveTransactionDisplayStatus } from "@/modules/sales/transaction-history-filters";
 import { getSusulanItemsForTransaction } from "@/modules/sales/data/bpjs-susulan-queries";
 import { buildReceiptViewModel, formatPrescriptionDate, formatReceiptDate, type ReceiptTransactionRow } from "@/modules/sales/receipt";
 import { TransactionActions } from "@/modules/sales/components/transaction-actions";
@@ -39,6 +40,8 @@ export default async function TransactionDetailPage({ params }: { params: Promis
   const actions = transactionActionVisibility(transaction.status, row.payment_method, records.length > 0);
   const pendingSusulan = susulanItems.filter(item => item.fulfillmentStatus === "pending_fulfillment");
 
+  const displayStatus = resolveTransactionDisplayStatus(row.status, row.payment_method, pendingSusulan.length > 0);
+
   return <Container size="xl" className="space-y-7">
     <header className="flex flex-wrap items-center justify-between gap-4"><h1 className="text-2xl font-semibold text-gray-900">Detail Transaksi</h1><Link href="/transactions" className={transactionLinkClass}>Kembali ke Transaksi</Link></header>
 
@@ -47,9 +50,9 @@ export default async function TransactionDetailPage({ params }: { params: Promis
         <div className="flex items-center gap-3">
           <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-amber-200 text-sm font-bold text-amber-800">!</span>
           <div>
-            <p className="font-semibold text-amber-950">Ada produk yang harus segera dikirim</p>
+            <p className="font-semibold text-amber-950">Barang Belum Lengkap</p>
             <p className="text-sm text-amber-900">
-              Terdapat {pendingSusulan.length} produk susulan yang belum diserahkan. Janji penyerahan: {formatReceiptDate(pendingSusulan[0].deliveryDate)}.
+              Terdapat {pendingSusulan.length} produk tambahan yang belum diserahkan. Janji penyerahan: {formatReceiptDate(pendingSusulan[0].deliveryDate)}.
             </p>
           </div>
         </div>
@@ -61,7 +64,7 @@ export default async function TransactionDetailPage({ params }: { params: Promis
         <div><dt className="text-gray-600">Nomor transaksi</dt><dd className="mt-2 break-all font-semibold text-gray-900">{transaction.invoiceNumber}</dd></div>
         <div><dt className="text-gray-600">Tanggal dan waktu</dt><dd className="mt-2 text-gray-900">{formatReceiptDate(transaction.createdAt)}</dd></div>
         <div><dt className="text-gray-600">Kasir</dt><dd className="mt-2 break-words text-gray-900">{transaction.cashierName}</dd></div>
-        <div><dt className="text-gray-600">Status</dt><dd className="mt-2"><TransactionStatusBadge status={transaction.status} /></dd></div>
+        <div><dt className="text-gray-600">Status</dt><dd className="mt-2"><TransactionStatusBadge status={displayStatus} /></dd></div>
       </dl>
       {state === "partial" ? <p className="mt-6 border-t border-gray-200 pt-5 text-base font-medium text-gray-700">Sebagian barang sudah diretur.</p> : state === "full" ? <p className="mt-6 border-t border-gray-200 pt-5 text-base font-medium text-gray-700">Semua barang sudah diretur.</p> : null}
     </CardContent></Card>
@@ -76,6 +79,12 @@ export default async function TransactionDetailPage({ params }: { params: Promis
             <p className="text-base text-gray-700">{item.quantity} {item.unitName} × {formatRupiah(item.unitPrice)}</p>
             {baseReturned > 0 ? <p className="text-sm text-gray-600">Dibeli {q.purchasedUnits ?? q.source.quantity_in_base} {q.exact ? item.unitName : "unit dasar"} · Diretur {q.returnedUnits ?? baseReturned} · Sisa {q.remainingUnits ?? q.remainingBase}</p> : null}
             {q.remainingBase === 0 ? <p className="text-base font-medium text-gray-700">Sudah diretur seluruhnya</p> : null}
+            {row.payment_method === "bpjs" ? (
+              <p className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700">
+                <span className="size-2 rounded-full bg-emerald-600"></span>
+                Sudah diserahkan ({item.quantity} {item.unitName}) · Diserahkan saat checkout
+              </p>
+            ) : null}
           </li>;
         })}
         {susulanItems.map((item) => (
@@ -83,9 +92,9 @@ export default async function TransactionDetailPage({ params }: { params: Promis
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="break-words text-base font-semibold text-gray-900">{item.drugName}</h3>
+                  <h3 className="break-words text-base font-semibold text-gray-900">{item.drugName} (Produk Tambahan)</h3>
                   <span className="inline-flex rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
-                    Produk Susulan
+                    Produk Tambahan
                   </span>
                 </div>
               </div>
@@ -97,12 +106,12 @@ export default async function TransactionDetailPage({ params }: { params: Promis
                 {item.fulfillmentStatus === "completed" ? (
                   <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700">
                     <span className="size-2 rounded-full bg-emerald-600"></span>
-                    Sudah diserahkan {item.fulfilledAt ? `· ${formatReceiptDate(item.fulfilledAt)}` : ""}
+                    Sudah diserahkan ({item.quantity} unit) {item.fulfilledAt ? `· ${formatReceiptDate(item.fulfilledAt)}` : ""}
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1.5 text-sm font-medium text-amber-800">
                     <span className="size-2 rounded-full bg-amber-500"></span>
-                    Belum diserahkan (Janji penyerahan: {formatReceiptDate(item.deliveryDate)})
+                    Belum diserahkan ({item.quantity} unit) · Janji penyerahan: {formatReceiptDate(item.deliveryDate)}
                   </span>
                 )}
               </div>

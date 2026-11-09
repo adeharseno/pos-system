@@ -4,7 +4,7 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { mapDatabaseError } from "@/modules/shared/errors/pos-domain-error";
 import type { HistoryFilters, PaymentMethod, TransactionStatus } from "./transaction-history-filters";
 
-export { historyStatusLabel, jakartaToday, parseHistoryFilters } from "./transaction-history-filters";
+export { historyStatusLabel, jakartaToday, parseHistoryFilters, resolveTransactionDisplayStatus } from "./transaction-history-filters";
 export type { HistoryFilters, PaymentMethod, TransactionStatus } from "./transaction-history-filters";
 
 function jakartaStart(day: string) {
@@ -42,9 +42,9 @@ export type DailySalesTotalRow = {
 
 export async function listTransactions(filters: HistoryFilters) {
   let query = createAdminSupabaseClient()
-    .from("transactions")
+    .from("transaction_history_view")
     .select(
-      "id,invoice_number,created_at,payment_method,status,total_amount,employees!transactions_cashier_id_fkey(full_name)",
+      "id,invoice_number,created_at,payment_method,status,total_amount,cashier_id,cashier_name",
       { count: "exact" },
     )
     .order("created_at", { ascending: false })
@@ -58,7 +58,16 @@ export async function listTransactions(filters: HistoryFilters) {
   const from = (filters.page - 1) * filters.limit;
   const { data, error, count } = await query.range(from, from + filters.limit - 1);
   if (error) throw mapDatabaseError(error);
-  return { rows: (data ?? []) as unknown as HistoryRow[], total: count ?? 0 };
+  const rows: HistoryRow[] = (data ?? []).map((row) => ({
+    id: row.id ?? "",
+    invoice_number: row.invoice_number ?? "",
+    created_at: row.created_at ?? "",
+    payment_method: row.payment_method as PaymentMethod,
+    status: (row.status ?? "completed") as TransactionStatus,
+    total_amount: Number(row.total_amount ?? 0),
+    employees: row.cashier_name ? { full_name: row.cashier_name } : null,
+  }));
+  return { rows, total: count ?? 0 };
 }
 
 /** Cashier options come from the employee master so older transactions remain filterable. */

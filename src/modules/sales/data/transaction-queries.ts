@@ -2,12 +2,26 @@ import "server-only";
 
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { mapDatabaseError } from "@/modules/shared/errors/pos-domain-error";
+import { resolveTransactionDisplayStatus } from "../transaction-history-filters";
 
 export async function getTransaction(transactionId:string) {
   const {data,error}=await createAdminSupabaseClient().from("transactions")
-    .select("id,invoice_number,created_at,subtotal,tax_amount,total_amount,payment_method,cash_received,cash_change,status,employees!transactions_cashier_id_fkey(full_name),transaction_prescriptions(prescription_category,patient_name,bpjs_number,prescription_number,prescription_origin,prescription_date),transaction_items(id,quantity_in_unit,quantity_in_base,conversion_to_base_snapshot,unit_price,subtotal,tax_amount,total_amount,product_name_snapshot,unit_name_snapshot)")
+    .select("id,invoice_number,created_at,subtotal,tax_amount,total_amount,payment_method,cash_received,cash_change,status,employees!transactions_cashier_id_fkey(full_name),transaction_prescriptions(prescription_category,patient_name,bpjs_number,prescription_number,prescription_origin,prescription_date),transaction_items(id,quantity_in_unit,quantity_in_base,conversion_to_base_snapshot,unit_price,subtotal,tax_amount,total_amount,product_name_snapshot,unit_name_snapshot),bpjs_susulan_items(id,fulfillment_status)")
     .eq("id",transactionId).maybeSingle();
-  if(error) throw mapDatabaseError(error); return data;
+  if(error) throw mapDatabaseError(error);
+  if (!data) return null;
+
+  const susulanList = (data.bpjs_susulan_items as Array<{ fulfillment_status: string }>) ?? [];
+  const hasPendingSusulan =
+    data.payment_method === "bpjs" &&
+    susulanList.some((it) => it.fulfillment_status === "pending_fulfillment");
+
+  const displayStatus = resolveTransactionDisplayStatus(data.status, data.payment_method, hasPendingSusulan);
+
+  return {
+    ...data,
+    display_status: displayStatus,
+  };
 }
 
 export async function getReceiptTransaction(transactionId:string) {

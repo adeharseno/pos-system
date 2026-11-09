@@ -158,6 +158,13 @@ export type Database = {
             foreignKeyName: "bpjs_susulan_items_transaction_id_fkey"
             columns: ["transaction_id"]
             isOneToOne: false
+            referencedRelation: "transaction_history_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bpjs_susulan_items_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
             referencedRelation: "transactions"
             referencedColumns: ["id"]
           },
@@ -227,6 +234,13 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checkout_requests_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: true
+            referencedRelation: "transaction_history_view"
             referencedColumns: ["id"]
           },
           {
@@ -1420,6 +1434,13 @@ export type Database = {
             foreignKeyName: "returns_transaction_id_fkey"
             columns: ["transaction_id"]
             isOneToOne: false
+            referencedRelation: "transaction_history_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "returns_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
             referencedRelation: "transactions"
             referencedColumns: ["id"]
           },
@@ -1912,6 +1933,13 @@ export type Database = {
             foreignKeyName: "transaction_items_transaction_id_fkey"
             columns: ["transaction_id"]
             isOneToOne: false
+            referencedRelation: "transaction_history_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transaction_items_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
             referencedRelation: "transactions"
             referencedColumns: ["id"]
           },
@@ -1958,6 +1986,13 @@ export type Database = {
           transaction_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "transaction_prescriptions_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transaction_history_view"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "transaction_prescriptions_transaction_id_fkey"
             columns: ["transaction_id"]
@@ -2133,6 +2168,31 @@ export type Database = {
           },
         ]
       }
+      transaction_history_view: {
+        Row: {
+          business_date: string | null
+          cashier_id: string | null
+          cashier_name: string | null
+          created_at: string | null
+          financial_status:
+            | Database["public"]["Enums"]["transaction_status"]
+            | null
+          id: string | null
+          invoice_number: string | null
+          payment_method: Database["public"]["Enums"]["payment_method"] | null
+          status: string | null
+          total_amount: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_cashier_id_fkey"
+            columns: ["cashier_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       apply_stock_opname: {
@@ -2161,6 +2221,7 @@ export type Database = {
           p_payment_method: Database["public"]["Enums"]["payment_method"]
           p_prescription?: Json
           p_request_id: string
+          p_supplementary_items?: Json
         }
         Returns: Json
       }
@@ -2258,6 +2319,10 @@ export type Database = {
         Returns: Json
       }
       dashboard_low_stock: { Args: { p_business_date: string }; Returns: Json }
+      delete_purchase_invoice: {
+        Args: { p_employee_id: string; p_invoice_id: string }
+        Returns: Json
+      }
       employee_account_access: {
         Args: { p_auth_user: string }
         Returns: boolean
@@ -2315,19 +2380,14 @@ export type Database = {
         Args: { p_username: string }
         Returns: string
       }
-      fulfill_bpjs_susulan_item:
-        | {
-            Args: { p_employee_id: string; p_susulan_id: string }
-            Returns: undefined
-          }
-        | {
-            Args: {
-              p_employee_id: string
-              p_product_id?: string
-              p_susulan_id: string
-            }
-            Returns: undefined
-          }
+      fulfill_bpjs_susulan_item: {
+        Args: {
+          p_employee_id: string
+          p_product_id?: string
+          p_susulan_id: string
+        }
+        Returns: undefined
+      }
       get_employee_permissions: {
         Args: {
           p_employee_id: string

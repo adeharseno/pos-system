@@ -1,4 +1,4 @@
-export type TransactionStatus = "pending_payment" | "completed" | "voided";
+export type TransactionStatus = "pending_payment" | "completed" | "voided" | "incomplete_fulfillment";
 export type PaymentMethod = "cash" | "qris" | "bank_transfer" | "bpjs";
 export type HistoryFilters = {
   q: string;
@@ -26,7 +26,7 @@ export function parseHistoryFilters(input: Record<string, unknown>): HistoryFilt
   return {
     q,
     payment: values(input.payment, ["cash", "qris", "bank_transfer", "bpjs"]),
-    status: values(input.status, ["pending_payment", "completed", "voided"]),
+    status: values(input.status, ["pending_payment", "completed", "voided", "incomplete_fulfillment"]),
     from: typeof input.from === "string" && date.test(input.from) ? input.from : undefined,
     to: typeof input.to === "string" && date.test(input.to) ? input.to : undefined,
     cashierId:
@@ -39,9 +39,24 @@ export function parseHistoryFilters(input: Record<string, unknown>): HistoryFilt
 export const historyStatusLabel = (status: TransactionStatus) =>
   status === "completed"
     ? "Selesai"
-    : status === "pending_payment"
-      ? "Menunggu Pembayaran"
-      : "Dibatalkan";
+    : status === "incomplete_fulfillment"
+      ? "Barang Belum Lengkap"
+      : status === "pending_payment"
+        ? "Menunggu Pembayaran"
+        : "Dibatalkan";
+
+export function resolveTransactionDisplayStatus(
+  financialStatus: string,
+  paymentMethod: string,
+  hasPendingFulfillment: boolean
+): TransactionStatus {
+  if (financialStatus === "voided") return "voided";
+  if (financialStatus === "pending_payment") return "pending_payment";
+  if (paymentMethod === "bpjs" && hasPendingFulfillment) {
+    return "incomplete_fulfillment";
+  }
+  return "completed";
+}
 
 /** Jakarta-today as a plain YYYY-MM-DD string, safe for URL filters. */
 export function jakartaToday(now = new Date()): string {

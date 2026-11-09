@@ -9,10 +9,25 @@ export function checkoutInputFromBody(body:Record<string,unknown>,employeeId:str
   if(category!=="umum"&&category!=="bpjs"&&category!=="bebas")throw new TypeError("invalid prescription category");
   if(category!=="bpjs"&&requestedMethod==="bpjs")throw new TypeError("invalid payment method for category");
   const method=category==="bpjs"?"bpjs":requestedMethod;
+  const rawSupplementary = body.supplementary_items;
+  let supplementaryItems: CheckoutInput["supplementaryItems"];
+  if (Array.isArray(rawSupplementary)) {
+    supplementaryItems = rawSupplementary.map((raw, index) => {
+      const item = objectValue(raw, `supplementary_items[${index}]`);
+      const drugName = stringField(item, "drug_name").trim();
+      if (!drugName) throw new TypeError(`supplementary_items[${index}].drug_name required`);
+      const quantity = numberField(item, "quantity");
+      if (!Number.isInteger(quantity) || quantity < 1) throw new TypeError(`supplementary_items[${index}].quantity invalid`);
+      const unitPrice = numberField(item, "unit_price");
+      if (!Number.isFinite(unitPrice) || unitPrice < 0) throw new TypeError(`supplementary_items[${index}].unit_price invalid`);
+      return { drugName, quantity, unitPrice };
+    });
+  }
   return{
     requestId:typeof body.request_id==="string"?body.request_id:crypto.randomUUID(),employeeId,paymentMethod:method,
     cashReceived:category==="bpjs"?0:optionalNumberField(body,"cash_received"),
     items:arrayField(body,"items").map((raw,index)=>{const item=objectValue(raw,`items[${index}]`);return{productUnitId:stringField(item,"product_unit_id"),quantity:numberField(item,"quantity")};}),
-    prescription:{category,prescriptionNumber:category==="bebas"?undefined:optionalStringField(prescription,"prescription_number"),patientName:category==="bebas"?undefined:optionalStringField(prescription,"patient_name"),bpjsNumber:category==="bpjs"?optionalStringField(prescription,"bpjs_number"):undefined,prescriptionOrigin:category==="bebas"?undefined:optionalStringField(prescription,"prescription_origin"),prescriptionDate:category==="bebas"?undefined:optionalStringField(prescription,"prescription_date")}
+    prescription:{category,prescriptionNumber:category==="bebas"?undefined:optionalStringField(prescription,"prescription_number"),patientName:category==="bebas"?undefined:optionalStringField(prescription,"patient_name"),bpjsNumber:category==="bpjs"?optionalStringField(prescription,"bpjs_number"):undefined,prescriptionOrigin:category==="bebas"?undefined:optionalStringField(prescription,"prescription_origin"),prescriptionDate:category==="bebas"?undefined:optionalStringField(prescription,"prescription_date")},
+    ...(supplementaryItems ? { supplementaryItems } : {})
   };
 }

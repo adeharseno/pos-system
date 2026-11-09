@@ -16,4 +16,5 @@ export const UsersIcon=(props:IconProps)=><svg {...base} {...props}><circle cx="
 export const HomeIcon=(props:IconProps)=><svg {...base} {...props}><path d="m3 10 9-7 9 7v10H3z"/><path d="M9 20v-7h6v7"/></svg>;
 export const EyeIcon=(props:IconProps)=><svg {...base} {...props}><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>;
 export const PencilIcon=(props:IconProps)=><svg {...base} {...props}><path d="m4 20 4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Z"/><path d="m13.5 8 3 3"/></svg>;
+export const TrashIcon=(props:IconProps)=><svg {...base} {...props}><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>;
 export const BellIcon=(props:IconProps)=><svg {...base} {...props}><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>;

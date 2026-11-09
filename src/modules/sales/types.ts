@@ -11,6 +11,11 @@ export interface PrescriptionInput {
   prescriptionOrigin?: string;
   prescriptionDate?: string;
 }
+export interface SupplementaryItemInput {
+  drugName: string;
+  quantity: number;
+  unitPrice: number;
+}
 export interface CheckoutInput {
   requestId: string;
   employeeId: string;
@@ -18,6 +23,7 @@ export interface CheckoutInput {
   items: CheckoutItemInput[];
   cashReceived?: number;
   prescription?: PrescriptionInput;
+  supplementaryItems?: SupplementaryItemInput[];
 }
 export interface CheckoutResult {
   transactionId: string;

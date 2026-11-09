@@ -23,11 +23,13 @@ export default async function ReceiptPage({params}:{params:Promise<{id:string}>}
   const receipt=buildReceiptViewModel(row as unknown as ReceiptTransactionRow);
   const statusLabel = statusDisplay(receipt.status);
 
-  // Combine regular items and susulan items without any special label
+  // Combine regular items and supplementary (susulan) items with explicit (Produk Tambahan) suffix
   const allItems = [
     ...receipt.items,
     ...susulanItems.map((item) => ({
-      productName: item.drugName,
+      productName: item.drugName.includes("(Produk Tambahan)")
+        ? item.drugName
+        : `${item.drugName} (Produk Tambahan)`,
       unitName: "unit",
       quantity: item.quantity,
       unitPrice: item.unitPrice,

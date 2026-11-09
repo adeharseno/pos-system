@@ -1,6 +1,10 @@
--- Migration 0057: Disable product tax across all existing and new master products.
+-- Migration 0059: Disable product tax across all existing and new master products.
 -- Ensures is_taxable defaults to false, updates all existing taxable products to non-taxable,
 -- and updates create_product_with_base_unit to strictly insert is_taxable = false.
+
+begin;
+set local lock_timeout = '2s';
+set local statement_timeout = '15s';
 
 alter table public.products alter column is_taxable set default false;
 
@@ -81,4 +85,7 @@ revoke all on function public.create_product_with_base_unit(
 grant execute on function public.create_product_with_base_unit(
   text, text, uuid, uuid, text, text, numeric, text, text, text, text, uuid, uuid, numeric, numeric, boolean, public.drug_classification, integer, boolean, text
 ) to service_role;
+
+commit;
+
 

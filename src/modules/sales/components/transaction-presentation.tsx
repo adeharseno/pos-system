@@ -8,10 +8,11 @@ export function paymentLabel(method: string) {
 }
 
 export function TransactionStatusBadge({ status }: { status: TransactionStatus }) {
-  const tones = {
+  const tones: Record<TransactionStatus, string> = {
     completed: "border-emerald-200 bg-emerald-50 text-emerald-800",
     pending_payment: "border-amber-200 bg-amber-50 text-amber-900",
     voided: "border-red-200 bg-red-50 text-red-800",
+    incomplete_fulfillment: "border-amber-400 bg-amber-50 text-amber-900",
   };
   return <span className={`inline-flex rounded-lg border px-3 py-1.5 text-sm font-medium ${tones[status]}`}>{historyStatusLabel(status)}</span>;
 }

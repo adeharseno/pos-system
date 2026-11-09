@@ -107,7 +107,7 @@ export function CheckoutPanel({
       };
       const checkoutPayload =
         category === "bpjs"
-          ? buildBpjsCheckoutPayload(cart, prescription)
+          ? buildBpjsCheckoutPayload(cart, prescription, extraItems)
           : method === "cash"
           ? buildCashCheckoutPayload(cart, cash!, prescription)
           : method === "qris"
@@ -130,36 +130,10 @@ export function CheckoutPanel({
         return;
       }
 
-      // If BPJS and extra items exist, insert them atomically
-      if (category === "bpjs" && extraItems.length > 0) {
-        const nowWib = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
-        nowWib.setDate(nowWib.getDate() + 1);
-        const deliveryDate = `${nowWib.getFullYear()}-${String(nowWib.getMonth() + 1).padStart(2, "0")}-${String(nowWib.getDate()).padStart(2, "0")}`;
-
-        const susulanRes = await fetch(`/api/transactions/${body.data.transactionId}/susulan`, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          cache: "no-store",
-          body: JSON.stringify({
-            delivery_date: deliveryDate,
-            items: extraItems.map((it) => ({
-              drug_name: it.drugName.trim(),
-              quantity: it.quantity,
-              unit_price: it.unitPrice,
-              request_key: `${requestId.current}-${it.id}`,
-            })),
-          }),
-        });
-
-        if (!susulanRes.ok) {
-          console.error("Gagal menyimpan produk susulan");
-        }
-      }
-
       if (successHandled.current) return;
       successHandled.current = true;
       clearPersistedPendingCheckout();
-      if (category === "bpjs") onImmediateSuccess({ ...body.data, totalAmount: body.data.totalAmount + extraTotal, cashReceived: 0, cashChange: 0 }, "bpjs");
+      if (category === "bpjs") onImmediateSuccess(body.data, "bpjs");
       else if (method === "cash") onImmediateSuccess(body.data, "cash");
       else onManualPaymentPending(body.data, method);
     } catch {
@@ -379,11 +353,6 @@ export function CheckoutPanel({
                   </div>
                 </dl>
               </div>
-              {extraItems.length > 0 ? (
-                <p className="rounded-lg bg-blue-50 border border-blue-200 p-2.5 text-center text-sm font-medium text-blue-700">
-                  Produk akan dikirimkan esok hari
-                </p>
-              ) : null}
             </div>
           ) : method === "cash" ? (
             <>
