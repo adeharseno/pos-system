@@ -1,4 +1,4 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { requirePermission } from "@/modules/auth/application/auth-service";
 import { formatRupiah } from "@/modules/ui/currency";
 import { formatReceiptDate } from "@/modules/sales/receipt";
@@ -24,6 +24,7 @@ import { SearchForm } from "@/modules/ui/search-form";
 
 const statuses: [TransactionStatus, string][] = [
   ["completed", "Selesai"],
+  ["incomplete_fulfillment", "Barang Belum Lengkap"],
   ["pending_payment", "Menunggu Pembayaran"],
   ["voided", "Dibatalkan"],
 ];

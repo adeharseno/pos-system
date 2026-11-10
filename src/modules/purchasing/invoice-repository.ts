@@ -4,7 +4,8 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { PosInputError } from "@/modules/shared/validation/input";
 import { requestOriginAllowed } from "@/modules/shared/api/request-origin";
 import { mapDatabaseError } from "@/modules/shared/errors/pos-domain-error";
-import { INVOICE_BUCKET, parseInvoiceForm, validateInvoiceFile } from "./invoice-input";
+import { INVOICE_BUCKET, parseInvoiceForm, validateInvoiceFile, checkInvoiceDeleteEligibility, type InvoiceDeleteEligibility } from "./invoice-input";
+export { checkInvoiceDeleteEligibility, type InvoiceDeleteEligibility };
 import { invoiceDatabaseError, PurchaseInvoiceError } from "./invoice-errors";
 import type { Json } from "@/types/database.types";
 import { AuthApplicationError } from "@/modules/auth/errors";
@@ -98,4 +99,20 @@ export async function downloadInvoiceDocument(id: string) {
     "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(invoice.document_name ?? "invoice")}`,
     "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff",
   } });
+}
+
+export async function deletePurchaseInvoice(request: Request, invoiceId: string, employeeId: string) {
+  const origin = request.headers.get("origin");
+  if (!requestOriginAllowed(origin, request.url)) throw new AuthApplicationError("FORBIDDEN");
+  const client = createAdminSupabaseClient();
+  const result = await client.rpc("delete_purchase_invoice", {
+    p_invoice_id: invoiceId,
+    p_employee_id: employeeId,
+  });
+  if (result.error) invoiceDatabaseError(result.error);
+  const data = result.data as { deleted?: boolean; id?: string; document_path?: string | null } | null;
+  if (data?.document_path) {
+    await client.storage.from(INVOICE_BUCKET).remove([data.document_path]).catch(() => {});
+  }
+  return { id: invoiceId, deleted: true };
 }

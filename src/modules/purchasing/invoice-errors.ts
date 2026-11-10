@@ -27,7 +27,10 @@ export function invoiceDatabaseError(error: { code?: string; message: string }):
     INVALID_INVOICE_PAYMENT: [400, "Pembayaran tidak valid. Periksa jumlah dan tanggal pembayaran."],
     INVOICE_PAYMENT_EXCEEDS_BALANCE: [409, "Jumlah pembayaran melebihi sisa hutang terbaru. Muat ulang halaman dan periksa kembali."],
     INVOICE_DOCUMENT_NOT_FOUND: [400, "Dokumen belum tersedia. Unggah kembali dokumen."],
-    FORBIDDEN: [403, "Anda tidak memiliki akses untuk menyimpan invoice."],
+    INVOICE_HAS_PAYMENTS: [409, "Invoice tidak dapat dihapus karena sudah memiliki histori pembayaran. Hapus atau koreksi pembayaran terlebih dahulu sebelum menghapus invoice."],
+    INVOICE_ALREADY_RECEIVED: [409, "Invoice tidak dapat dihapus karena barang sudah diterima ke stok (Status: Selesai)."],
+    INVOICE_BATCH_DEPENDENCY: [409, "Invoice tidak dapat dihapus karena stok batch terkait sudah terbentuk atau digunakan."],
+    FORBIDDEN: [403, "Anda tidak memiliki akses untuk menyimpan atau menghapus invoice."],
   };
   if (error.code === "23505" && error.message.includes("purchase_invoices_supplier_number_key")) throw new PurchaseInvoiceError("DUPLICATE_PURCHASE_INVOICE", 409, "Nomor invoice sudah digunakan pada pemasok ini.");
   if (error.code === "23505" && error.message.includes("purchase_invoice_requests_pkey")) throw new PurchaseInvoiceError("INVOICE_REQUEST_CONFLICT", 409, messages.INVOICE_REQUEST_CONFLICT[1]);

@@ -51,6 +51,7 @@ test("history accepts bank transfer as a payment filter", () => {
 
 test("history status labels remain explicit", () => {
   assert.equal(historyStatusLabel("completed"), "Selesai");
+  assert.equal(historyStatusLabel("incomplete_fulfillment"), "Barang Belum Lengkap");
   assert.equal(historyStatusLabel("pending_payment"), "Menunggu Pembayaran");
   assert.equal(historyStatusLabel("voided"), "Dibatalkan");
 });

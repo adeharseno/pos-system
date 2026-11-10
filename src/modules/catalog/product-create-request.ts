@@ -32,7 +32,7 @@ export function createProductRequest(form: FormData, categoryId: string, subcate
     description: optional(form, "description"), manufacturer: optional(form, "manufacturer"),
     storage_location_id: optional(form, "storage_location_id"), default_supplier_id: optional(form, "default_supplier_id"),
     cost_price: number(form, "cost_price"), tax_rate: taxRate, minimum_stock: number(form, "minimum_stock"),
-    is_taxable: taxRate > 0, is_active: form.get("is_active") === "on", barcode: optional(form, "barcode"), drug_classification,
+    is_taxable: false, is_active: form.get("is_active") === "on", barcode: optional(form, "barcode"), drug_classification,
     ...(initialStock ? { initial_stock: initialStock } : {}),
   };
 }

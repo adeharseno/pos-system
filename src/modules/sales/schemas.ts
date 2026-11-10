@@ -16,6 +16,14 @@ export function validateCheckoutInput(input: CheckoutInput): CheckoutInput {
   if (input.paymentMethod === "bpjs" && input.cashReceived !== 0) throw new TypeError("BPJS cash received must be zero");
   if (normalized.prescription.category === "bpjs") requireNonBlank(normalized.prescription.bpjsNumber ?? "", "prescription.bpjsNumber");
   if (normalized.prescription.prescriptionDate && !/^\d{4}-\d{2}-\d{2}$/.test(normalized.prescription.prescriptionDate)) throw new TypeError("invalid prescription date");
+  if (input.supplementaryItems?.length) {
+    if (input.paymentMethod !== "bpjs") throw new TypeError("supplementary items only allowed for BPJS");
+    input.supplementaryItems.forEach((item, index) => {
+      requireNonBlank(item.drugName, `supplementaryItems[${index}].drugName`);
+      requirePositiveInteger(item.quantity, `supplementaryItems[${index}].quantity`);
+      requireNonNegativeMoney(item.unitPrice, `supplementaryItems[${index}].unitPrice`);
+    });
+  }
   return normalized;
 }
 

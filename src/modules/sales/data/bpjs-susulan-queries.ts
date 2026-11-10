@@ -122,7 +122,7 @@ export async function fulfillSusulanItem(
   const { error } = await createAdminSupabaseClient().rpc("fulfill_bpjs_susulan_item", {
     p_susulan_id: susulanId,
     p_employee_id: employeeId,
-    p_product_id: productId ?? null,
+    p_product_id: productId ?? undefined,
   });
   if (error) throw mapDatabaseError(error);
 }

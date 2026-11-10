@@ -35,7 +35,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       if (typeof body.is_active !== "boolean") throw new PosInputError("invalid boolean");
       values.is_active = body.is_active;
     }
-    if (typeof values.tax_rate === "number") values.is_taxable = values.tax_rate > 0;
+    values.is_taxable = false;
     if ("drug_classification" in body) {
       const value = body.drug_classification;
       if (value !== "otc" && value !== "otc_limited" && value !== "prescription_required") throw new PosInputError("invalid classification");
