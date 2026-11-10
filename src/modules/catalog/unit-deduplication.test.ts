@@ -262,3 +262,85 @@ test("preserves barcode from duplicate if primary unit has no barcode", () => {
   assert.equal(result[0].barcode, "8991234567890", "Barcode from duplicate should be inherited if primary was null");
 });
 
+test("production case: AK MICROPORE 1 INCH collapses divergent prices (25.000 vs 29.000) to canonical base unit (25.000)", () => {
+  const microporeProduct = {
+    id: "55c53331-e2fe-4495-99ee-55042117e38f",
+    name: "AK MICROPORE 1 INCH",
+    sku: "INT-00200",
+    requires_prescription: false,
+    product_units: [
+      {
+        id: "3b0bd2fb-1300-43f5-ba92-03466e3a4a93",
+        unit_name: "Pcs",
+        conversion_to_base: 1,
+        selling_price: 25000,
+        barcode: null,
+        is_base_unit: true,
+      },
+      {
+        id: "e1f0ae70-f7f6-45aa-a81b-faa20f3e5ec6",
+        unit_name: "",
+        conversion_to_base: 1,
+        selling_price: 29000,
+        barcode: null,
+        is_base_unit: false,
+      },
+    ],
+  };
+
+  const [mapped] = buildCashierProductResults([microporeProduct], [{ product_id: microporeProduct.id, quantity: 13 }]);
+  assert.equal(mapped.units.length, 1, "Must present exactly ONE selling unit to cashier");
+  assert.equal(mapped.units[0].id, "3b0bd2fb-1300-43f5-ba92-03466e3a4a93", "Canonical base unit ID must be selected");
+  assert.equal(mapped.units[0].label, "Pcs");
+  assert.equal(mapped.units[0].displayedUnitPrice, 25000, "Official price of Rp25.000 must prevail over divergent Rp29.000");
+
+  // Verify cart addition with official price
+  const candidate: CartCandidate = {
+    productId: mapped.id,
+    productName: mapped.name,
+    productUnitId: mapped.units[0].id,
+    unitLabel: mapped.units[0].label,
+    conversionToBase: mapped.units[0].conversionToBase,
+    displayedUnitPrice: mapped.units[0].displayedUnitPrice,
+    requiresPrescription: mapped.requiresPrescription,
+  };
+  const cart = addCartItem([], candidate);
+  assert.equal(cart.length, 1);
+  assert.equal(cart[0].productUnitId, "3b0bd2fb-1300-43f5-ba92-03466e3a4a93");
+  assert.equal(cart[0].displayedUnitPrice, 25000);
+});
+
+test("production case: AK MICROPORE reverse order (divergent empty unit first) still selects canonical unit", () => {
+  const microporeReverse = {
+    id: "55c53331-e2fe-4495-99ee-55042117e38f",
+    name: "AK MICROPORE 1 INCH",
+    sku: "INT-00200",
+    requires_prescription: false,
+    product_units: [
+      {
+        id: "e1f0ae70-f7f6-45aa-a81b-faa20f3e5ec6",
+        unit_name: "",
+        conversion_to_base: 1,
+        selling_price: 29000,
+        barcode: null,
+        is_base_unit: false,
+      },
+      {
+        id: "3b0bd2fb-1300-43f5-ba92-03466e3a4a93",
+        unit_name: "Pcs",
+        conversion_to_base: 1,
+        selling_price: 25000,
+        barcode: null,
+        is_base_unit: true,
+      },
+    ],
+  };
+
+  const [mapped] = buildCashierProductResults([microporeReverse], [{ product_id: microporeReverse.id, quantity: 13 }]);
+  assert.equal(mapped.units.length, 1);
+  assert.equal(mapped.units[0].id, "3b0bd2fb-1300-43f5-ba92-03466e3a4a93");
+  assert.equal(mapped.units[0].label, "Pcs");
+  assert.equal(mapped.units[0].displayedUnitPrice, 25000);
+});
+
+

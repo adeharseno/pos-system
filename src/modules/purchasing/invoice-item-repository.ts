@@ -30,7 +30,10 @@ export async function getInvoiceProduct(invoiceId: string, productId: string): P
   if (!product || !product.isActive) throw new PurchaseInvoiceError("PRODUCT_NOT_FOUND", 404, "Produk tidak ditemukan atau tidak aktif.");
   const lastBatch = await createAdminSupabaseClient().from("product_batches").select("expired_date").eq("product_id", productId).order("received_date", { ascending: false }).order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (lastBatch.error) throw mapDatabaseError(lastBatch.error);
-  const units: InvoiceProduct["units"] = [...product.units].sort((a, b) => Number(b.is_base_unit) - Number(a.is_base_unit) || a.unit_name.localeCompare(b.unit_name)).map(unit => ({ id: unit.id, name: unit.unit_name, conversion: unit.conversion_to_base, sellingPrice: unit.selling_price }));
+  const units: InvoiceProduct["units"] = [...product.units]
+    .filter(unit => unit.is_active !== false)
+    .sort((a, b) => Number(b.is_base_unit) - Number(a.is_base_unit) || a.unit_name.localeCompare(b.unit_name))
+    .map(unit => ({ id: unit.id, name: unit.unit_name, conversion: unit.conversion_to_base, sellingPrice: unit.selling_price }));
   if (!product.units.some(unit => unit.is_base_unit)) units.unshift({ id: null, name: product.baseUnit, conversion: 1, sellingPrice: null });
   return { id: product.id, sku: product.sku, name: product.name, baseUnit: product.baseUnit, costPrice: product.costPrice ?? null, taxRate: product.taxRate, previousExpiry: lastBatch.data?.expired_date ?? null, units };
 }
