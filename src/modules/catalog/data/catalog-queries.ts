@@ -8,7 +8,7 @@ export async function searchCashierProducts(query:string) {
   if(!query)return [];
   const admin=createAdminSupabaseClient();
   const products=await admin.from("products")
-    .select("id,sku,name,requires_prescription,product_units(id,unit_name,conversion_to_base,selling_price,barcode)")
+    .select("id,sku,name,requires_prescription,product_units(id,unit_name,conversion_to_base,selling_price,barcode,is_base_unit)")
     .eq("is_active",true).or(`name.ilike.%${query}%,sku.ilike.%${query}%`).order("name").limit(20);
   if(products.error)throw mapDatabaseError(products.error);if(!products.data.length)return [];
   const businessDate=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Jakarta",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());

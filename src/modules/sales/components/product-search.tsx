@@ -1,6 +1,6 @@
 "use client";
 
-import { cashierUnitSaleState } from "@/modules/catalog/search";
+import { cashierUnitSaleState, deduplicateCashierUnits } from "@/modules/catalog/search";
 import type { CashierProductResult } from "@/modules/catalog/types";
 import { formatRupiah } from "@/modules/ui/currency";
 import { EmptySearchIcon, SearchIcon } from "@/modules/ui/icons";
@@ -21,7 +21,8 @@ function UnitAction({product,unit,onAdd}:{product:CashierProductResult;unit:Prod
 }
 
 function ProductCard({product,onAdd}:{product:CashierProductResult;onAdd:Props["onAdd"]}) {
-  return <article className="rounded-[var(--radius)] border border-[var(--border)] bg-white p-3 transition duration-150 hover:border-[var(--border-strong)]"><div className="flex min-w-0 items-start justify-between gap-3"><div className="min-w-0 flex-1"><h3 className="truncate text-[15px] font-semibold">{product.name}</h3><p className="mt-0.5 truncate text-xs font-medium text-[var(--text-muted)]">SKU · {product.sku}</p></div><div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5"><StockBadge stock={product.availableStockBase}/>{product.requiresPrescription?<span className="rounded-full bg-[var(--warning-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--warning)]">Perlu resep</span>:null}</div></div>{product.units.length?<div className="mt-2.5 grid gap-2">{product.units.map(unit=><UnitAction key={unit.id} product={product} unit={unit} onAdd={onAdd}/>)}</div>:<div className="mt-2.5 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-end gap-3"><p className="min-w-0 text-sm font-medium text-[var(--danger)]">Harga belum diatur</p><button type="button" disabled className="min-h-11 shrink-0 rounded-[7px] border border-[var(--border-strong)] px-3 text-sm font-semibold opacity-50">Belum bisa dijual</button></div>}</article>;
+  const displayUnits = deduplicateCashierUnits(product.units);
+  return <article className="rounded-[var(--radius)] border border-[var(--border)] bg-white p-3 transition duration-150 hover:border-[var(--border-strong)]"><div className="flex min-w-0 items-start justify-between gap-3"><div className="min-w-0 flex-1"><h3 className="truncate text-[15px] font-semibold">{product.name}</h3><p className="mt-0.5 truncate text-xs font-medium text-[var(--text-muted)]">SKU · {product.sku}</p></div><div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5"><StockBadge stock={product.availableStockBase}/>{product.requiresPrescription?<span className="rounded-full bg-[var(--warning-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--warning)]">Perlu resep</span>:null}</div></div>{displayUnits.length?<div className="mt-2.5 grid gap-2">{displayUnits.map(unit=><UnitAction key={unit.id} product={product} unit={unit} onAdd={onAdd}/>)}</div>:<div className="mt-2.5 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-end gap-3"><p className="min-w-0 text-sm font-medium text-[var(--danger)]">Harga belum diatur</p><button type="button" disabled className="min-h-11 shrink-0 rounded-[7px] border border-[var(--border-strong)] px-3 text-sm font-semibold opacity-50">Belum bisa dijual</button></div>}</article>;
 }
 
 export function ProductSearch({query,onQueryChange,onSubmit,products,loading,error,onRetry,onAdd}:Props) {

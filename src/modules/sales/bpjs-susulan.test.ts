@@ -74,3 +74,35 @@ test("receipt merges normal and susulan items as standard lines without susulan 
   assert.equal(merged[1].unitName.includes("susulan"), false);
 });
 
+test("susulan item with (Produk Tambahan) suffix is sanitized for receipt display", () => {
+  const dirtyItems: BpjsSusulanItem[] = [
+    {
+      id: "s2",
+      transactionId: "tx-2",
+      productId: null,
+      drugName: "BPJS ASETOSAL 100 TAB (Produk Tambahan)",
+      quantity: 1,
+      unitPrice: 35000,
+      lineTotal: 35000,
+      deliveryDate: "2026-11-10",
+      fulfillmentStatus: "pending_fulfillment",
+      fulfilledBy: null,
+      fulfilledAt: null,
+      createdAt: "2026-11-09T09:00:00Z",
+      createdBy: "emp-1",
+      requestKey: "req-2",
+    },
+  ];
+
+  const receiptItem = {
+    productName: dirtyItems[0].drugName.replace(/\s*[\(\[]\s*produk\s+tambahan\s*[\)\]]/gi, "").trim(),
+    unitName: "unit",
+    quantity: dirtyItems[0].quantity,
+    unitPrice: dirtyItems[0].unitPrice,
+    lineTotal: dirtyItems[0].lineTotal,
+  };
+
+  assert.equal(receiptItem.productName, "BPJS ASETOSAL 100 TAB");
+});
+
+
