@@ -697,6 +697,7 @@ export type Database = {
           conversion_to_base: number
           created_at: string
           id: string
+          is_active: boolean
           is_base_unit: boolean
           product_id: string
           selling_price: number
@@ -708,6 +709,7 @@ export type Database = {
           conversion_to_base: number
           created_at?: string
           id?: string
+          is_active?: boolean
           is_base_unit?: boolean
           product_id: string
           selling_price: number
@@ -719,6 +721,7 @@ export type Database = {
           conversion_to_base?: number
           created_at?: string
           id?: string
+          is_active?: boolean
           is_base_unit?: boolean
           product_id?: string
           selling_price?: number

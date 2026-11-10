@@ -11,6 +11,7 @@ export interface RawCashierProductUnit {
   displayedUnitPrice?: number;
   barcode?: string | null;
   is_base_unit?: boolean | null;
+  is_active?: boolean | null;
 }
 
 export function cashierUnitSaleState(stock: number, price: number) {
@@ -36,42 +37,46 @@ function unitQualityScore(u: RawCashierProductUnit): number {
   if (u.is_base_unit === true) score += 100;
   const name = (u.unit_name ?? u.label ?? "").trim();
   if (name.length > 0) score += 10;
+  const price = u.selling_price ?? u.displayedUnitPrice ?? 0;
+  if (price > 0) score += 5;
   if (u.barcode && u.barcode.trim().length > 0) score += 1;
   return score;
 }
 
 /**
  * Normalizes cashier unit choices by eliminating semantically duplicate units:
- * - Omits nameless units that match the conversion and price of the primary base unit or named equivalent.
- * - Collapses exact duplicate names with identical conversion and price (favoring is_base_unit).
+ * - Collapses duplicate units of the same packaging/conversion tier into the authoritative unit.
+ * - Prioritizes the primary base unit (is_base_unit = true) as the single authoritative active price.
+ * - Eliminates nameless ghost units that share a conversion tier with a named unit.
+ * - Collapses exact duplicate names (case-insensitive) of the same conversion tier.
  * - Preserves units with distinct conversions (e.g. tablet vs strip vs box).
- * - Preserves units with distinct valid packaging names even if price is identical.
+ * - Preserves units with distinct valid packaging names even at the same conversion (e.g. tablet vs kapsul).
  * - Preserves standalone products with missing/empty unit names so they can still be sold.
  */
 export function deduplicateCashierUnits<T extends RawCashierProductUnit>(rawUnits: T[]): CashierProductUnit[] {
-  if (rawUnits.length <= 1) {
-    return rawUnits.map((u) => ({
+  const activeUnits = rawUnits.filter((u) => u.is_active !== false);
+  if (activeUnits.length === 0) return [];
+  if (activeUnits.length === 1) {
+    const u = activeUnits[0];
+    return [{
       id: u.id,
       label: (u.unit_name ?? u.label ?? "").trim(),
       conversionToBase: u.conversion_to_base ?? u.conversionToBase ?? 1,
       displayedUnitPrice: u.selling_price ?? u.displayedUnitPrice ?? 0,
       barcode: u.barcode ?? null,
-    }));
+    }];
   }
 
   const result: T[] = [];
 
-  for (const unit of rawUnits) {
+  for (const unit of activeUnits) {
     const unitConv = unit.conversion_to_base ?? unit.conversionToBase ?? 1;
-    const unitPrice = unit.selling_price ?? unit.displayedUnitPrice ?? 0;
     const unitName = (unit.unit_name ?? unit.label ?? "").trim();
 
     const duplicateIndex = result.findIndex((existing) => {
       const existingConv = existing.conversion_to_base ?? existing.conversionToBase ?? 1;
-      const existingPrice = existing.selling_price ?? existing.displayedUnitPrice ?? 0;
 
       if (existingConv !== unitConv) return false;
-      if (existingPrice !== unitPrice) return false;
 
       const existingName = (existing.unit_name ?? existing.label ?? "").trim();
 
@@ -80,12 +85,12 @@ export function deduplicateCashierUnits<T extends RawCashierProductUnit>(rawUnit
         return true;
       }
 
-      // Case 2: One is non-empty and the other is empty -> duplicate of the same conversion & price
+      // Case 2: One is non-empty and the other is empty -> duplicate of the same conversion tier
       if ((existingName && !unitName) || (!existingName && unitName)) {
         return true;
       }
 
-      // Case 3: Both are empty -> duplicate of the same conversion & price
+      // Case 3: Both are empty -> duplicate of the same conversion tier
       if (!existingName && !unitName) {
         return true;
       }
@@ -144,6 +149,7 @@ export function buildCashierProductResults(
       selling_price: number;
       barcode: string | null;
       is_base_unit?: boolean | null;
+      is_active?: boolean | null;
     }>;
   }>,
   batches: Array<{ product_id: string; quantity: number }>

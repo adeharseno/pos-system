@@ -8,7 +8,7 @@ export async function searchCashierProducts(query:string) {
   if(!query)return [];
   const admin=createAdminSupabaseClient();
   const products=await admin.from("products")
-    .select("id,sku,name,requires_prescription,product_units(id,unit_name,conversion_to_base,selling_price,barcode,is_base_unit)")
+    .select("id,sku,name,requires_prescription,product_units(id,unit_name,conversion_to_base,selling_price,barcode,is_base_unit,is_active)")
     .eq("is_active",true).or(`name.ilike.%${query}%,sku.ilike.%${query}%`).order("name").limit(20);
   if(products.error)throw mapDatabaseError(products.error);if(!products.data.length)return [];
   const businessDate=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Jakarta",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
@@ -19,7 +19,7 @@ export async function searchCashierProducts(query:string) {
 
 export async function findCashierProductByBarcode(barcode:string) {
   const admin=createAdminSupabaseClient();
-  const unit=await admin.from("product_units").select("id,unit_name,conversion_to_base,selling_price,barcode,products!inner(id,sku,name,requires_prescription,is_active)").eq("barcode",barcode).maybeSingle();
+  const unit=await admin.from("product_units").select("id,unit_name,conversion_to_base,selling_price,barcode,is_active,products!inner(id,sku,name,requires_prescription,is_active)").eq("barcode",barcode).eq("is_active",true).maybeSingle();
   if(unit.error)throw mapDatabaseError(unit.error);if(!unit.data)return null;if(!unit.data.products.is_active)return {inactive:true as const};
   const product=unit.data.products;const businessDate=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Jakarta",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
   const batches=await admin.from("product_batches").select("quantity").eq("product_id",product.id).gt("quantity",0).or(`expired_date.is.null,expired_date.gte.${businessDate}`);
