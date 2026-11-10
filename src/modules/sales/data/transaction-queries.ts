@@ -30,4 +30,15 @@ export async function getReceiptTransaction(transactionId:string) {
     .eq("id",transactionId).maybeSingle();
   if(error) throw mapDatabaseError(error); return data;
 }
-export async function getCustomerReturns(transactionId:string){const {data,error}=await createAdminSupabaseClient().from("returns").select("id,created_at,reason,refund_total,employees!returns_processed_by_fkey(full_name),return_items(transaction_item_id,quantity_in_base,refund_subtotal,refund_tax_amount)").eq("transaction_id",transactionId).eq("source","customer").order("created_at",{ascending:false});if(error)throw mapDatabaseError(error);return data??[];}
+export async function getCustomerReturns(transactionId: string) {
+  const { data, error } = await createAdminSupabaseClient()
+    .from("returns")
+    .select(
+      "id, return_number, created_at, status, refund_status, reason, admin_notes, refund_total, employees!returns_processed_by_fkey(full_name), return_items(transaction_item_id, quantity_in_base, refund_subtotal, refund_tax_amount)"
+    )
+    .eq("transaction_id", transactionId)
+    .eq("source", "customer")
+    .order("created_at", { ascending: false });
+  if (error) throw mapDatabaseError(error);
+  return data ?? [];
+}

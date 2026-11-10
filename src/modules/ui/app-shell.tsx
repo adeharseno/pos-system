@@ -12,17 +12,21 @@ import type { PurchaseDueReminder } from "@/modules/purchasing/due-reminder-mode
 import { dueReminderLabel } from "@/modules/purchasing/due-reminder-model";
 import { formatInvoiceAmount } from "@/modules/purchasing/invoice-presentation";
 import type { BpjsSusulanNotification } from "@/modules/sales/bpjs-susulan";
+import type { ReturnNotification } from "@/modules/returns/data/return-queries";
+import { formatRupiah } from "./currency";
 
 // Presentation adapted from TailAdmin AppSidebar/AppHeader; role filtering is retained.
 export function AppShell({
   employee,
   reminders = [],
   susulanNotifications = [],
+  returnNotifications = [],
   children,
 }: {
   employee: { name: string; role: EmployeeRole };
   reminders?: PurchaseDueReminder[];
   susulanNotifications?: BpjsSusulanNotification[];
+  returnNotifications?: ReturnNotification[];
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -32,7 +36,7 @@ export function AppShell({
   const isOwner = employee.role === "owner_admin";
 
   const susulanCount = susulanNotifications.reduce((acc, curr) => acc + curr.pendingCount, 0);
-  const totalBadgeCount = reminders.length + susulanCount;
+  const totalBadgeCount = reminders.length + susulanCount + returnNotifications.length;
 
   useEffect(() => {
     if (!open) return;
@@ -117,6 +121,30 @@ export function AppShell({
               <p className="p-5 text-sm text-gray-600">Tidak ada notifikasi saat ini.</p>
             ) : (
               <div>
+                {returnNotifications.length > 0 ? (
+                  <div>
+                    <div className="border-b border-rose-200 bg-rose-50/70 p-3.5">
+                      <p className="text-sm font-semibold text-rose-950">Request Retur Barang</p>
+                      <p className="text-xs text-rose-800">{returnNotifications.length} permintaan menunggu persetujuan</p>
+                    </div>
+                    <ul className="max-h-48 divide-y divide-gray-100 overflow-y-auto">
+                      {returnNotifications.map(item => (
+                        <li key={item.id}>
+                          <Link
+                            href={`/returns/${item.id}`}
+                            onClick={() => setBellOpen(false)}
+                            className="block p-3 hover:bg-rose-50/40 text-xs transition-colors"
+                          >
+                            <p className="font-semibold text-gray-900">Invoice: {item.invoiceNumber}</p>
+                            <p className="text-gray-600">Kasir: {item.cashierName} · {item.itemCount} barang</p>
+                            <p className="mt-0.5 font-medium text-rose-800">Refund: {formatRupiah(item.refundTotal)}</p>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+
                 {susulanNotifications.length > 0 ? (
                   <div>
                     <div className="border-b border-amber-200 bg-amber-50/70 p-3.5">

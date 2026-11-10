@@ -17,7 +17,18 @@ import { returnQuantity } from "@/modules/returns/return-quantity";
 import { canStartReturn, detailReturnState } from "@/modules/returns/return-detail-state";
 
 type ReturnItem = { transaction_item_id: string; quantity_in_base: number };
-type ReturnRecord = { return_items: ReturnItem[] | null };
+type ReturnRecord = {
+  id: string;
+  return_number?: string | null;
+  status?: string;
+  refund_status?: string;
+  reason?: string;
+  admin_notes?: string | null;
+  refund_total?: number;
+  created_at?: string;
+  employees?: { full_name: string } | null;
+  return_items: ReturnItem[] | null;
+};
 type DetailItem = { id: string; quantity_in_base: number; conversion_to_base_snapshot: number };
 
 export default async function TransactionDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -34,7 +45,13 @@ export default async function TransactionDetailPage({ params }: { params: Promis
   if (!row) notFound();
   const transaction = buildReceiptViewModel(row as unknown as ReceiptTransactionRow);
   const returned = new Map<string, number>();
-  for (const record of records) for (const item of record.return_items ?? []) returned.set(item.transaction_item_id, (returned.get(item.transaction_item_id) ?? 0) + item.quantity_in_base);
+  for (const record of records) {
+    if (record.status !== "rejected") {
+      for (const item of record.return_items ?? []) {
+        returned.set(item.transaction_item_id, (returned.get(item.transaction_item_id) ?? 0) + item.quantity_in_base);
+      }
+    }
+  }
   const quantities = (row.transaction_items as DetailItem[]).map(item => ({ id: item.id, source: item, ...returnQuantity({ purchasedBase: item.quantity_in_base, returnedBase: returned.get(item.id) ?? 0, conversionToBase: item.conversion_to_base_snapshot }) }));
   const state = detailReturnState(quantities.map(item => ({ purchasedBase: item.source.quantity_in_base, returnedBase: returned.get(item.id) ?? 0, conversionToBase: item.source.conversion_to_base_snapshot, remainingBase: item.remainingBase })));
   const actions = transactionActionVisibility(transaction.status, row.payment_method, records.length > 0);
@@ -66,7 +83,21 @@ export default async function TransactionDetailPage({ params }: { params: Promis
         <div><dt className="text-gray-600">Kasir</dt><dd className="mt-2 break-words text-gray-900">{transaction.cashierName}</dd></div>
         <div><dt className="text-gray-600">Status</dt><dd className="mt-2"><TransactionStatusBadge status={displayStatus} /></dd></div>
       </dl>
-      {state === "partial" ? <p className="mt-6 border-t border-gray-200 pt-5 text-base font-medium text-gray-700">Sebagian barang sudah diretur.</p> : state === "full" ? <p className="mt-6 border-t border-gray-200 pt-5 text-base font-medium text-gray-700">Semua barang sudah diretur.</p> : null}
+      {state === "partial" ? (
+        <div className="mt-6 flex items-center gap-2 border-t border-gray-200 pt-5">
+          <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+            Retur Sebagian
+          </span>
+          <span className="text-sm text-gray-600">Sebagian barang pada transaksi ini sudah diretur.</span>
+        </div>
+      ) : state === "full" ? (
+        <div className="mt-6 flex items-center gap-2 border-t border-gray-200 pt-5">
+          <span className="inline-flex rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-800">
+            Retur Penuh
+          </span>
+          <span className="text-sm text-gray-600">Semua barang pada transaksi ini sudah diretur.</span>
+        </div>
+      ) : null}
     </CardContent></Card>
     <Card><CardHeader><h2 className="text-lg font-semibold text-gray-900">Informasi Resep</h2></CardHeader><CardContent>{transaction.prescription.category==="bebas"?<p className="text-base font-medium">Kategori BEBAS — tanpa data pasien atau resep.</p>:<dl className="grid gap-6 text-base sm:grid-cols-2 xl:grid-cols-3"><div><dt className="text-gray-600">Kategori Resep</dt><dd className="mt-2 font-semibold">{transaction.prescription.category.toUpperCase()}</dd></div><div><dt className="text-gray-600">Nama Pasien</dt><dd className="mt-2 break-words">{transaction.prescription.patientName||"-"}</dd></div>{transaction.prescription.category==="bpjs"?<div><dt className="text-gray-600">No BPJS</dt><dd className="mt-2 break-all">{transaction.prescription.bpjsNumber||"-"}</dd></div>:null}<div><dt className="text-gray-600">No Resep</dt><dd className="mt-2 break-all">{transaction.prescription.prescriptionNumber||"-"}</dd></div><div><dt className="text-gray-600">Asal Resep</dt><dd className="mt-2 break-words">{transaction.prescription.prescriptionOrigin||"-"}</dd></div><div><dt className="text-gray-600">Tanggal Resep</dt><dd className="mt-2">{transaction.prescription.prescriptionDate?formatPrescriptionDate(transaction.prescription.prescriptionDate):"-"}</dd></div></dl>}</CardContent></Card>
     <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
@@ -142,10 +173,91 @@ export default async function TransactionDetailPage({ params }: { params: Promis
         <div className="grid gap-3 border-t border-gray-200 pt-6">
           <AutoPrintReceipt transactionId={transaction.transactionId} label={transactionPrintLabel(transaction.status, row.payment_method)} autoPrint={false} />
           <Link href={`/transactions/${transaction.transactionId}/receipt`} className={`${transactionLinkClass} w-full`}>Lihat {transaction.status === "pending_payment" ? "Invoice" : "Struk"} di Tab Baru</Link>
-          {canStartReturn(transaction.status, state) ? <Link href={`/transactions/${transaction.transactionId}/return`} className={`${transactionLinkClass} w-full`}>Retur Barang</Link> : null}
+          {canStartReturn(transaction.status, state) ? <Link href={`/transactions/${transaction.transactionId}/return`} className={`${transactionLinkClass} w-full`}>Request Retur Barang</Link> : null}
           <TransactionActions transactionId={transaction.transactionId} invoice={transaction.invoiceNumber} total={transaction.total} status={transaction.status} paymentMethod={row.payment_method} canConfirm={canManagePayments && actions.confirm} canVoid={canManagePayments && actions.void} />
         </div>
       </CardContent></Card>
     </div>
+
+    {records.length > 0 ? (
+      <Card>
+        <CardHeader>
+          <h2 className="text-lg font-semibold text-gray-900">Riwayat Pengajuan Retur</h2>
+        </CardHeader>
+        <CardContent>
+          <ul className="divide-y divide-gray-200">
+            {records.map((rec) => {
+              const status = rec.status ?? "completed";
+              const isRejected = status === "rejected";
+              const isPending = status === "pending_approval";
+              const isApproved = status === "approved";
+              const isCompleted = status === "completed";
+
+              const badgeColor = isPending
+                ? "bg-amber-100 text-amber-800"
+                : isApproved
+                ? "bg-blue-100 text-blue-800"
+                : isCompleted
+                ? "bg-emerald-100 text-emerald-800"
+                : "bg-red-100 text-red-800";
+
+              const statusText = isPending
+                ? "Menunggu Persetujuan Admin"
+                : isApproved
+                ? "Disetujui Admin"
+                : isCompleted
+                ? "Selesai (Refund Selesai)"
+                : "Ditolak";
+
+              return (
+                <li key={rec.id} className="py-4 space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${badgeColor}`}>
+                        {statusText}
+                      </span>
+                      {rec.return_number ? (
+                        <strong className="text-sm text-gray-900">{rec.return_number}</strong>
+                      ) : null}
+                      {rec.created_at ? (
+                        <span className="text-xs text-gray-500">{formatReceiptDate(rec.created_at)}</span>
+                      ) : null}
+                    </div>
+                    <span className="text-sm font-semibold text-gray-900 tabular">
+                      {formatRupiah(rec.refund_total ?? 0)}
+                    </span>
+                  </div>
+
+                  <p className="text-sm text-gray-700">
+                    <span className="text-gray-500">Alasan Kasir:</span> {rec.reason || "-"}
+                  </p>
+
+                  {rec.admin_notes ? (
+                    <div className={`rounded-lg p-3 text-sm ${isRejected ? "bg-red-50 text-red-900 border border-red-200" : "bg-gray-50 text-gray-800 border border-gray-200"}`}>
+                      <p className="font-semibold text-xs uppercase tracking-wider mb-0.5">
+                        {isRejected ? "Alasan Penolakan Admin:" : "Catatan Admin:"}
+                      </p>
+                      <p>{rec.admin_notes}</p>
+                    </div>
+                  ) : null}
+
+                  {(isApproved || isCompleted) && rec.return_number ? (
+                    <div className="pt-1">
+                      <Link
+                        href={`/returns/${rec.id}/receipt`}
+                        className="text-xs font-semibold text-brand-600 hover:underline"
+                        target="_blank"
+                      >
+                        Lihat / Cetak Nota Retur ({rec.return_number}) →
+                      </Link>
+                    </div>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        </CardContent>
+      </Card>
+    ) : null}
   </Container>;
 }

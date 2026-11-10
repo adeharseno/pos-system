@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireOwnerPermission } from "@/modules/auth/application/auth-service";
+import { requirePermission } from "@/modules/auth/application/auth-service";
 import { getCustomerReturns, getTransaction } from "@/modules/sales/data/transaction-queries";
 import { listTransactions } from "@/modules/sales/transaction-history";
 import { formatReceiptDate } from "@/modules/sales/receipt";
@@ -14,7 +14,7 @@ import { formatRupiah } from "@/modules/ui/currency";
 type SearchParams = { q?: string; transaction?: string };
 
 export default async function CashierReturnsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  await requireOwnerPermission("returns.create");
+  await requirePermission("returns.create");
   const params = await searchParams;
   const query = typeof params.q === "string" ? params.q.trim().slice(0, 80) : "";
   let results: Awaited<ReturnType<typeof listTransactions>>["rows"] = [];

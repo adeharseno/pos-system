@@ -21,6 +21,7 @@ export const navigationGroups: Array<{ label: string; items: NavItem[] }> = [
       { label: "Beranda", href: "/dashboard", icon: HomeIcon },
       { label: "Kasir", href: "/cashier", icon: CartIcon, posOperator: true },
       { label: "Transaksi", href: "/transactions", icon: ChartIcon, cashier: true },
+      { label: "Retur Penjualan", href: "/returns", icon: BoxIcon, admin: true },
     ],
   },
   {
