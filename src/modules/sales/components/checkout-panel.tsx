@@ -20,6 +20,7 @@ interface ExtraItem {
 export function CheckoutPanel({
   cart,
   estimatedTotal,
+  isBpjsOnly = false,
   onClose,
   onImmediateSuccess,
   onManualPaymentPending,
@@ -27,13 +28,14 @@ export function CheckoutPanel({
 }: {
   cart: CartLine[];
   estimatedTotal: number;
+  isBpjsOnly?: boolean;
   onClose: () => void;
   onImmediateSuccess: (result: CashSuccess, method: "cash" | "bpjs") => void;
   onManualPaymentPending: (result: CheckoutResult, method: "qris" | "bank_transfer") => void;
   onInsufficientStock: () => Promise<string>;
 }) {
   const submissionLock = useRef(false);
-  const cartFingerprint = computeCartFingerprint(cart);
+  const cartFingerprint = cart.length ? computeCartFingerprint(cart) : `bpjs-empty:${isBpjsOnly}`;
   const persisted = getPersistedPendingCheckout(cartFingerprint);
   const requestId = useRef<string | null>(persisted?.requestId ?? null);
   const successHandled = useRef(false);
@@ -42,7 +44,7 @@ export function CheckoutPanel({
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uncertain, setUncertain] = useState(persisted?.uncertain ?? false);
-  const [category, setCategory] = useState<"umum" | "bpjs" | "bebas">(DEFAULT_PRESCRIPTION_CATEGORY);
+  const [category, setCategory] = useState<"umum" | "bpjs" | "bebas">(isBpjsOnly ? "bpjs" : DEFAULT_PRESCRIPTION_CATEGORY);
   const [patient, setPatient] = useState("");
   const [bpjsNumber, setBpjsNumber] = useState("");
   const [prescriptionNumber, setPrescriptionNumber] = useState("");
@@ -53,13 +55,25 @@ export function CheckoutPanel({
   const extraTotal = category === "bpjs" ? extraItems.reduce((acc, it) => acc + it.quantity * it.unitPrice, 0) : 0;
   const currentTotal = estimatedTotal + extraTotal;
 
+  const isBpjsOrder = category === "bpjs";
   const prescriptionRequired = cart.some((line) => line.requiresPrescription);
-  const cashValidation = category !== "bpjs" && method === "cash" ? validateCashReceived(cash, currentTotal) : null;
+  const cashValidation = !isBpjsOrder && method === "cash" ? validateCashReceived(cash, currentTotal) : null;
   const prescriptionInvalid = category !== "bebas" && prescriptionRequired && (!prescriptionOrigin.trim() || !patient.trim());
-  const bpjsInvalid = category === "bpjs" && !bpjsNumber.trim();
-  const susulanInvalid = category === "bpjs" && extraItems.some((it) => !it.drugName.trim() || it.quantity < 1 || it.unitPrice < 0);
+  const bpjsInvalid = isBpjsOrder && !bpjsNumber.trim();
+  const susulanInvalid = isBpjsOrder && extraItems.some((it) => !it.drugName.trim() || it.quantity < 1 || it.unitPrice < 0);
+
+  // Empty cart checkout validation: strictly for BPJS with >= 1 valid item + patient name + bpjs number
+  const emptyCartMissingItems = cart.length === 0 && (!isBpjsOrder || extraItems.length === 0);
+  const emptyCartPatientMissing = cart.length === 0 && isBpjsOrder && !patient.trim();
+  const emptyCartInvalid = emptyCartMissingItems || emptyCartPatientMissing || susulanInvalid || bpjsInvalid;
+
+  const cannotSubmit =
+    cart.length === 0
+      ? emptyCartInvalid || processing
+      : Boolean(cashValidation) || prescriptionInvalid || bpjsInvalid || susulanInvalid || processing;
 
   const selectCategory = (value: "umum" | "bpjs" | "bebas") => {
+    if (isBpjsOnly && value !== "bpjs") return;
     setCategory(value);
     setError(null);
     if (value !== "bpjs") {
@@ -88,7 +102,7 @@ export function CheckoutPanel({
   };
 
   async function submit() {
-    if (!acquireSubmissionLock(submissionLock) || cashValidation || prescriptionInvalid || bpjsInvalid || susulanInvalid) return;
+    if (!acquireSubmissionLock(submissionLock) || cannotSubmit) return;
     setProcessing(true);
     setError(null);
     setUncertain(false);
@@ -187,6 +201,14 @@ export function CheckoutPanel({
                   <span className="tabular shrink-0 font-medium text-blue-950">{formatRupiah(item.quantity * item.unitPrice)}</span>
                 </div>
               ))}
+            {cart.length === 0 && extraItems.length === 0 ? (
+              <div className="p-4 text-center">
+                <p className="text-sm text-[var(--text-muted)]">Keranjang saat ini kosong.</p>
+                <p className="mt-1 text-xs font-semibold text-[var(--accent)]">
+                  Klik tombol "+ Tambah Barang" di bawah untuk memasukkan produk susulan BPJS.
+                </p>
+              </div>
+            ) : null}
           </div>
 
           {category === "bpjs" ? (
@@ -269,19 +291,28 @@ export function CheckoutPanel({
           <fieldset className="mt-5 grid gap-3 rounded-[var(--radius)] border border-[var(--border)] bg-zinc-50 p-4">
             <legend className="px-1 text-sm font-semibold">Kategori Penjualan</legend>
             <div className="grid grid-cols-3 gap-2">
-              {(["umum", "bpjs", "bebas"] as const).map((value) => (
-                <button
-                  type="button"
-                  aria-pressed={category === value}
-                  className={`min-h-11 rounded-[7px] border-2 px-3 text-sm font-semibold ${
-                    category === value ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]" : "border-[var(--border)] bg-white"
-                  }`}
-                  key={value}
-                  onClick={() => selectCategory(value)}
-                >
-                  {value.toUpperCase()}
-                </button>
-              ))}
+              {(["umum", "bpjs", "bebas"] as const).map((value) => {
+                const disabled = isBpjsOnly && value !== "bpjs";
+                return (
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    aria-pressed={category === value}
+                    aria-disabled={disabled}
+                    className={`min-h-11 rounded-[7px] border-2 px-3 text-sm font-semibold transition ${
+                      category === value
+                        ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
+                        : disabled
+                        ? "border-[var(--border)] bg-zinc-100 text-zinc-400 cursor-not-allowed opacity-60"
+                        : "border-[var(--border)] bg-white hover:bg-zinc-50"
+                    }`}
+                    key={value}
+                    onClick={() => selectCategory(value)}
+                  >
+                    {value.toUpperCase()}
+                  </button>
+                );
+              })}
             </div>
             {category !== "bebas" ? (
               <>
@@ -394,6 +425,12 @@ export function CheckoutPanel({
           {prescriptionInvalid ? <p role="alert" className="mt-4 text-sm text-[var(--danger)]">Nama pasien dan asal resep wajib diisi.</p> : null}
           {bpjsInvalid ? <p role="alert" className="mt-4 text-sm text-[var(--danger)]">No BPJS wajib diisi untuk kategori BPJS.</p> : null}
           {susulanInvalid ? <p role="alert" className="mt-4 text-sm text-[var(--danger)]">Lengkapi nama obat, jumlah, dan harga untuk produk tambahan.</p> : null}
+          {cart.length === 0 && isBpjsOrder && extraItems.length === 0 ? (
+            <p role="alert" className="mt-4 text-sm text-[var(--danger)]">Tambahkan minimal 1 produk tambahan untuk pesanan BPJS ini.</p>
+          ) : null}
+          {cart.length === 0 && isBpjsOrder && extraItems.length > 0 && !patient.trim() ? (
+            <p role="alert" className="mt-4 text-sm text-[var(--danger)]">Nama pasien wajib diisi untuk pesanan BPJS.</p>
+          ) : null}
           {error ? <p role="alert" className="mt-4 rounded-[7px] bg-[var(--danger-soft)] p-3 text-sm font-medium text-[var(--danger)]">{error}</p> : null}
           {uncertain ? (
             <div role="alert" className="mt-4 rounded-[7px] bg-[var(--warning-soft)] p-3 text-sm text-[var(--warning)]">
@@ -405,7 +442,7 @@ export function CheckoutPanel({
         <footer className="border-t border-[var(--border)] bg-white px-4 py-5 sm:px-6">
           <button
             className="min-h-12 w-full rounded-[7px] bg-zinc-950 px-4 text-sm font-semibold text-white disabled:bg-zinc-300"
-            disabled={Boolean(cashValidation) || prescriptionInvalid || bpjsInvalid || susulanInvalid || processing}
+            disabled={cannotSubmit}
             onClick={submit}
           >
             {processing

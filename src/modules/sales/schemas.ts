@@ -5,7 +5,13 @@ export function validateCheckoutInput(input: CheckoutInput): CheckoutInput {
   const normalized = input.prescription ? input : { ...input, prescription: { category: DEFAULT_PRESCRIPTION_CATEGORY } };
   requireUuid(input.requestId, "requestId");
   requireUuid(input.employeeId, "employeeId");
-  if (!input.items.length) throw new TypeError("items must not be empty");
+  const isBpjsWithSupplementary =
+    input.paymentMethod === "bpjs" &&
+    Boolean(input.supplementaryItems && input.supplementaryItems.length > 0);
+
+  if (!input.items.length && !isBpjsWithSupplementary) {
+    throw new TypeError("items must not be empty");
+  }
   input.items.forEach((item, index) => {
     requireUuid(item.productUnitId, `items[${index}].productUnitId`);
     requirePositiveInteger(item.quantity, `items[${index}].quantity`);
@@ -14,7 +20,12 @@ export function validateCheckoutInput(input: CheckoutInput): CheckoutInput {
   if (!normalized.prescription || !["umum","bpjs","bebas"].includes(normalized.prescription.category)) throw new TypeError("prescription category is required");
   if ((normalized.prescription.category === "bpjs") !== (input.paymentMethod === "bpjs")) throw new TypeError("payment method does not match prescription category");
   if (input.paymentMethod === "bpjs" && input.cashReceived !== 0) throw new TypeError("BPJS cash received must be zero");
-  if (normalized.prescription.category === "bpjs") requireNonBlank(normalized.prescription.bpjsNumber ?? "", "prescription.bpjsNumber");
+  if (normalized.prescription.category === "bpjs") {
+    requireNonBlank(normalized.prescription.bpjsNumber ?? "", "prescription.bpjsNumber");
+    if (isBpjsWithSupplementary && !input.items.length) {
+      requireNonBlank(normalized.prescription.patientName ?? "", "prescription.patientName");
+    }
+  }
   if (normalized.prescription.prescriptionDate && !/^\d{4}-\d{2}-\d{2}$/.test(normalized.prescription.prescriptionDate)) throw new TypeError("invalid prescription date");
   if (input.supplementaryItems?.length) {
     if (input.paymentMethod !== "bpjs") throw new TypeError("supplementary items only allowed for BPJS");

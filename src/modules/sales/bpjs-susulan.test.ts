@@ -282,3 +282,111 @@ test("8. Schema rejects invalid supplementary items (blank name, zero quantity, 
     })
   );
 });
+
+test("9. buildBpjsCheckoutPayload with empty cart produces payload with empty items array", () => {
+  const payload = buildBpjsCheckoutPayload(
+    [],
+    { category: "bpjs", patientName: "Ahmad", bpjsNumber: "00098765" },
+    [{ drugName: "BPJS METFORMIN 500", quantity: 2, unitPrice: 15000 }]
+  );
+  assert.equal(payload.payment_method, "bpjs");
+  assert.equal(payload.cash_received, 0);
+  assert.deepEqual(payload.items, []);
+  assert.equal(payload.supplementary_items?.length, 1);
+  assert.deepEqual(payload.supplementary_items![0], {
+    drug_name: "BPJS METFORMIN 500",
+    quantity: 2,
+    unit_price: 15000,
+  });
+  assert.equal(payload.prescription.patient_name, "Ahmad");
+  assert.equal(payload.prescription.bpjs_number, "00098765");
+});
+
+test("10. validateCheckoutInput accepts empty items array for BPJS with supplementary items and patient name", () => {
+  const input = {
+    requestId: "44444444-4444-4444-8444-444444444444",
+    employeeId: "55555555-5555-4555-8555-555555555555",
+    paymentMethod: "bpjs" as const,
+    cashReceived: 0,
+    items: [],
+    prescription: {
+      category: "bpjs" as const,
+      patientName: "Ahmad",
+      bpjsNumber: "00098765",
+    },
+    supplementaryItems: [
+      { drugName: "BPJS METFORMIN 500", quantity: 2, unitPrice: 15000 },
+    ],
+  };
+
+  const validated = validateCheckoutInput(input);
+  assert.equal(validated.items.length, 0);
+  assert.equal(validated.supplementaryItems?.length, 1);
+
+  const rpcArgs = toCheckoutRpcArgs(validated);
+  assert.deepEqual(rpcArgs.p_items, []);
+  assert.equal(rpcArgs.p_payment_method, "bpjs");
+  const extraItemsRpc = rpcArgs.p_supplementary_items as Record<string, unknown>[];
+  assert.equal(extraItemsRpc?.length, 1);
+});
+
+test("11. validateCheckoutInput rejects empty cart for non-BPJS or BPJS without supplementary items or missing patient name", () => {
+  const base = {
+    requestId: "44444444-4444-4444-8444-444444444444",
+    employeeId: "55555555-5555-4555-8555-555555555555",
+  };
+
+  // Rejects cash with empty items
+  assert.throws(
+    () =>
+      validateCheckoutInput({
+        ...base,
+        paymentMethod: "cash",
+        cashReceived: 10000,
+        items: [],
+      }),
+    /items must not be empty/
+  );
+
+  // Rejects BPJS with empty items and empty supplementary items
+  assert.throws(
+    () =>
+      validateCheckoutInput({
+        ...base,
+        paymentMethod: "bpjs",
+        cashReceived: 0,
+        items: [],
+        prescription: { category: "bpjs", patientName: "Ahmad", bpjsNumber: "123" },
+        supplementaryItems: [],
+      }),
+    /items must not be empty/
+  );
+
+  // Rejects BPJS with empty items when patientName is missing/blank
+  assert.throws(
+    () =>
+      validateCheckoutInput({
+        ...base,
+        paymentMethod: "bpjs",
+        cashReceived: 0,
+        items: [],
+        prescription: { category: "bpjs", patientName: "", bpjsNumber: "123" },
+        supplementaryItems: [{ drugName: "Obat A", quantity: 1, unitPrice: 5000 }],
+      }),
+    /prescription\.patientName/
+  );
+
+  // Rejects BPJS with empty items when bpjsNumber is missing/blank
+  assert.throws(
+    () =>
+      validateCheckoutInput({
+        ...base,
+        paymentMethod: "bpjs",
+        cashReceived: 0,
+        items: [],
+        prescription: { category: "bpjs", patientName: "Ahmad", bpjsNumber: "" },
+        supplementaryItems: [{ drugName: "Obat A", quantity: 1, unitPrice: 5000 }],
+      }),
+    /prescription\.bpjsNumber/
+  );
+});
