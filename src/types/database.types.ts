@@ -1329,35 +1329,47 @@ export type Database = {
       }
       return_items: {
         Row: {
+          condition: string
           created_at: string
           id: string
+          is_restocked: boolean
           product_id: string
           quantity_in_base: number
           refund_subtotal: number
           refund_tax_amount: number
           refund_total: number
+          restocked_at: string | null
+          restocked_by: string | null
           return_id: string
           transaction_item_id: string | null
         }
         Insert: {
+          condition?: string
           created_at?: string
           id?: string
+          is_restocked?: boolean
           product_id: string
           quantity_in_base: number
           refund_subtotal?: number
           refund_tax_amount?: number
           refund_total?: number
+          restocked_at?: string | null
+          restocked_by?: string | null
           return_id: string
           transaction_item_id?: string | null
         }
         Update: {
+          condition?: string
           created_at?: string
           id?: string
+          is_restocked?: boolean
           product_id?: string
           quantity_in_base?: number
           refund_subtotal?: number
           refund_tax_amount?: number
           refund_total?: number
+          restocked_at?: string | null
+          restocked_by?: string | null
           return_id?: string
           transaction_item_id?: string | null
         }
@@ -1377,6 +1389,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "return_items_restocked_by_fkey"
+            columns: ["restocked_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "return_items_return_id_fkey"
             columns: ["return_id"]
             isOneToOne: false
@@ -1385,50 +1404,113 @@ export type Database = {
           },
         ]
       }
+      return_sequences: {
+        Row: {
+          business_date: string
+          last_number: number
+        }
+        Insert: {
+          business_date: string
+          last_number: number
+        }
+        Update: {
+          business_date?: string
+          last_number?: number
+        }
+        Relationships: []
+      }
       returns: {
         Row: {
+          admin_notes: string | null
           business_date: string
           created_at: string
           id: string
           processed_by: string
           reason: string
+          refund_confirmed_at: string | null
+          refund_confirmed_by: string | null
           refund_method: Database["public"]["Enums"]["payment_method"] | null
+          refund_status: string
           refund_subtotal: number
           refund_tax_amount: number
           refund_total: number
+          requested_by: string | null
+          return_number: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           source: Database["public"]["Enums"]["return_source"]
+          status: string
           transaction_id: string | null
         }
         Insert: {
+          admin_notes?: string | null
           business_date?: string
           created_at?: string
           id?: string
           processed_by: string
           reason: string
+          refund_confirmed_at?: string | null
+          refund_confirmed_by?: string | null
           refund_method?: Database["public"]["Enums"]["payment_method"] | null
+          refund_status?: string
           refund_subtotal?: number
           refund_tax_amount?: number
           refund_total?: number
+          requested_by?: string | null
+          return_number?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           source: Database["public"]["Enums"]["return_source"]
+          status?: string
           transaction_id?: string | null
         }
         Update: {
+          admin_notes?: string | null
           business_date?: string
           created_at?: string
           id?: string
           processed_by?: string
           reason?: string
+          refund_confirmed_at?: string | null
+          refund_confirmed_by?: string | null
           refund_method?: Database["public"]["Enums"]["payment_method"] | null
+          refund_status?: string
           refund_subtotal?: number
           refund_tax_amount?: number
           refund_total?: number
+          requested_by?: string | null
+          return_number?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           source?: Database["public"]["Enums"]["return_source"]
+          status?: string
           transaction_id?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "returns_processed_by_fkey"
             columns: ["processed_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "returns_refund_confirmed_by_fkey"
+            columns: ["refund_confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "returns_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "returns_reviewed_by_fkey"
+            columns: ["reviewed_by"]
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
@@ -2202,6 +2284,16 @@ export type Database = {
         Args: { p_employee_id: string; p_session_id: string }
         Returns: Json
       }
+      approve_customer_return: {
+        Args: {
+          p_admin_notes?: string
+          p_confirm_refund?: boolean
+          p_employee_id: string
+          p_item_conditions?: Json
+          p_return_id: string
+        }
+        Returns: Json
+      }
       cancel_stock_opname: {
         Args: { p_employee_id: string; p_session_id: string }
         Returns: Json
@@ -2235,6 +2327,14 @@ export type Database = {
           p_items: Json
           p_payment_method: Database["public"]["Enums"]["payment_method"]
           p_prescription?: Json
+        }
+        Returns: Json
+      }
+      complete_customer_return: {
+        Args: {
+          p_employee_id: string
+          p_item_conditions?: Json
+          p_return_id: string
         }
         Returns: Json
       }
@@ -2492,6 +2592,24 @@ export type Database = {
           p_invoice_id: string
           p_payment_date: string
           p_request_id: string
+        }
+        Returns: Json
+      }
+      reject_customer_return: {
+        Args: {
+          p_admin_notes: string
+          p_employee_id: string
+          p_return_id: string
+        }
+        Returns: Json
+      }
+      request_customer_return: {
+        Args: {
+          p_employee_id: string
+          p_items: Json
+          p_reason: string
+          p_refund_method: Database["public"]["Enums"]["payment_method"]
+          p_transaction_id: string
         }
         Returns: Json
       }
