@@ -27,16 +27,11 @@ export function validateCustomerReturnRequest(input: CustomerReturnRequestInput)
 export function validateApproveReturn(input: ApproveReturnInput): ApproveReturnInput {
   requireUuid(input.employeeId, "employeeId");
   requireUuid(input.returnId, "returnId");
-  requireNonBlank(input.adminNotes, "adminNotes");
-  if (input.itemConditions?.length) {
-    input.itemConditions.forEach((item, index) => {
-      requireUuid(item.returnItemId, `itemConditions[${index}].returnItemId`);
-      if (!["good", "damaged", "expired"].includes(item.condition)) {
-        throw new TypeError(`invalid condition: ${item.condition}`);
-      }
-    });
-  }
-  return input;
+  const notes = (input.adminNotes ?? "").trim();
+  return {
+    ...input,
+    adminNotes: notes || "Disetujui",
+  };
 }
 
 export function validateRejectReturn(input: RejectReturnInput): RejectReturnInput {

@@ -2283,7 +2283,7 @@ export type Database = {
       }
       approve_customer_return: {
         Args: {
-          p_admin_notes: string
+          p_admin_notes?: string
           p_confirm_refund?: boolean
           p_employee_id: string
           p_item_conditions?: Json

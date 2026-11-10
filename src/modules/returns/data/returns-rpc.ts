@@ -67,12 +67,9 @@ export async function approveCustomerReturnRpc(input: ApproveReturnInput): Promi
     await callCoreRpc("approve_customer_return", {
       p_employee_id: input.employeeId,
       p_return_id: input.returnId,
-      p_admin_notes: input.adminNotes.trim(),
-      p_item_conditions: input.itemConditions?.map((c) => ({
-        return_item_id: c.returnItemId,
-        condition: c.condition,
-      })),
-      p_confirm_refund: Boolean(input.confirmRefund),
+      p_admin_notes: (input.adminNotes ?? "Disetujui").trim(),
+      p_item_conditions: null,
+      p_confirm_refund: true,
     })
   );
   return {

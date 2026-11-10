@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { formatRupiah } from "@/modules/ui/currency";
 import { formatReceiptDate } from "@/modules/sales/receipt";
-import { Button, Card, CardContent, CardHeader, Container } from "@/modules/ui/components";
-import type { ItemCondition, ReturnDetail, ReturnStatus } from "../types";
+import { Card, CardContent, CardHeader, Container } from "@/modules/ui/components";
+import type { ReturnDetail, ReturnStatus } from "../types";
 
 export function ReturnStatusBadge({ status }: { status: ReturnStatus }) {
   if (status === "pending_approval") {
@@ -40,51 +40,30 @@ export function ReturnStatusBadge({ status }: { status: ReturnStatus }) {
 export function ReturnDetailView({
   detail,
   canApprove,
-  canComplete,
 }: {
   detail: ReturnDetail;
   canApprove: boolean;
-  canComplete: boolean;
+  canComplete?: boolean;
 }) {
   const router = useRouter();
   const [adminNotes, setAdminNotes] = useState(detail.adminNotes || "");
-  const [conditions, setConditions] = useState<Record<string, ItemCondition>>(() => {
-    const init: Record<string, ItemCondition> = {};
-    detail.items.forEach((it) => {
-      init[it.id] = it.condition || "good";
-    });
-    return init;
-  });
-  const [confirmRefundNow, setConfirmRefundNow] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
 
   const isPending = detail.status === "pending_approval";
-  const isApproved = detail.status === "approved";
+  const isApproved = detail.status === "approved" || detail.status === "completed";
   const isRejected = detail.status === "rejected";
-  const isCompleted = detail.status === "completed";
 
   const handleApprove = async () => {
-    if (!adminNotes.trim()) {
-      setError("Catatan admin wajib diisi untuk menyetujui retur.");
-      return;
-    }
     setBusy(true);
     setError(null);
     try {
-      const itemConditions = Object.entries(conditions).map(([returnItemId, condition]) => ({
-        return_item_id: returnItemId,
-        condition,
-      }));
-
       const res = await fetch(`/api/returns/${detail.id}/approve`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          admin_notes: adminNotes.trim(),
-          item_conditions: itemConditions,
-          confirm_refund: confirmRefundNow,
+          admin_notes: adminNotes.trim() || "Disetujui",
         }),
       });
 
@@ -93,7 +72,7 @@ export function ReturnDetailView({
         throw new Error(body.error?.message ?? "Gagal menyetujui retur.");
       }
 
-      setFeedback("Permintaan retur berhasil disetujui!");
+      setFeedback("Permintaan retur berhasil disetujui dan stok telah otomatis dikembalikan!");
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Terjadi kesalahan saat menyetujui retur.");
@@ -104,7 +83,7 @@ export function ReturnDetailView({
 
   const handleReject = async () => {
     if (!adminNotes.trim()) {
-      setError("Catatan admin wajib diisi saat menolak retur (alasan penolakan).");
+      setError("Alasan penolakan wajib diisi untuk menolak retur.");
       return;
     }
     setBusy(true);
@@ -127,35 +106,6 @@ export function ReturnDetailView({
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Terjadi kesalahan saat menolak retur.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleCompleteRefund = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      const itemConditions = Object.entries(conditions).map(([returnItemId, condition]) => ({
-        return_item_id: returnItemId,
-        condition,
-      }));
-
-      const res = await fetch(`/api/returns/${detail.id}/complete`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ item_conditions: itemConditions }),
-      });
-
-      const body = await res.json();
-      if (!res.ok || !body.ok) {
-        throw new Error(body.error?.message ?? "Gagal menyelesaikan refund.");
-      }
-
-      setFeedback("Refund berhasil dikonfirmasi dan stok layak jual telah dikembalikan ke inventory!");
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Terjadi kesalahan saat mengonfirmasi refund.");
     } finally {
       setBusy(false);
     }
@@ -303,7 +253,6 @@ export function ReturnDetailView({
                       <th className="px-4 py-3 text-center">Jumlah</th>
                       <th className="px-4 py-3 text-right">Harga Satuan</th>
                       <th className="px-4 py-3 text-right">Refund</th>
-                      <th className="px-4 py-3">Kondisi Fisik</th>
                       <th className="px-4 py-3">Status Stok</th>
                     </tr>
                   </thead>
@@ -321,47 +270,20 @@ export function ReturnDetailView({
                           {formatRupiah(it.refundTotal)}
                         </td>
                         <td className="px-4 py-3.5">
-                          {isPending && canApprove ? (
-                            <select
-                              value={conditions[it.id] ?? "good"}
-                              onChange={(e) =>
-                                setConditions((prev) => ({
-                                  ...prev,
-                                  [it.id]: e.target.value as ItemCondition,
-                                }))
-                              }
-                              className="rounded border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-800"
-                            >
-                              <option value="good">Layak Jual (Restock)</option>
-                              <option value="damaged">Rusak (Jangan Jual)</option>
-                              <option value="expired">Kedaluwarsa (Jangan Jual)</option>
-                            </select>
-                          ) : (
-                            <span
-                              className={`inline-flex rounded px-2 py-0.5 text-xs font-medium ${
-                                it.condition === "good"
-                                  ? "bg-emerald-50 text-emerald-800"
-                                  : "bg-red-50 text-red-800"
-                              }`}
-                            >
-                              {it.condition === "good"
-                                ? "Layak Jual"
-                                : it.condition === "damaged"
-                                ? "Rusak"
-                                : "Kedaluwarsa"}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3.5">
                           {it.isRestocked ? (
                             <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700">
                               <span className="size-1.5 rounded-full bg-emerald-600"></span>
                               Masuk Stok
                             </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-xs text-gray-400">
+                          ) : isRejected ? (
+                            <span className="inline-flex items-center gap-1 text-xs text-gray-500">
                               <span className="size-1.5 rounded-full bg-gray-400"></span>
-                              Belum/Tidak Restock
+                              Ditolak (Stok Tetap)
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-xs text-amber-700 font-medium">
+                              <span className="size-1.5 rounded-full bg-amber-500"></span>
+                              Menunggu Approval
                             </span>
                           )}
                         </td>
@@ -385,12 +307,6 @@ export function ReturnDetailView({
                 <span className="text-gray-600">Subtotal Refund</span>
                 <span className="tabular font-medium">{formatRupiah(detail.refundSubtotal)}</span>
               </div>
-              {detail.refundTaxAmount > 0 ? (
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Pajak Refund</span>
-                  <span className="tabular font-medium">{formatRupiah(detail.refundTaxAmount)}</span>
-                </div>
-              ) : null}
               <div className="flex items-center justify-between border-t border-gray-200 pt-3 text-base font-bold text-gray-900">
                 <span>Total Pengembalian Dana</span>
                 <span className="text-xl tabular text-brand-600">{formatRupiah(detail.refundTotal)}</span>
@@ -404,44 +320,33 @@ export function ReturnDetailView({
               <CardHeader>
                 <h2 className="text-base font-bold text-gray-900">Persetujuan Admin</h2>
                 <p className="text-xs text-gray-500">
-                  Tinjau fisik barang dan berikan catatan wajib sebelum menyetujui atau menolak.
+                  Periksa fisik barang. Setujui untuk memproses refund dan otomatis menambah stok, atau Tolak dengan mengisi alasan penolakan.
                 </p>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
                   <label htmlFor="admin-notes" className="block text-xs font-semibold uppercase text-gray-700">
-                    Catatan Admin (Wajib) <span className="text-red-500">*</span>
+                    Alasan Penolakan / Catatan Admin
                   </label>
                   <textarea
                     id="admin-notes"
                     rows={3}
                     value={adminNotes}
                     onChange={(e) => setAdminNotes(e.target.value)}
-                    placeholder="Contoh: Barang fisik sudah dicek utuh dan tersegel..."
+                    placeholder="Wajib diisi jika menolak retur (contoh: Barang kemasan rusak oleh pembeli)..."
                     className="mt-1.5 w-full rounded-lg border border-gray-300 bg-white p-2.5 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
                   />
+                  <p className="mt-1 text-[11px] text-gray-500">
+                    * Wajib diisi jika menolak. Catatan ini akan ditampilkan kepada kasir pada detail transaksi.
+                  </p>
                 </div>
-
-                <label className="flex items-start gap-2.5 rounded-lg border border-gray-200 bg-white p-3 text-xs text-gray-700 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={confirmRefundNow}
-                    onChange={(e) => setConfirmRefundNow(e.target.checked)}
-                    className="mt-0.5 size-4 rounded border-gray-300 text-brand-600"
-                  />
-                  <span>
-                    <strong>Barang fisik sudah diterima &amp; refund langsung dibayarkan</strong>
-                    <br />
-                    Centang untuk menyelesaikan status retur dan mengembalikan stok layak jual sekaligus.
-                  </span>
-                </label>
 
                 {error ? <p role="alert" className="text-xs font-medium text-red-600">{error}</p> : null}
 
                 <div className="grid grid-cols-2 gap-2 pt-2">
                   <button
                     type="button"
-                    disabled={busy || !adminNotes.trim()}
+                    disabled={busy}
                     onClick={handleReject}
                     className="min-h-11 rounded-lg border border-red-300 bg-white px-3 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-40"
                   >
@@ -449,36 +354,13 @@ export function ReturnDetailView({
                   </button>
                   <button
                     type="button"
-                    disabled={busy || !adminNotes.trim()}
+                    disabled={busy}
                     onClick={handleApprove}
                     className="min-h-11 rounded-lg bg-emerald-600 px-3 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-40"
                   >
                     {busy ? "Memproses…" : "Setujui Retur"}
                   </button>
                 </div>
-              </CardContent>
-            </Card>
-          ) : null}
-
-          {/* Action if Approved but Refund Pending */}
-          {canComplete && isApproved && detail.refundStatus === "pending" ? (
-            <Card className="border-amber-200 bg-amber-50/40">
-              <CardHeader>
-                <h2 className="text-base font-bold text-amber-950">Konfirmasi Pembayaran Refund</h2>
-                <p className="text-xs text-amber-800">
-                  Permintaan ini sudah disetujui. Konfirmasi ketika uang refund sudah diserahkan ke pelanggan dan barang fisik diterima.
-                </p>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {error ? <p role="alert" className="text-xs font-medium text-red-600">{error}</p> : null}
-                <Button
-                  type="button"
-                  disabled={busy}
-                  onClick={handleCompleteRefund}
-                  className="w-full min-h-11 bg-emerald-600 hover:bg-emerald-700"
-                >
-                  {busy ? "Memproses…" : "Konfirmasi Refund Dibayarkan & Terima Barang"}
-                </Button>
               </CardContent>
             </Card>
           ) : null}

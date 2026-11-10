@@ -86,35 +86,41 @@ create temporary table req_2 as select request_customer_return(
 
 select is((select data->>'status' from req_2), 'pending_approval', 'second request submitted');
 
--- 5. Admin approves request 2 with separate refund confirmation (confirm_refund = false)
+-- 5. Non-admin cannot approve
+select throws_ok($$select approve_customer_return(
+  'c1000000-0000-4000-8000-000000000004',
+  (select (data->>'return_id')::uuid from req_2),
+  'Bukan wewenang kasir'
+)$$, 'P0001', 'UNAUTHORIZED_ADMIN', 'kasir cannot approve');
+
+-- 6. Admin approves request 2 -> automatic stock restoration and completed refund
 create temporary table app_2 as select approve_customer_return(
   'c1000000-0000-4000-8000-000000000005',
   (select (data->>'return_id')::uuid from req_2),
-  'Disetujui. Silakan kembalikan fisik obat ke apotek.',
-  null,
-  false
+  'Disetujui. Fisik obat sudah diverifikasi utuh.'
 ) data;
 
 select is((select data->>'status' from app_2), 'approved', 'status is approved');
-select is((select data->>'refund_status' from app_2), 'pending', 'refund_status is pending');
+select is((select data->>'refund_status' from app_2), 'completed', 'refund_status is completed');
 select matches((select data->>'return_number' from app_2), '^RET-\d{8}-\d{4}$', 'sequential Nota Retur number generated');
-select is((select quantity from product_batches where id = 'c1000000-0000-4000-8000-000000000003'), 40, 'stock still 40 while refund is pending');
 
--- 6. Complete return with 3 items good (restocked) and 1 item damaged (not restocked)
+-- Stock automatically restored by 4 from 40 to 44 upon approval
+select is((select quantity from product_batches where id = 'c1000000-0000-4000-8000-000000000003'), 44, 'stock automatically restored from 40 to 44 upon approval');
+
 create temporary table ret_item_id as
 select id from return_items where return_id = (select (data->>'return_id')::uuid from req_2) limit 1;
 
--- If marked 'good': quantity restocks 4 back to batch (40 + 4 = 44)
-create temporary table comp_2 as select complete_customer_return(
+select is((select count(*) from return_item_batches where return_item_id = (select id from ret_item_id)), 1::bigint, 'return_item_batches created for audit trail');
+
+-- 7. Double approval attempt is blocked (idempotency / protection against double restock)
+select throws_ok($$select approve_customer_return(
   'c1000000-0000-4000-8000-000000000005',
   (select (data->>'return_id')::uuid from req_2),
-  null
-) data;
+  'Approval kedua kali'
+)$$, 'P0001', 'INVALID_RETURN_STATE', 'double approval blocked with INVALID_RETURN_STATE');
 
-select is((select data->>'status' from comp_2), 'completed', 'status is completed');
-select is((select data->>'refund_status' from comp_2), 'completed', 'refund_status is completed');
-select is((select quantity from product_batches where id = 'c1000000-0000-4000-8000-000000000003'), 44, 'stock restored by 4 from 40 to 44');
-select is((select count(*) from return_item_batches where return_item_id = (select id from ret_item_id)), 1::bigint, 'return_item_batches created for audit trail');
+-- Verify stock remains 44 (no double increment)
+select is((select quantity from product_batches where id = 'c1000000-0000-4000-8000-000000000003'), 44, 'stock remains 44 (no double increment)');
 
 select * from finish();
 rollback;

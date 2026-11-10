@@ -13,30 +13,19 @@ export async function POST(
     const employee = await requireRole(["owner_admin"]);
     const { id } = await params;
     const returnId = requireUuid(id, "returnId");
-    const body = await readJsonObject(request);
-
-    const adminNotes = stringField(body, "admin_notes").trim();
-    if (!adminNotes) throw new TypeError("admin_notes is required");
-
-    let itemConditions: Array<{ returnItemId: string; condition: ItemCondition }> | undefined;
-    if (body.item_conditions && Array.isArray(body.item_conditions)) {
-      itemConditions = body.item_conditions.map((raw, idx) => {
-        const item = objectValue(raw, `item_conditions[${idx}]`);
-        return {
-          returnItemId: stringField(item, "return_item_id"),
-          condition: (optionalStringField(item, "condition") ?? "good") as ItemCondition,
-        };
-      });
+    let adminNotes = "Disetujui";
+    try {
+      const body = await readJsonObject(request);
+      const raw = optionalStringField(body, "admin_notes");
+      if (raw && raw.trim()) adminNotes = raw.trim();
+    } catch {
+      // Body is optional on approve
     }
-
-    const confirmRefund = Boolean(body.confirm_refund);
 
     return approveCustomerReturn({
       employeeId: employee.employeeId,
       returnId,
       adminNotes,
-      itemConditions,
-      confirmRefund,
     });
   });
 }

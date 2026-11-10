@@ -23,7 +23,7 @@ export interface CustomerReturnRequestResult {
 export interface ApproveReturnInput {
   employeeId: string;
   returnId: string;
-  adminNotes: string;
+  adminNotes?: string;
   itemConditions?: Array<{ returnItemId: string; condition: ItemCondition }>;
   confirmRefund?: boolean;
 }

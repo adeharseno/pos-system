@@ -88,9 +88,6 @@ export default async function ReturnReceiptPage({
                   <span>
                     {it.quantityInUnit} {it.unitName} × {formatRupiah(it.unitPrice)}
                   </span>
-                  <span>
-                    {it.condition === "good" ? "(Layak Jual)" : "(Rusak/Afkir)"}
-                  </span>
                 </div>
               </li>
             ))}
@@ -103,14 +100,8 @@ export default async function ReturnReceiptPage({
             <span>Subtotal Refund:</span>
             <span className="tabular">{formatRupiah(detail.refundSubtotal)}</span>
           </div>
-          {detail.refundTaxAmount > 0 ? (
-            <div className="flex justify-between">
-              <span>Pajak:</span>
-              <span className="tabular">{formatRupiah(detail.refundTaxAmount)}</span>
-            </div>
-          ) : null}
           <div className="mt-1 flex justify-between border-t border-zinc-300 pt-1 text-[10.5px] font-bold">
-            <span>TOTAL REFUND:</span>
+            <span>Total Pengembalian Dana:</span>
             <span className="tabular">{formatRupiah(detail.refundTotal)}</span>
           </div>
           <div className="mt-1 flex justify-between text-[8px] text-zinc-700">

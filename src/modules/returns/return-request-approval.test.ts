@@ -45,39 +45,19 @@ test("1. validateCustomerReturnRequest validates required fields", () => {
   );
 });
 
-test("2. validateApproveReturn requires mandatory admin notes and validates conditions", () => {
+test("2. validateApproveReturn validates required fields and sets default notes", () => {
   const valid = {
     employeeId: "11111111-1111-4111-8111-111111111111",
     returnId: "22222222-2222-4222-8222-222222222222",
     adminNotes: "Disetujui setelah fisik barang diverifikasi",
-    itemConditions: [
-      {
-        returnItemId: "33333333-3333-4333-8333-333333333333",
-        condition: "good" as const,
-      },
-    ],
-    confirmRefund: true,
   };
 
   const result = validateApproveReturn(valid);
   assert.equal(result.adminNotes, "Disetujui setelah fisik barang diverifikasi");
 
-  // Rejects blank notes
-  assert.throws(
-    () => validateApproveReturn({ ...valid, adminNotes: "  " }),
-    /adminNotes/
-  );
-
-  // Rejects invalid condition
-  assert.throws(
-    () =>
-      validateApproveReturn({
-        ...valid,
-        // @ts-expect-error Testing invalid runtime value
-        itemConditions: [{ returnItemId: "33333333-3333-4333-8333-333333333333", condition: "invalid" }],
-      }),
-    /invalid condition/
-  );
+  // Defaults blank notes to 'Disetujui'
+  const blank = validateApproveReturn({ ...valid, adminNotes: "  " });
+  assert.equal(blank.adminNotes, "Disetujui");
 });
 
 test("3. validateRejectReturn requires mandatory admin notes", () => {
