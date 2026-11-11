@@ -4,7 +4,7 @@ import { requirePermission } from "@/modules/auth/application/auth-service";
 import { getCustomerReturns, getTransaction } from "@/modules/sales/data/transaction-queries";
 import { resolveTransactionDisplayStatus } from "@/modules/sales/transaction-history-filters";
 import { getSusulanItemsForTransaction } from "@/modules/sales/data/bpjs-susulan-queries";
-import { buildReceiptViewModel, formatPrescriptionDate, formatReceiptDate, type ReceiptTransactionRow } from "@/modules/sales/receipt";
+import { buildReceiptViewModel, formatPrescriptionDate, formatReceiptDate, resolveReceiptTotals, type ReceiptTransactionRow } from "@/modules/sales/receipt";
 import { TransactionActions } from "@/modules/sales/components/transaction-actions";
 import { AutoPrintReceipt } from "@/modules/sales/components/auto-print-receipt";
 import { FulfillSusulanButton } from "@/modules/sales/components/fulfill-susulan-button";
@@ -44,6 +44,7 @@ export default async function TransactionDetailPage({ params }: { params: Promis
   ]);
   if (!row) notFound();
   const transaction = buildReceiptViewModel(row as unknown as ReceiptTransactionRow);
+  const summaryTotals = resolveReceiptTotals(transaction, susulanItems);
   const returned = new Map<string, number>();
   for (const record of records) {
     if (record.status !== "rejected") {
@@ -162,9 +163,9 @@ export default async function TransactionDetailPage({ params }: { params: Promis
       <Card className="min-w-0"><CardHeader><h2 className="text-lg font-semibold text-gray-900">Pembayaran</h2></CardHeader><CardContent className="space-y-6">
         <dl className="space-y-4 text-base">
           <div className="flex flex-wrap justify-between gap-3"><dt className="text-gray-600">Metode pembayaran</dt><dd className="font-medium text-gray-900">{paymentLabel(row.payment_method)}</dd></div>
-          <div className="flex flex-wrap justify-between gap-3"><dt className="text-gray-600">Subtotal</dt><dd className="font-medium tabular">{formatRupiah(transaction.subtotal)}</dd></div>
-          {transaction.taxAmount > 0 ? <div className="flex flex-wrap justify-between gap-3"><dt className="text-gray-600">Pajak</dt><dd className="font-medium tabular">{formatRupiah(transaction.taxAmount)}</dd></div> : null}
-          <div className="flex flex-wrap justify-between gap-3 border-t border-gray-200 pt-5 text-xl font-semibold"><dt>Total pembayaran</dt><dd className="break-words tabular">{formatRupiah(transaction.total)}</dd></div>
+          <div className="flex flex-wrap justify-between gap-3"><dt className="text-gray-600">Subtotal</dt><dd className="font-medium tabular">{formatRupiah(summaryTotals.subtotal)}</dd></div>
+          {summaryTotals.taxAmount > 0 ? <div className="flex flex-wrap justify-between gap-3"><dt className="text-gray-600">Pajak</dt><dd className="font-medium tabular">{formatRupiah(summaryTotals.taxAmount)}</dd></div> : null}
+          <div className="flex flex-wrap justify-between gap-3 border-t border-gray-200 pt-5 text-xl font-semibold"><dt>Total pembayaran</dt><dd className="break-words tabular">{formatRupiah(summaryTotals.total)}</dd></div>
           {transaction.paymentMethod === "cash" || transaction.paymentMethod === "bpjs" ? <>
             <div className="flex flex-wrap justify-between gap-3"><dt className="text-gray-600">Uang diterima</dt><dd className="tabular">{formatRupiah(transaction.cashReceived ?? 0)}</dd></div>
             <div className="flex flex-wrap justify-between gap-3"><dt className="text-gray-600">Kembalian</dt><dd className="tabular">{formatRupiah(transaction.cashChange ?? 0)}</dd></div>{transaction.paymentMethod === "bpjs" ? <div className="flex flex-wrap justify-between gap-3"><dt className="text-gray-600">Status pembayaran</dt><dd className="font-medium">Ditanggung BPJS</dd></div> : null}
@@ -174,7 +175,7 @@ export default async function TransactionDetailPage({ params }: { params: Promis
           <AutoPrintReceipt transactionId={transaction.transactionId} label={transactionPrintLabel(transaction.status, row.payment_method)} autoPrint={false} />
           <Link href={`/transactions/${transaction.transactionId}/receipt`} className={`${transactionLinkClass} w-full`}>Lihat {transaction.status === "pending_payment" ? "Invoice" : "Struk"} di Tab Baru</Link>
           {canStartReturn(transaction.status, state) ? <Link href={`/transactions/${transaction.transactionId}/return`} className={`${transactionLinkClass} w-full`}>Request Retur Barang</Link> : null}
-          <TransactionActions transactionId={transaction.transactionId} invoice={transaction.invoiceNumber} total={transaction.total} status={transaction.status} paymentMethod={row.payment_method} canConfirm={canManagePayments && actions.confirm} canVoid={canManagePayments && actions.void} />
+          <TransactionActions transactionId={transaction.transactionId} invoice={transaction.invoiceNumber} total={summaryTotals.total} status={transaction.status} paymentMethod={row.payment_method} canConfirm={canManagePayments && actions.confirm} canVoid={canManagePayments && actions.void} />
         </div>
       </CardContent></Card>
     </div>

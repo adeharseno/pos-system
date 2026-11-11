@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildReceiptViewModel, formatReceiptDate, RECEIPT_PHARMACY_ADDRESS, receiptStatusLabel, type ReceiptTransactionRow } from "./sales/receipt";
+import { buildReceiptViewModel, formatReceiptDate, RECEIPT_PHARMACY_ADDRESS, receiptStatusLabel, resolveReceiptTotals, type ReceiptTransactionRow } from "./sales/receipt";
 import { formatRupiah } from "./ui/currency";
 import { requireRoleWith, type AuthDependencies } from "./auth/application/auth-policy";
 import { AuthApplicationError } from "./auth/errors";
@@ -42,6 +42,88 @@ test("receipt strips (Produk Tambahan) suffix cleanly from product names", () =>
   assert.equal(model.items[0].productName, "BPJS ASETOSAL 100 TAB");
   assert.equal(model.items[1].productName, "AMOXICILLIN 500");
   assert.equal(model.items[2].productName, "PARACETAMOL 500MG");
+});
+test("resolveReceiptTotals keeps zero tax and equal subtotal/total for new tax-free sales", () => {
+  const model = buildReceiptViewModel({
+    ...base,
+    invoice_number: "INV-20261111-0099",
+    subtotal: 83580,
+    tax_amount: 0,
+    total_amount: 83580,
+    transaction_items: [
+      { quantity_in_unit: 1, unit_price: 22500, total_amount: 22500, product_name_snapshot: "G METFORMIN 500 TAB", unit_name_snapshot: "Strip" },
+      { quantity_in_unit: 1, unit_price: 58580, total_amount: 58580, product_name_snapshot: "NEUROBION PINK 5000 TAB", unit_name_snapshot: "Box" },
+      { quantity_in_unit: 1, unit_price: 2500, total_amount: 2500, product_name_snapshot: "VITAMIN B COMPLEX", unit_name_snapshot: "Strip" },
+    ],
+  });
+  const totals = resolveReceiptTotals(model, []);
+  assert.deepEqual(totals, { subtotal: 83580, taxAmount: 0, total: 83580 });
+  assert.equal(totals.taxAmount > 0, false);
+});
+test("resolveReceiptTotals prevents double-counting historical taxed invoice (INV-20261111-0008)", () => {
+  const model = buildReceiptViewModel({
+    ...base,
+    invoice_number: "INV-20261111-0008",
+    subtotal: 83000,
+    tax_amount: 580,
+    total_amount: 83580,
+    transaction_items: [
+      { quantity_in_unit: 1, unit_price: 22500, total_amount: 22500, product_name_snapshot: "G METFORMIN 500 TAB", unit_name_snapshot: "Strip" },
+      { quantity_in_unit: 1, unit_price: 58000, total_amount: 58580, product_name_snapshot: "NEUROBION PINK 5000 TAB", unit_name_snapshot: "Box" },
+      { quantity_in_unit: 1, unit_price: 2500, total_amount: 2500, product_name_snapshot: "VITAMIN B COMPLEX", unit_name_snapshot: "Strip" },
+    ],
+  });
+  const totals = resolveReceiptTotals(model, []);
+  assert.deepEqual(totals, { subtotal: 83000, taxAmount: 580, total: 83580 });
+});
+test("resolveReceiptTotals handles post-0058/0063 BPJS susulan without double-adding subtotal", () => {
+  const model = buildReceiptViewModel({
+    ...base,
+    payment_method: "bpjs",
+    subtotal: 27000,
+    tax_amount: 0,
+    total_amount: 27000,
+    transaction_items: [
+      { quantity_in_unit: 1, unit_price: 7000, total_amount: 7000, product_name_snapshot: "OBAT REGULER", unit_name_snapshot: "Strip" },
+    ],
+  });
+  assert.deepEqual(resolveReceiptTotals(model, [{ lineTotal: 20000 }]), { subtotal: 27000, taxAmount: 0, total: 27000 });
+});
+test("resolveReceiptTotals recovers unrecorded legacy pre-0058 BPJS susulan without double-counting tax", () => {
+  const untaxedLegacy = buildReceiptViewModel({
+    ...base,
+    payment_method: "bpjs",
+    subtotal: 7000,
+    tax_amount: 0,
+    total_amount: 7000,
+    transaction_items: [
+      { quantity_in_unit: 1, unit_price: 7000, total_amount: 7000, product_name_snapshot: "OBAT REGULER", unit_name_snapshot: "Strip" },
+    ],
+  });
+  assert.deepEqual(resolveReceiptTotals(untaxedLegacy, [{ lineTotal: 20000 }]), { subtotal: 27000, taxAmount: 0, total: 27000 });
+
+  const taxedLegacy = buildReceiptViewModel({
+    ...base,
+    payment_method: "bpjs",
+    subtotal: 10000,
+    tax_amount: 1100,
+    total_amount: 11100,
+    transaction_items: [
+      { quantity_in_unit: 1, unit_price: 10000, total_amount: 11100, product_name_snapshot: "OBAT PAJAK LAMA", unit_name_snapshot: "Box" },
+    ],
+  });
+  assert.deepEqual(resolveReceiptTotals(taxedLegacy, [{ lineTotal: 5000 }]), { subtotal: 15000, taxAmount: 1100, total: 16100 });
+});
+test("resolveReceiptTotals supports empty-cart BPJS susulan transactions", () => {
+  const emptyCartBpjs = buildReceiptViewModel({
+    ...base,
+    payment_method: "bpjs",
+    subtotal: 30000,
+    tax_amount: 0,
+    total_amount: 30000,
+    transaction_items: [],
+  });
+  assert.deepEqual(resolveReceiptTotals(emptyCartBpjs, [{ lineTotal: 30000 }]), { subtotal: 30000, taxAmount: 0, total: 30000 });
 });
 
 

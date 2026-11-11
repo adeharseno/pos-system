@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { requirePosOperator } from "@/modules/auth/application/auth-service";
 import { getReceiptTransaction } from "@/modules/sales/data/transaction-queries";
 import { getSusulanItemsForTransaction } from "@/modules/sales/data/bpjs-susulan-queries";
-import { buildReceiptViewModel, formatPrescriptionDate, formatReceiptDate, RECEIPT_PHARMACY_ADDRESS, sanitizeReceiptProductName, type ReceiptTransactionRow } from "@/modules/sales/receipt";
+import { buildReceiptViewModel, formatPrescriptionDate, formatReceiptDate, RECEIPT_PHARMACY_ADDRESS, resolveReceiptTotals, sanitizeReceiptProductName, type ReceiptTransactionRow } from "@/modules/sales/receipt";
 import { PrintReceiptButton } from "@/modules/sales/components/print-receipt-button";
 import { formatRupiah } from "@/modules/ui/currency";
 import { requireUuid } from "@/modules/shared/validation/input";
@@ -38,9 +38,11 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
     })),
   ];
 
-  const calculatedSubtotal = allItems.reduce((acc, it) => acc + it.lineTotal, 0);
-  const finalSubtotal = Math.max(receipt.subtotal, calculatedSubtotal);
-  const finalTotal = finalSubtotal + receipt.taxAmount;
+  const {
+    subtotal: finalSubtotal,
+    taxAmount: finalTaxAmount,
+    total: finalTotal,
+  } = resolveReceiptTotals(receipt, susulanItems);
 
   return <main className="receipt-page min-h-screen px-4 py-6 sm:px-6">
     <div className="receipt-actions mx-auto mb-4 flex w-full max-w-[360px] flex-wrap gap-2"><Link className="flex min-h-11 flex-1 items-center justify-center rounded-[7px] border border-[var(--border-strong)] bg-white px-4 text-sm font-semibold" href="/cashier">Kembali ke Kasir</Link><PrintReceiptButton /></div>
@@ -89,7 +91,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
       </section>
       <dl className="receipt-section mt-2 grid gap-0.5 text-[8.5px] leading-tight text-black">
         <div className="flex justify-between"><dt className="font-medium">Subtotal</dt><dd className="tabular font-medium">{formatRupiah(finalSubtotal)}</dd></div>
-        {receipt.taxAmount > 0 ? <div className="flex justify-between"><dt className="font-medium">Pajak</dt><dd className="tabular font-medium">{formatRupiah(receipt.taxAmount)}</dd></div> : null}
+        {finalTaxAmount > 0 ? <div className="flex justify-between"><dt className="font-medium">Pajak</dt><dd className="tabular font-medium">{formatRupiah(finalTaxAmount)}</dd></div> : null}
         <div className="mt-1 flex justify-between border-t border-zinc-900 pt-1 text-[11.5px] font-bold leading-tight text-black">
           <dt className="receipt-total">TOTAL</dt>
           <dd className="receipt-total tabular">{formatRupiah(finalTotal)}</dd>

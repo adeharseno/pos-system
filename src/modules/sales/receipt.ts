@@ -2,6 +2,7 @@ export type ReceiptStatus="pending_payment"|"completed"|"voided";
 export interface PrescriptionMetadata{category:"umum"|"bpjs"|"bebas";patientName?:string;bpjsNumber?:string;prescriptionNumber?:string;prescriptionOrigin?:string;prescriptionDate?:string}
 export const RECEIPT_PHARMACY_ADDRESS = ["Jln. KSR Dadi Kusmayati No. 26", "CIBINONG"] as const;
 export interface ReceiptItem{productName:string;unitName:string;quantity:number;unitPrice:number;lineTotal:number}
+export interface ReceiptTotals{subtotal:number;taxAmount:number;total:number}
 export interface ReceiptViewModel{transactionId:string;invoiceNumber:string;createdAt:string;cashierName:string;prescription:PrescriptionMetadata;items:ReceiptItem[];subtotal:number;taxAmount:number;total:number;paymentMethod:"cash"|"qris"|"bank_transfer"|"bpjs";cashReceived?:number;cashChange?:number;status:ReceiptStatus}
 type PrescriptionRow={prescription_category:string|null;patient_name:string|null;bpjs_number:string|null;prescription_number:string|null;prescription_origin:string|null;prescription_date:string|null};
 export interface ReceiptTransactionRow{id:string;invoice_number:string;created_at:string;subtotal:number;tax_amount:number;total_amount:number;payment_method:"cash"|"qris"|"bank_transfer"|"bpjs";cash_received:number|null;cash_change:number|null;status:ReceiptStatus;employees:{full_name:string}|null;transaction_prescriptions:PrescriptionRow[];transaction_items:Array<{quantity_in_unit:number;unit_price:number;total_amount:number;product_name_snapshot:string;unit_name_snapshot:string}>}
@@ -41,6 +42,42 @@ export function buildReceiptViewModel(row:ReceiptTransactionRow):ReceiptViewMode
     paymentMethod:row.payment_method,
     ...((row.payment_method==="cash"||row.payment_method==="bpjs")&&row.cash_received!==null&&row.cash_change!==null?{cashReceived:row.cash_received,cashChange:row.cash_change}:{}),
     status:row.status
+  };
+}
+
+const toCents = (value: number): number => Math.round(value * 100);
+const fromCents = (cents: number): number => Number((cents / 100).toFixed(2));
+
+/**
+ * Resolves authoritative display totals for receipts and transaction details.
+ * Uses database totals as the source of truth so historical taxed items are not
+ * double-counted, while adding any unrecorded legacy BPJS susulan line totals.
+ */
+export function resolveReceiptTotals(
+  receipt: Pick<ReceiptViewModel, "items" | "subtotal" | "taxAmount" | "total">,
+  susulanItems: ReadonlyArray<{ lineTotal: number }> = []
+): ReceiptTotals {
+  const regularItemsCents = receipt.items.reduce(
+    (acc, item) => acc + toCents(item.lineTotal),
+    0
+  );
+  const susulanCents = susulanItems.reduce(
+    (acc, item) => acc + toCents(item.lineTotal),
+    0
+  );
+  const receiptSubtotalCents = toCents(receipt.subtotal);
+  const receiptTaxCents = toCents(receipt.taxAmount);
+  const receiptTotalCents = toCents(receipt.total);
+
+  const unrecordedSusulanCents =
+    susulanItems.length > 0
+      ? Math.max(0, regularItemsCents + susulanCents - receiptTotalCents)
+      : 0;
+
+  return {
+    subtotal: fromCents(receiptSubtotalCents + unrecordedSusulanCents),
+    taxAmount: fromCents(receiptTaxCents),
+    total: fromCents(receiptTotalCents + unrecordedSusulanCents),
   };
 }
 
