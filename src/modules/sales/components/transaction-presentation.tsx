@@ -4,7 +4,17 @@ import { historyStatusLabel } from "../transaction-history-filters";
 export const transactionLinkClass = "inline-flex min-h-13 items-center justify-center rounded-lg border border-gray-300 bg-white px-5 py-3 text-base font-medium text-gray-800 transition hover:bg-gray-50";
 
 export function paymentLabel(method: string) {
-  return method === "cash" ? "Tunai" : method === "qris" ? "QRIS" : method === "bank_transfer" ? "Transfer Bank" : method === "bpjs" ? "Ditanggung BPJS" : "Tidak diketahui";
+  return method === "cash"
+    ? "Tunai"
+    : method === "qris"
+    ? "QRIS"
+    : method === "bank_transfer"
+    ? "Transfer Bank"
+    : method === "tempo"
+    ? "TEMPO"
+    : method === "bpjs"
+    ? "Ditanggung BPJS"
+    : "Tidak diketahui";
 }
 
 export function TransactionStatusBadge({ status }: { status: TransactionStatus }) {

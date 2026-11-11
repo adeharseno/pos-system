@@ -11,7 +11,7 @@ export interface CustomerReturnInput {
   items: CustomerReturnItemInput[];
 }
 
-export interface CustomerReturnRequestInput extends CustomerReturnInput {}
+export type CustomerReturnRequestInput = CustomerReturnInput;
 export interface CustomerReturnRequestResult {
   returnId: string;
   status: ReturnStatus;
@@ -34,6 +34,8 @@ export interface ApproveReturnResult {
   status: ReturnStatus;
   refundStatus: RefundStatus;
   refundTotal: number;
+  receivableCreditAmount: number;
+  cashRefundAmount: number;
 }
 
 export interface RejectReturnInput {
@@ -87,6 +89,8 @@ export interface ReturnDetail {
   refundSubtotal: number;
   refundTaxAmount: number;
   refundTotal: number;
+  receivableCreditAmount: number;
+  cashRefundAmount: number;
   reason: string;
   adminNotes: string | null;
   transactionId: string;

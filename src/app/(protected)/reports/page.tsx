@@ -226,7 +226,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           </div>
           <Card>
             <CardContent className="space-y-4">
-              <div><h2 className="text-lg font-semibold">Rincian Pembayaran dan Refund</h2><p className="text-sm text-[var(--text-muted)]">Refund dikelompokkan menurut metode pengembalian yang digunakan, yang dapat berbeda dari metode pembayaran awal.</p></div>
+              <div><h2 className="text-lg font-semibold">Rincian Pembayaran dan Refund</h2><p className="text-sm text-[var(--text-muted)]">Penerimaan mencakup penjualan lunas dan pembayaran cicilan/pelunasan piutang TEMPO berdasarkan tanggal pembayaran; refund dikelompokkan menurut metode pengembalian yang digunakan.</p></div>
               <div className="hidden overflow-x-auto md:block"><table className="w-full text-left text-sm"><thead><tr className="border-b border-[var(--border)]"><th className="py-3 pr-4">Metode Pembayaran</th><th className="py-3 pr-4">Jumlah Transaksi Lunas</th><th className="py-3 pr-4">Total Pembayaran</th><th className="py-3 pr-4">Total Refund</th><th className="py-3">Pembayaran Bersih</th></tr></thead><tbody>
                 {payments.methods.map((method) => <tr key={method.method} className="border-b border-[var(--border)] last:border-0"><td className="py-3 pr-4 font-medium">{paymentName(method.method)}</td><td className="py-3 pr-4">{method.completedCount.toLocaleString("id-ID")}</td><td className="py-3 pr-4">{rupiah(cents(method.paymentsReceived))}</td><td className="py-3 pr-4">{rupiah(cents(method.customerRefunds))}</td><td className="py-3">{rupiah(cents(method.netPayments))}</td></tr>)}
               </tbody></table></div>

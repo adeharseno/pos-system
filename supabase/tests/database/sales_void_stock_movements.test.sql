@@ -22,9 +22,9 @@ insert into movement_tx values('pending',(public.checkout_transaction(
   'ae600000-0000-4000-8000-000000000001','qris',
   '[{"product_unit_id":"ae400000-0000-4000-8000-000000000001","quantity":1}]',null,null)->>'transaction_id')::uuid);
 insert into movement_tx values('voided',(public.checkout_transaction(
-  'ae600000-0000-4000-8000-000000000001','qris',
-  '[{"product_unit_id":"ae400000-0000-4000-8000-000000000001","quantity":3}]',null,null)->>'transaction_id')::uuid);
-select public.void_transaction((select id from movement_tx where kind='voided'),'ae600000-0000-4000-8000-000000000001','QRIS dibatalkan');
+  'ae600000-0000-4000-8000-000000000001','cash',
+  '[{"product_unit_id":"ae400000-0000-4000-8000-000000000001","quantity":3}]',300,null)->>'transaction_id')::uuid);
+select public.void_transaction((select id from movement_tx where kind='voided'),'ae600000-0000-4000-8000-000000000001','Penjualan dibatalkan');
 update transactions set voided_at='2026-11-06 14:30:00+07' where id=(select id from movement_tx where kind='voided');
 
 -- A transaction row without allocation never changed stock and must not create an event.
@@ -38,7 +38,7 @@ select value from jsonb_array_elements((select data->'rows' from sales_movement_
 
 select is(((select data from sales_movement_result)->>'total')::integer,6,'actual allocations plus void restorations produce six events');
 select is((select count(*) from sales_movement_rows r join transactions t on r.value->>'referenceNumber'=t.invoice_number where t.id=(select id from movement_tx where kind='completed') and r.value->>'type'='out'),1::bigint,'completed sale produces stock out');
-select is((select count(*) from sales_movement_rows r join transactions t on r.value->>'referenceNumber'=t.invoice_number where t.id=(select id from movement_tx where kind='pending') and r.value->>'type'='out'),1::bigint,'pending QRIS allocation produces stock out');
+select is((select count(*) from sales_movement_rows r join transactions t on r.value->>'referenceNumber'=t.invoice_number where t.id=(select id from movement_tx where kind='pending') and r.value->>'type'='out'),1::bigint,'instant QRIS allocation produces stock out');
 select is((select count(*) from sales_movement_rows r join transactions t on r.value->>'referenceNumber'=t.invoice_number where t.id=(select id from movement_tx where kind='voided') and r.value->>'type'='out'),2::bigint,'voided multi-batch sale retains both stock-out allocations');
 select is((select count(*) from sales_movement_rows r join transactions t on r.value->>'referenceNumber'=t.invoice_number where t.id=(select id from movement_tx where kind='voided') and r.value->>'type'='void'),2::bigint,'void creates one restoration per original allocation');
 select is((select sum((r.value->>'quantity')::integer) from sales_movement_rows r join transactions t on r.value->>'referenceNumber'=t.invoice_number where t.id=(select id from movement_tx where kind='voided') and r.value->>'type'='out'),3::bigint,'voided sale stock-out quantity matches checkout');

@@ -1,4 +1,5 @@
-export type PaymentMethod = "cash" | "qris" | "bank_transfer" | "bpjs";
+export type PaymentMethod = "cash" | "qris" | "bank_transfer" | "bpjs" | "tempo";
+export type ReceivablePaymentStatus = "unpaid" | "partial" | "paid";
 export const DEFAULT_PRESCRIPTION_CATEGORY = "bebas" as const;
 export const PRESCRIPTION_CATEGORY_DISPLAY_ORDER = ["bebas", "umum", "bpjs"] as const;
 
@@ -24,6 +25,8 @@ export interface CheckoutInput {
   cashReceived?: number;
   prescription?: PrescriptionInput;
   supplementaryItems?: SupplementaryItemInput[];
+  customerId?: string;
+  dueDate?: string;
 }
 export interface CheckoutResult {
   transactionId: string;
@@ -33,6 +36,11 @@ export interface CheckoutResult {
   taxAmount: number;
   totalAmount: number;
   cashChange: number | null;
+  receivableId?: string;
+  customerId?: string;
+  customerName?: string;
+  dueDate?: string;
+  paymentStatus?: ReceivablePaymentStatus;
 }
 export interface TransactionActionInput { employeeId: string; transactionId: string }
 export interface VoidTransactionInput extends TransactionActionInput { reason: string }

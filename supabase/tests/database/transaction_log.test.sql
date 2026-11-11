@@ -52,16 +52,11 @@ select is((select sale_count from public.daily_sales_totals where cashier_id='ca
 select is((select completed_total from public.daily_sales_totals where cashier_id='ca000000-0000-0000-0000-000000000005' and payment_method='cash'),200::numeric,'daily totals sum completed sales');
 
 -- Voided sales are split into the voided bucket, not completed.
-select lives_ok($$
-  select public.checkout_transaction('ca000000-0000-0000-0000-000000000005','qris',
-    '[{"product_unit_id":"ca000000-0000-0000-0000-000000000004","quantity":1}]',null,null)
-$$, 'QRIS checkout works without a drawer');
-insert into log_state values ('qris_tx', (
-  select id from public.transactions
-  where cashier_id='ca000000-0000-0000-0000-000000000005' and payment_method='qris'
-  order by created_at desc limit 1));
-select lives_ok(format($$select public.void_transaction(%L,'ca000000-0000-0000-0000-000000000005','abandoned')$$,(select id from log_state where key='qris_tx')),'void works without a drawer');
-select is((select voided_total from public.daily_sales_totals where cashier_id='ca000000-0000-0000-0000-000000000005' and payment_method='qris'),999::numeric,'voided total tracked separately');
+insert into log_state values ('void_cash_tx', (
+  public.checkout_transaction('ca000000-0000-0000-0000-000000000005','cash',
+    '[{"product_unit_id":"ca000000-0000-0000-0000-000000000004","quantity":1}]',999,null)->>'transaction_id')::uuid);
+select lives_ok(format($$select public.void_transaction(%L,'ca000000-0000-0000-0000-000000000005','abandoned')$$,(select id from log_state where key='void_cash_tx')),'void works without a drawer');
+select is((select voided_total from public.daily_sales_totals where cashier_id='ca000000-0000-0000-0000-000000000005' and payment_method='cash'),999::numeric,'voided total tracked separately');
 
 select * from finish();
 rollback;

@@ -1,12 +1,22 @@
 "use client";
 import { useRef, useState } from "react";
+import type { CustomerSummary } from "@/modules/customers/customer-input";
+import { addDaysToYmd } from "@/modules/ui/date";
+import { formatRupiah, parseRupiahInput } from "@/modules/ui/currency";
+import { CloseIcon } from "@/modules/ui/icons";
 import type { CartLine } from "../cart";
 import { DEFAULT_PRESCRIPTION_CATEGORY, type CheckoutResult, type PaymentMethod } from "../types";
 import type { PrescriptionPayload } from "../checkout-ui";
-import { buildBankTransferCheckoutPayload, buildBpjsCheckoutPayload, buildCashCheckoutPayload, buildQrisCheckoutPayload, checkoutErrorMessage, previewChange, validateCashReceived } from "../checkout-ui";
-import { formatRupiah, parseRupiahInput } from "@/modules/ui/currency";
-import { CloseIcon } from "@/modules/ui/icons";
+import {
+  buildPanelCheckoutPayload,
+  checkoutErrorMessage,
+  previewChange,
+  validateCashReceived,
+  validateTempoDueDate,
+} from "../checkout-ui";
+import { jakartaToday } from "../transaction-history-filters";
 import { acquireSubmissionLock, clearPersistedPendingCheckout, computeCartFingerprint, getPersistedPendingCheckout, persistPendingCheckout, releaseSubmissionLock } from "../checkout-reliability";
+import { CustomerPicker } from "./customer-picker";
 
 type CashSuccess = CheckoutResult & { cashReceived: number };
 
@@ -21,17 +31,17 @@ export function CheckoutPanel({
   cart,
   estimatedTotal,
   isBpjsOnly = false,
+  initialMethod = "cash",
   onClose,
   onImmediateSuccess,
-  onManualPaymentPending,
   onInsufficientStock,
 }: {
   cart: CartLine[];
   estimatedTotal: number;
   isBpjsOnly?: boolean;
+  initialMethod?: Exclude<PaymentMethod, "bpjs">;
   onClose: () => void;
-  onImmediateSuccess: (result: CashSuccess, method: "cash" | "bpjs") => void;
-  onManualPaymentPending: (result: CheckoutResult, method: "qris" | "bank_transfer") => void;
+  onImmediateSuccess: (result: CashSuccess, method: PaymentMethod) => void;
   onInsufficientStock: () => Promise<string>;
 }) {
   const submissionLock = useRef(false);
@@ -39,7 +49,7 @@ export function CheckoutPanel({
   const persisted = getPersistedPendingCheckout(cartFingerprint);
   const requestId = useRef<string | null>(persisted?.requestId ?? null);
   const successHandled = useRef(false);
-  const [method, setMethod] = useState<Exclude<PaymentMethod, "bpjs">>("cash");
+  const [method, setMethod] = useState<Exclude<PaymentMethod, "bpjs">>(initialMethod);
   const [cash, setCash] = useState<number | null>(null);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +65,14 @@ export function CheckoutPanel({
   const extraTotal = category === "bpjs" ? extraItems.reduce((acc, it) => acc + it.quantity * it.unitPrice, 0) : 0;
   const currentTotal = estimatedTotal + extraTotal;
 
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerSummary | null>(null);
+  const [dueDate, setDueDate] = useState("");
   const isBpjsOrder = category === "bpjs";
+  const todayYmd = jakartaToday();
+  const isTempoOrder = !isBpjsOrder && method === "tempo";
+  const tempoCustomerMissing = isTempoOrder && !selectedCustomer;
+  const tempoDueDateValidation = isTempoOrder ? validateTempoDueDate(dueDate, todayYmd) : null;
+  const tempoZeroTotal = isTempoOrder && currentTotal <= 0;
   const prescriptionRequired = cart.some((line) => line.requiresPrescription);
   const cashValidation = !isBpjsOrder && method === "cash" ? validateCashReceived(cash, currentTotal) : null;
   const prescriptionInvalid = category !== "bebas" && prescriptionRequired && (!prescriptionOrigin.trim() || !patient.trim());
@@ -70,7 +87,14 @@ export function CheckoutPanel({
   const cannotSubmit =
     cart.length === 0
       ? emptyCartInvalid || processing
-      : Boolean(cashValidation) || prescriptionInvalid || bpjsInvalid || susulanInvalid || processing;
+      : Boolean(cashValidation) ||
+        prescriptionInvalid ||
+        bpjsInvalid ||
+        susulanInvalid ||
+        tempoCustomerMissing ||
+        Boolean(tempoDueDateValidation) ||
+        tempoZeroTotal ||
+        processing;
 
   const selectCategory = (value: "umum" | "bpjs" | "bebas") => {
     if (isBpjsOnly && value !== "bpjs") return;
@@ -86,7 +110,10 @@ export function CheckoutPanel({
       setPrescriptionOrigin("");
       setPrescriptionDate("");
     }
-    if (value === "bpjs") setCash(0);
+    if (value === "bpjs") {
+      setCash(0);
+      if (method === "tempo") setMethod("cash");
+    }
   };
 
   const handleClose = () => {
@@ -119,14 +146,16 @@ export function CheckoutPanel({
         prescriptionOrigin: prescriptionOrigin.trim() || undefined,
         prescriptionDate: prescriptionDate || undefined,
       };
-      const checkoutPayload =
-        category === "bpjs"
-          ? buildBpjsCheckoutPayload(cart, prescription, extraItems)
-          : method === "cash"
-          ? buildCashCheckoutPayload(cart, cash!, prescription)
-          : method === "qris"
-          ? buildQrisCheckoutPayload(cart, prescription)
-          : buildBankTransferCheckoutPayload(cart, prescription);
+      const checkoutPayload = buildPanelCheckoutPayload({
+        category,
+        method,
+        cart,
+        cashReceived: cash,
+        prescription,
+        extraItems,
+        customerId: selectedCustomer?.id,
+        dueDate,
+      });
       const response = await fetch("/api/transactions/checkout", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -145,11 +174,13 @@ export function CheckoutPanel({
       }
 
       if (successHandled.current) return;
+      if (body.data.status !== "completed") {
+        setError("Transaksi belum selesai. Periksa status transaksi di riwayat transaksi.");
+        return;
+      }
       successHandled.current = true;
       clearPersistedPendingCheckout();
-      if (category === "bpjs") onImmediateSuccess(body.data, "bpjs");
-      else if (method === "cash") onImmediateSuccess(body.data, "cash");
-      else onManualPaymentPending(body.data, method);
+      onImmediateSuccess(body.data, category === "bpjs" ? "bpjs" : method);
     } catch {
       setUncertain(true);
       if (requestId.current) persistPendingCheckout(requestId.current, cartFingerprint, true);
@@ -205,7 +236,7 @@ export function CheckoutPanel({
               <div className="p-4 text-center">
                 <p className="text-sm text-[var(--text-muted)]">Keranjang saat ini kosong.</p>
                 <p className="mt-1 text-xs font-semibold text-[var(--accent)]">
-                  Klik tombol "+ Tambah Barang" di bawah untuk memasukkan produk susulan BPJS.
+                  Klik tombol &quot;+ Tambah Barang&quot; di bawah untuk memasukkan produk susulan BPJS.
                 </p>
               </div>
             ) : null}
@@ -348,12 +379,12 @@ export function CheckoutPanel({
           {category !== "bpjs" ? (
             <fieldset className="mt-5">
               <legend className="text-sm font-semibold">Metode pembayaran</legend>
-              <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {(["cash", "qris", "bank_transfer"] as const).map((value) => (
+              <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {(["cash", "qris", "bank_transfer", "tempo"] as const).map((value) => (
                   <button
                     type="button"
                     aria-pressed={method === value}
-                    className={`min-h-12 rounded-[7px] border-2 px-4 text-sm font-semibold ${
+                    className={`min-h-12 rounded-[7px] border-2 px-3 text-sm font-semibold ${
                       method === value ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]" : "border-[var(--border)] bg-white"
                     }`}
                     key={value}
@@ -362,7 +393,13 @@ export function CheckoutPanel({
                       setError(null);
                     }}
                   >
-                    {value === "cash" ? "Tunai" : value === "qris" ? "QRIS" : "Transfer Bank"}
+                    {value === "cash"
+                      ? "Tunai"
+                      : value === "qris"
+                      ? "QRIS"
+                      : value === "bank_transfer"
+                      ? "Transfer Bank"
+                      : "TEMPO"}
                   </button>
                 ))}
               </div>
@@ -413,14 +450,70 @@ export function CheckoutPanel({
                 </p>
               ) : null}
             </>
-          ) : (
-            <div className="mt-5 rounded-[var(--radius)] border border-amber-200 bg-[var(--warning-soft)] p-4">
-              <p className="font-semibold text-[var(--warning)]">Pembayaran {method === "qris" ? "QRIS" : "transfer bank"} manual</p>
-              <p className="mt-1 text-sm leading-6 text-[var(--warning)]">
-                Konfirmasi hanya setelah pembayaran diverifikasi secara eksternal. Transaksi akan berstatus menunggu pembayaran sampai dikonfirmasi.
-              </p>
-            </div>
-          )}
+          ) : method === "tempo" ? (
+            <section aria-label="Detail pembayaran TEMPO" className="mt-5 space-y-4">
+              <CustomerPicker selected={selectedCustomer} disabled={processing} onSelect={setSelectedCustomer} />
+              <div className="rounded-[7px] border border-[var(--border)] bg-[var(--surface-muted)] p-4">
+                <label className="text-sm font-semibold" htmlFor="tempo-due-date">
+                  Tanggal Jatuh Tempo <span className="text-[var(--danger)]">*</span>
+                </label>
+                <input
+                  id="tempo-due-date"
+                  type="date"
+                  min={todayYmd}
+                  disabled={processing}
+                  value={dueDate}
+                  onChange={(event) => {
+                    setDueDate(event.target.value);
+                    setError(null);
+                  }}
+                  className="mt-2 min-h-12 w-full rounded-[7px] border border-[var(--border-strong)] bg-white px-3 text-base"
+                />
+                <div className="mt-2.5 grid grid-cols-3 gap-2">
+                  {[7, 14, 30].map((days) => {
+                    const target = addDaysToYmd(todayYmd, days);
+                    return (
+                      <button
+                        key={days}
+                        type="button"
+                        disabled={processing}
+                        className={`min-h-9 rounded-[7px] border px-2 text-xs font-semibold ${
+                          dueDate === target
+                            ? "border-[var(--accent)] bg-[var(--accent-soft)] text-zinc-950"
+                            : "border-[var(--border-strong)] bg-white text-zinc-700 hover:bg-zinc-50"
+                        }`}
+                        onClick={() => {
+                          setDueDate(target);
+                          setError(null);
+                        }}
+                      >
+                        +{days} Hari
+                      </button>
+                    );
+                  })}
+                </div>
+                {tempoDueDateValidation ? (
+                  <p role="alert" className="mt-2 text-xs text-[var(--danger)]">
+                    {tempoDueDateValidation}
+                  </p>
+                ) : null}
+              </div>
+              <div className="flex items-center justify-between rounded-[7px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
+                <span className="font-medium text-amber-950">Total Piutang</span>
+                <span className="tabular text-lg font-bold text-amber-950">{formatRupiah(currentTotal)}</span>
+              </div>
+              {tempoCustomerMissing ? (
+                <p role="alert" className="text-xs text-[var(--danger)]">
+                  Pilih pelanggan dari daftar atau tambahkan customer baru untuk melanjutkan transaksi TEMPO.
+                </p>
+              ) : null}
+              {tempoZeroTotal ? (
+                <p role="alert" className="text-xs text-[var(--danger)]">
+                  Total transaksi TEMPO harus lebih dari Rp 0.
+                </p>
+              ) : null}
+            </section>
+          ) : null}
 
           {prescriptionInvalid ? <p role="alert" className="mt-4 text-sm text-[var(--danger)]">Nama pasien dan asal resep wajib diisi.</p> : null}
           {bpjsInvalid ? <p role="alert" className="mt-4 text-sm text-[var(--danger)]">No BPJS wajib diisi untuk kategori BPJS.</p> : null}
@@ -455,7 +548,9 @@ export function CheckoutPanel({
               ? "Bayar Tunai"
               : method === "qris"
               ? "Buat Transaksi QRIS"
-              : "Buat Transaksi Transfer Bank"}
+              : method === "bank_transfer"
+              ? "Buat Transaksi Transfer Bank"
+              : "Buat Transaksi Tempo"}
           </button>
         </footer>
       </section>

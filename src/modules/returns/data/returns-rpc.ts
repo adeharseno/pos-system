@@ -72,12 +72,17 @@ export async function approveCustomerReturnRpc(input: ApproveReturnInput): Promi
       p_confirm_refund: true,
     })
   );
+  const refundTotal = resultNumber(data, "refund_total");
   return {
     returnId: resultString(data, "return_id"),
     returnNumber: resultString(data, "return_number"),
     status: resultString(data, "status") as ReturnStatus,
     refundStatus: resultString(data, "refund_status") as RefundStatus,
-    refundTotal: resultNumber(data, "refund_total"),
+    refundTotal,
+    receivableCreditAmount:
+      typeof data.receivable_credit_amount === "number" ? data.receivable_credit_amount : 0,
+    cashRefundAmount:
+      typeof data.cash_refund_amount === "number" ? data.cash_refund_amount : refundTotal,
   };
 }
 

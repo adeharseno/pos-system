@@ -11,6 +11,7 @@ import { navigationGroups, navigationGroupsForRole } from "./app-navigation";
 import type { PurchaseDueReminder } from "@/modules/purchasing/due-reminder-model";
 import { dueReminderLabel } from "@/modules/purchasing/due-reminder-model";
 import { formatInvoiceAmount } from "@/modules/purchasing/invoice-presentation";
+import type { ReceivableDueReminder } from "@/modules/receivables/receivables-types";
 import type { BpjsSusulanNotification } from "@/modules/sales/bpjs-susulan";
 import type { ReturnNotification } from "@/modules/returns/data/return-queries";
 import { formatRupiah } from "./currency";
@@ -19,12 +20,14 @@ import { formatRupiah } from "./currency";
 export function AppShell({
   employee,
   reminders = [],
+  receivableReminders = [],
   susulanNotifications = [],
   returnNotifications = [],
   children,
 }: {
   employee: { name: string; role: EmployeeRole };
   reminders?: PurchaseDueReminder[];
+  receivableReminders?: ReceivableDueReminder[];
   susulanNotifications?: BpjsSusulanNotification[];
   returnNotifications?: ReturnNotification[];
   children: React.ReactNode;
@@ -36,7 +39,8 @@ export function AppShell({
   const isOwner = employee.role === "owner_admin";
 
   const susulanCount = susulanNotifications.reduce((acc, curr) => acc + curr.pendingCount, 0);
-  const totalBadgeCount = reminders.length + susulanCount + returnNotifications.length;
+  const totalBadgeCount =
+    reminders.length + receivableReminders.length + susulanCount + returnNotifications.length;
 
   useEffect(() => {
     if (!open) return;
@@ -58,7 +62,14 @@ export function AppShell({
   const role = employee.role === "owner_admin" ? "Pemilik" : employee.role === "kasir" ? "Kasir" : "Staf";
   const navigationItems = navigationGroups.flatMap(group => group.items.flatMap(item => [item, ...(item.children ?? [])]));
   const currentItem = navigationItems
-    .filter(item => item.href !== "#" && (pathname === item.href || pathname.startsWith(`${item.href}/`)))
+    .filter(item =>
+      item.href !== "#" &&
+      (pathname === item.href ||
+        pathname.startsWith(`${item.href}/`) ||
+        (item.matchPrefixes ?? []).some(
+          prefix => pathname === prefix || pathname.startsWith(`${prefix}/`)
+        ))
+    )
     .sort((a, b) => b.href.length - a.href.length)[0];
   const title = currentItem?.label ?? (pathname === "/expenses" ? "Pengeluaran" : "Beranda");
 
@@ -162,6 +173,32 @@ export function AppShell({
                             <p className="font-semibold text-gray-900">Invoice: {item.invoiceNumber}</p>
                             <p className="text-gray-600">Pasien: {item.patientName || "Pasien BPJS"}</p>
                             <p className="mt-0.5 font-medium text-amber-800">{item.pendingCount} produk pending</p>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+
+                {receivableReminders.length > 0 ? (
+                  <div>
+                    <div className="border-b border-blue-200 border-t bg-blue-50/70 p-3.5">
+                      <p className="text-sm font-semibold text-blue-950">Piutang Pelanggan Jatuh Tempo</p>
+                      <p className="text-xs text-blue-800">{receivableReminders.length} tagihan TEMPO perlu diperhatikan</p>
+                    </div>
+                    <ul className="max-h-48 divide-y divide-gray-100 overflow-y-auto">
+                      {receivableReminders.slice(0, 10).map(item => (
+                        <li key={item.id}>
+                          <Link
+                            href={`/transactions/receivables/${item.id}`}
+                            onClick={() => setBellOpen(false)}
+                            className="block p-3 text-xs transition-colors hover:bg-blue-50/40"
+                          >
+                            <p className="font-semibold text-gray-900">{item.customerName} · {item.invoiceNumber}</p>
+                            <p className="text-gray-600">{formatRupiah(item.outstanding)} · {item.dueDate}</p>
+                            <p className={`mt-0.5 font-medium ${item.daysRemaining < 0 ? "text-red-700" : "text-amber-700"}`}>
+                              {dueReminderLabel(item.daysRemaining)}
+                            </p>
                           </Link>
                         </li>
                       ))}

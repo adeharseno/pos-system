@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requirePermission } from "@/modules/auth/application/auth-service";
 import { listReturns, type ReturnListFilters } from "@/modules/returns/data/return-queries";
+import { TransactionModuleTabs } from "@/modules/sales/components/transaction-module-tabs";
 import { formatRupiah } from "@/modules/ui/currency";
 import { formatReceiptDate } from "@/modules/sales/receipt";
 import { Button, Card, CardContent, Container, FormField, Input, Label, Select } from "@/modules/ui/components";
@@ -49,7 +50,8 @@ export default async function ReturnsPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  await requirePermission("returns.view");
+  const employee = await requirePermission("returns.view");
+  const isOwner = employee.role === "owner_admin";
   const params = await searchParams;
 
   const filters: ReturnListFilters = {
@@ -88,6 +90,7 @@ export default async function ReturnsPage({
 
   return (
     <Container size="xl" className="space-y-7">
+      <TransactionModuleTabs current="returns" isOwner={isOwner} showReturnsTab={true} />
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">Daftar Retur Barang</h1>
         <p className="mt-2 text-base text-gray-600">

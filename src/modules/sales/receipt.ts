@@ -3,9 +3,17 @@ export interface PrescriptionMetadata{category:"umum"|"bpjs"|"bebas";patientName
 export const RECEIPT_PHARMACY_ADDRESS = ["Jln. KSR Dadi Kusmayati No. 26", "CIBINONG"] as const;
 export interface ReceiptItem{productName:string;unitName:string;quantity:number;unitPrice:number;lineTotal:number}
 export interface ReceiptTotals{subtotal:number;taxAmount:number;total:number}
-export interface ReceiptViewModel{transactionId:string;invoiceNumber:string;createdAt:string;cashierName:string;prescription:PrescriptionMetadata;items:ReceiptItem[];subtotal:number;taxAmount:number;total:number;paymentMethod:"cash"|"qris"|"bank_transfer"|"bpjs";cashReceived?:number;cashChange?:number;status:ReceiptStatus}
+export interface ReceiptReceivableView{id:string;originalAmount:number;paidAmount:number;creditedReturnAmount:number;outstandingAmount:number;dueDate:string;paymentStatus:"unpaid"|"partial"|"paid"}
+export interface ReceiptViewModel{transactionId:string;invoiceNumber:string;createdAt:string;cashierName:string;prescription:PrescriptionMetadata;items:ReceiptItem[];subtotal:number;taxAmount:number;total:number;paymentMethod:"cash"|"qris"|"bank_transfer"|"bpjs"|"tempo";cashReceived?:number;cashChange?:number;status:ReceiptStatus;customerName?:string|null;customerPhone?:string|null;receivable?:ReceiptReceivableView|null}
 type PrescriptionRow={prescription_category:string|null;patient_name:string|null;bpjs_number:string|null;prescription_number:string|null;prescription_origin:string|null;prescription_date:string|null};
-export interface ReceiptTransactionRow{id:string;invoice_number:string;created_at:string;subtotal:number;tax_amount:number;total_amount:number;payment_method:"cash"|"qris"|"bank_transfer"|"bpjs";cash_received:number|null;cash_change:number|null;status:ReceiptStatus;employees:{full_name:string}|null;transaction_prescriptions:PrescriptionRow[];transaction_items:Array<{quantity_in_unit:number;unit_price:number;total_amount:number;product_name_snapshot:string;unit_name_snapshot:string}>}
+type ReceivableRow={id:string;original_amount:number;paid_amount:number;credited_return_amount:number;outstanding_amount:number;due_date:string;payment_status:"unpaid"|"partial"|"paid"};
+export interface ReceiptTransactionRow{id:string;invoice_number:string;created_at:string;subtotal:number;tax_amount:number;total_amount:number;payment_method:"cash"|"qris"|"bank_transfer"|"bpjs"|"tempo";cash_received:number|null;cash_change:number|null;status:ReceiptStatus;employees:{full_name:string}|null;customers?:{name:string;phone?:string|null}|null;customer_receivables?:ReceivableRow|ReceivableRow[]|null;transaction_prescriptions:PrescriptionRow[];transaction_items:Array<{quantity_in_unit:number;unit_price:number;total_amount:number;product_name_snapshot:string;unit_name_snapshot:string}>}
+
+export function receivableStatusLabel(status:"unpaid"|"partial"|"paid"|null|undefined){
+  if(status==="paid")return"LUNAS";
+  if(status==="partial")return"SEBAGIAN";
+  return"BELUM LUNAS";
+}
 const optional=(value:string|null|undefined)=>value||undefined;
 
 /**
@@ -41,6 +49,8 @@ export function buildReceiptViewModel(row:ReceiptTransactionRow):ReceiptViewMode
     total:row.total_amount,
     paymentMethod:row.payment_method,
     ...((row.payment_method==="cash"||row.payment_method==="bpjs")&&row.cash_received!==null&&row.cash_change!==null?{cashReceived:row.cash_received,cashChange:row.cash_change}:{}),
+    ...(row.customers?.name?{customerName:row.customers.name,customerPhone:row.customers.phone??null}:{}),
+    ...(row.customer_receivables?(()=>{const rec=Array.isArray(row.customer_receivables)?row.customer_receivables[0]:row.customer_receivables;return rec?{receivable:{id:rec.id,originalAmount:Number(rec.original_amount),paidAmount:Number(rec.paid_amount),creditedReturnAmount:Number(rec.credited_return_amount),outstandingAmount:Number(rec.outstanding_amount),dueDate:rec.due_date,paymentStatus:rec.payment_status}}:{};})():{}),
     status:row.status
   };
 }

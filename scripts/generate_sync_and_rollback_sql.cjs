@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 const XLSX = require("xlsx");
 const fs = require("fs");
 const readline = require("readline");

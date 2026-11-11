@@ -45,7 +45,7 @@ create temporary table qris_sale as select checkout_transaction(
   'e7600000-0000-4000-8000-000000000001','qris',
   '[{"product_unit_id":"e7400000-0000-4000-8000-000000000001","quantity":2}]',null,null
 ) data;
-select is((select data->>'status' from qris_sale),'pending_payment','QRIS remains pending while reserving stock');
+select is((select data->>'status' from qris_sale),'completed','QRIS completes immediately and allocates stock');
 select is((select quantity from product_batches where id='e7500000-0000-4000-8000-000000000004'),2,'QRIS allocates null-expiry stock immediately');
 select is((select sum(tib.quantity_in_base) from transaction_item_batches tib join transaction_items ti on ti.id=tib.transaction_item_id join qris_sale s on ti.transaction_id=(s.data->>'transaction_id')::uuid),2::bigint,'QRIS allocation snapshot has exact quantity');
 select throws_ok($$select checkout_transaction('e7600000-0000-4000-8000-000000000001','cash','[{"product_unit_id":"e7400000-0000-4000-8000-000000000001","quantity":3}]',300,null)$$,'P0001','INSUFFICIENT_STOCK','expired stock cannot satisfy checkout');

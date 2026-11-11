@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { requirePermission } from "@/modules/auth/application/auth-service";
 import { formatRupiah } from "@/modules/ui/currency";
-import { formatReceiptDate } from "@/modules/sales/receipt";
+import { formatIndonesianDate } from "@/modules/ui/date";
+import { formatReceiptDate, receivableStatusLabel } from "@/modules/sales/receipt";
 import {
   jakartaToday,
   listDailySalesTotals,
@@ -19,6 +20,7 @@ import {
   TransactionStatusBadge,
   transactionLinkClass,
 } from "@/modules/sales/components/transaction-presentation";
+import { TransactionModuleTabs } from "@/modules/sales/components/transaction-module-tabs";
 import { Button, Card, CardContent, CardHeader, Container, FormField, Input, Label, Select } from "@/modules/ui/components";
 import { SearchForm } from "@/modules/ui/search-form";
 
@@ -88,6 +90,7 @@ export default async function TransactionsPage({
 
   return (
     <Container size="xl" className="space-y-7">
+      <TransactionModuleTabs current="history" isOwner={isOwner} />
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">Transaksi</h1>
         <p className="mt-2 text-base text-gray-600">
@@ -146,6 +149,7 @@ export default async function TransactionsPage({
                 <option value="cash">Tunai</option>
                 <option value="qris">QRIS</option>
                 <option value="bank_transfer">Transfer Bank</option>
+                <option value="tempo">TEMPO</option>
                 <option value="bpjs">Ditanggung BPJS</option>
               </Select>
             </FormField>
@@ -294,14 +298,39 @@ export default async function TransactionsPage({
                           <p className="mt-2 break-words text-gray-600">
                             Kasir: {row.employees?.full_name ?? "Kasir"}
                           </p>
+                          {row.payment_method === "tempo" && row.customer_name ? (
+                            <p className="mt-1 break-words text-sm text-gray-700">
+                              Pembeli: <span className="font-medium">{row.customer_name}</span>
+                            </p>
+                          ) : null}
                         </td>
                         <td className="break-words px-4 py-6">{formatReceiptDate(row.created_at)}</td>
                         <td className="break-words px-4 py-6 font-semibold tabular">
                           {formatRupiah(row.total_amount)}
                         </td>
-                        <td className="break-words px-4 py-6">{paymentLabel(row.payment_method)}</td>
+                        <td className="break-words px-4 py-6">
+                          <span>{paymentLabel(row.payment_method)}</span>
+                          {row.payment_method === "tempo" && row.receivable_due_date ? (
+                            <p className="mt-1 text-xs text-gray-600">
+                              Jatuh tempo: {formatIndonesianDate(row.receivable_due_date)}
+                            </p>
+                          ) : null}
+                        </td>
                         <td className="px-4 py-6">
-                          <TransactionStatusBadge status={row.status} />
+                          <div className="flex flex-col items-start gap-1.5">
+                            <TransactionStatusBadge status={row.status} />
+                            {row.payment_method === "tempo" ? (
+                              <span
+                                className={`inline-flex rounded-md border px-2 py-0.5 text-xs font-semibold ${
+                                  row.receivable_payment_status === "paid"
+                                    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                                    : "border-amber-300 bg-amber-50 text-amber-900"
+                                }`}
+                              >
+                                Piutang: {receivableStatusLabel(row.receivable_payment_status)}
+                              </span>
+                            ) : null}
+                          </div>
                         </td>
                         <td className="px-4 py-6">
                           <Link
@@ -325,7 +354,20 @@ export default async function TransactionsPage({
                         <h2 className="min-w-0 break-all text-base font-semibold text-gray-900">
                           {row.invoice_number}
                         </h2>
-                        <TransactionStatusBadge status={row.status} />
+                        <div className="flex flex-wrap gap-1.5">
+                          <TransactionStatusBadge status={row.status} />
+                          {row.payment_method === "tempo" ? (
+                            <span
+                              className={`inline-flex rounded-lg border px-2.5 py-1 text-xs font-semibold ${
+                                row.receivable_payment_status === "paid"
+                                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                                  : "border-amber-300 bg-amber-50 text-amber-900"
+                              }`}
+                            >
+                              {receivableStatusLabel(row.receivable_payment_status)}
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
                       <p className="text-base text-gray-600">{formatReceiptDate(row.created_at)}</p>
                       <dl className="grid gap-4 text-base sm:grid-cols-2">
@@ -341,6 +383,20 @@ export default async function TransactionsPage({
                             {paymentLabel(row.payment_method)}
                           </dd>
                         </div>
+                        {row.payment_method === "tempo" ? (
+                          <>
+                            <div>
+                              <dt className="text-gray-600">Pembeli</dt>
+                              <dd className="mt-1 font-medium text-gray-800">{row.customer_name ?? "-"}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-gray-600">Jatuh tempo / Sisa</dt>
+                              <dd className="mt-1 text-sm font-medium text-amber-900 tabular">
+                                {formatIndonesianDate(row.receivable_due_date)} · {formatRupiah(row.receivable_outstanding_amount ?? row.total_amount)}
+                              </dd>
+                            </div>
+                          </>
+                        ) : null}
                         <div className="sm:col-span-2">
                           <dt className="text-gray-600">Kasir</dt>
                           <dd className="mt-1 break-words text-gray-800">

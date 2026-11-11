@@ -21,5 +21,7 @@ export function toCheckoutRpcArgs(input: CheckoutInput): CoreRpcArgs<"checkout_t
       quantity: it.quantity,
       unit_price: it.unitPrice,
     })),
+    ...(input.customerId ? { p_customer_id: input.customerId } : {}),
+    ...(input.dueDate ? { p_due_date: input.dueDate } : {}),
   };
 }

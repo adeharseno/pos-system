@@ -25,6 +25,10 @@ export type HistoryRow = {
   status: TransactionStatus;
   total_amount: number;
   employees: { full_name: string } | null;
+  customer_name?: string | null;
+  receivable_due_date?: string | null;
+  receivable_payment_status?: "unpaid" | "partial" | "paid" | null;
+  receivable_outstanding_amount?: number | null;
 };
 
 export type TransactionCashier = { id: string; name: string };
@@ -44,7 +48,7 @@ export async function listTransactions(filters: HistoryFilters) {
   let query = createAdminSupabaseClient()
     .from("transaction_history_view")
     .select(
-      "id,invoice_number,created_at,payment_method,status,total_amount,cashier_id,cashier_name",
+      "id,invoice_number,created_at,payment_method,status,total_amount,cashier_id,cashier_name,customer_name,receivable_due_date,receivable_payment_status,receivable_outstanding_amount",
       { count: "exact" },
     )
     .order("created_at", { ascending: false })
@@ -66,6 +70,14 @@ export async function listTransactions(filters: HistoryFilters) {
     status: (row.status ?? "completed") as TransactionStatus,
     total_amount: Number(row.total_amount ?? 0),
     employees: row.cashier_name ? { full_name: row.cashier_name } : null,
+    customer_name: row.customer_name ?? null,
+    receivable_due_date: row.receivable_due_date ?? null,
+    receivable_payment_status:
+      (row.receivable_payment_status as "unpaid" | "partial" | "paid" | null) ?? null,
+    receivable_outstanding_amount:
+      row.receivable_outstanding_amount !== null && row.receivable_outstanding_amount !== undefined
+        ? Number(row.receivable_outstanding_amount)
+        : null,
   }));
   return { rows, total: count ?? 0 };
 }

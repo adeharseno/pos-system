@@ -304,13 +304,31 @@ export function ReturnDetailView({
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Subtotal Refund</span>
+                <span className="text-gray-600">Subtotal Retur</span>
                 <span className="tabular font-medium">{formatRupiah(detail.refundSubtotal)}</span>
               </div>
               <div className="flex items-center justify-between border-t border-gray-200 pt-3 text-base font-bold text-gray-900">
-                <span>Total Pengembalian Dana</span>
+                <span>Total Nilai Retur</span>
                 <span className="text-xl tabular text-brand-600">{formatRupiah(detail.refundTotal)}</span>
               </div>
+              {detail.transactionPaymentMethod === "tempo" || detail.receivableCreditAmount > 0 ? (
+                <div className="space-y-2 rounded-lg border border-blue-200 bg-blue-50/50 p-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-blue-950">Pengurang Sisa Piutang</span>
+                    <strong className="tabular text-emerald-700">
+                      {isApproved
+                        ? formatRupiah(detail.receivableCreditAmount)
+                        : "Dihitung saat persetujuan admin"}
+                    </strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-blue-950">Kelebihan Refund ({detail.refundMethod.toUpperCase()})</span>
+                    <strong className="tabular text-gray-900">
+                      {isApproved ? formatRupiah(detail.cashRefundAmount) : "Dihitung saat persetujuan admin"}
+                    </strong>
+                  </div>
+                </div>
+              ) : null}
             </CardContent>
           </Card>
 

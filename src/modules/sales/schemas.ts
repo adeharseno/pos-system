@@ -1,8 +1,15 @@
 import { requireNonBlank, requireNonNegativeMoney, requirePositiveInteger, requireUuid } from "@/modules/shared/validation/input";
+import { jakartaToday } from "./transaction-history-filters";
 import { DEFAULT_PRESCRIPTION_CATEGORY, type CheckoutInput, type TransactionActionInput, type VoidTransactionInput } from "./types";
 
-export function validateCheckoutInput(input: CheckoutInput): CheckoutInput {
-  const normalized = input.prescription ? input : { ...input, prescription: { category: DEFAULT_PRESCRIPTION_CATEGORY } };
+function isValidCalendarDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return Number.isFinite(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === value && value >= "0001-01-01";
+}
+
+export function validateCheckoutInput(input: CheckoutInput, today = jakartaToday()): CheckoutInput {
+  const normalized = input.prescription ? { ...input, prescription: input.prescription } : { ...input, prescription: { category: DEFAULT_PRESCRIPTION_CATEGORY } };
   requireUuid(input.requestId, "requestId");
   requireUuid(input.employeeId, "employeeId");
   const isBpjsWithSupplementary =
@@ -20,6 +27,18 @@ export function validateCheckoutInput(input: CheckoutInput): CheckoutInput {
   if (!normalized.prescription || !["umum","bpjs","bebas"].includes(normalized.prescription.category)) throw new TypeError("prescription category is required");
   if ((normalized.prescription.category === "bpjs") !== (input.paymentMethod === "bpjs")) throw new TypeError("payment method does not match prescription category");
   if (input.paymentMethod === "bpjs" && input.cashReceived !== 0) throw new TypeError("BPJS cash received must be zero");
+  if (input.paymentMethod === "tempo") {
+    if (input.cashReceived !== undefined) throw new TypeError("tempo cash received must be empty");
+    requireUuid(input.customerId ?? "", "customerId");
+    if (!input.dueDate || !isValidCalendarDate(input.dueDate)) {
+      throw new TypeError("valid dueDate is required for TEMPO");
+    }
+    if (input.dueDate < today) {
+      throw new TypeError("dueDate cannot be earlier than transaction date");
+    }
+  } else if (input.customerId !== undefined || input.dueDate !== undefined) {
+    throw new TypeError("customerId and dueDate are only allowed for TEMPO");
+  }
   if (normalized.prescription.category === "bpjs") {
     requireNonBlank(normalized.prescription.bpjsNumber ?? "", "prescription.bpjsNumber");
     if (isBpjsWithSupplementary && !input.items.length) {

@@ -140,6 +140,7 @@ export async function getReturnDetail(returnId: string): Promise<ReturnDetail | 
     .from("returns")
     .select(
       `id, return_number, created_at, status, refund_status, refund_method, refund_subtotal, refund_tax_amount, refund_total,
+       receivable_credit_amount, cash_refund_amount,
        reason, admin_notes, transaction_id, reviewed_at, refund_confirmed_at,
        transactions!returns_transaction_id_fkey(invoice_number, created_at, payment_method),
        cashier:employees!returns_processed_by_fkey(full_name),
@@ -199,6 +200,11 @@ export async function getReturnDetail(returnId: string): Promise<ReturnDetail | 
     refundSubtotal: Number(data.refund_subtotal ?? 0),
     refundTaxAmount: Number(data.refund_tax_amount ?? 0),
     refundTotal: Number(data.refund_total ?? 0),
+    receivableCreditAmount: Number(data.receivable_credit_amount ?? 0),
+    cashRefundAmount:
+      data.cash_refund_amount !== null && data.cash_refund_amount !== undefined
+        ? Number(data.cash_refund_amount)
+        : Number(data.refund_total ?? 0),
     reason: data.reason,
     adminNotes: data.admin_notes,
     transactionId: data.transaction_id ?? "",

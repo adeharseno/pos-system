@@ -24,7 +24,8 @@ export interface CustomerReturnRequestFormProps {
   transaction: {
     id: string;
     invoice: string;
-    payment: "cash" | "qris" | "bank_transfer" | "bpjs";
+    payment: "cash" | "qris" | "bank_transfer" | "bpjs" | "tempo";
+    outstandingReceivable?: number | null;
     items: ReturnCandidateItem[];
   };
 }
@@ -33,6 +34,7 @@ export function CustomerReturnRequestForm({ transaction }: CustomerReturnRequest
   const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [reason, setReason] = useState("");
+  const [excessRefundMethod, setExcessRefundMethod] = useState<"cash" | "qris" | "bank_transfer">("cash");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successResult, setSuccessResult] = useState<{
@@ -43,7 +45,7 @@ export function CustomerReturnRequestForm({ transaction }: CustomerReturnRequest
   const availableItems = transaction.items.filter((item) => item.remainingBase > 0);
   const allCompleted = transaction.items.every((item) => item.remainingBase === 0);
 
-  const toggleSelect = (id: string, maxQty: number) => {
+  const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
       const next = !prev[id];
       if (next && (!quantities[id] || quantities[id] <= 0)) {
@@ -86,6 +88,10 @@ export function CustomerReturnRequestForm({ transaction }: CustomerReturnRequest
     });
 
   const totalEstRefund = selectedItems.reduce((sum, it) => sum + it.estLineRefund, 0);
+  const isTempo = transaction.payment === "tempo";
+  const outstanding = isTempo ? Math.max(0, Number(transaction.outstandingReceivable ?? 0)) : 0;
+  const estReceivableCredit = isTempo ? Math.min(outstanding, totalEstRefund) : 0;
+  const estCashExcess = isTempo ? Math.max(0, totalEstRefund - estReceivableCredit) : totalEstRefund;
   const canSubmit = selectedItems.length > 0 && reason.trim().length >= 3 && !busy;
 
   const handleSubmit = async () => {
@@ -97,7 +103,7 @@ export function CustomerReturnRequestForm({ transaction }: CustomerReturnRequest
       const payload = {
         source: "customer",
         transaction_id: transaction.id,
-        refund_method: transaction.payment,
+        refund_method: isTempo ? excessRefundMethod : transaction.payment,
         reason: reason.trim(),
         items: selectedItems.map(({ item, qty }) => ({
           transaction_item_id: item.id,
@@ -141,6 +147,8 @@ export function CustomerReturnRequestForm({ transaction }: CustomerReturnRequest
       ? "QRIS"
       : transaction.payment === "bank_transfer"
       ? "Transfer Bank"
+      : transaction.payment === "tempo"
+      ? "TEMPO (Piutang)"
       : "Ditanggung BPJS";
 
   return (
@@ -247,7 +255,7 @@ export function CustomerReturnRequestForm({ transaction }: CustomerReturnRequest
                                 type="checkbox"
                                 disabled={!isAvailable}
                                 checked={isSelected}
-                                onChange={() => toggleSelect(item.id, maxUnits)}
+                                onChange={() => toggleSelect(item.id)}
                                 className="mt-1 size-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
                               />
                               <div>
@@ -334,11 +342,31 @@ export function CustomerReturnRequestForm({ transaction }: CustomerReturnRequest
                         </li>
                       ))}
                     </ul>
-                    <div className="mt-3 flex items-center justify-between border-t border-blue-200 pt-3">
-                      <span className="text-sm font-semibold text-blue-950">Perkiraan Total Refund:</span>
-                      <strong className="text-lg font-bold tabular text-brand-600">
-                        {formatRupiah(totalEstRefund)}
-                      </strong>
+                    <div className="mt-3 space-y-2 border-t border-blue-200 pt-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-semibold text-blue-950">
+                          {isTempo ? "Perkiraan Total Nilai Retur:" : "Perkiraan Total Refund:"}
+                        </span>
+                        <strong className="text-lg font-bold tabular text-brand-600">
+                          {formatRupiah(totalEstRefund)}
+                        </strong>
+                      </div>
+                      {isTempo ? (
+                        <div className="space-y-1 rounded-lg border border-blue-200 bg-white/80 p-3 text-xs text-blue-950">
+                          <div className="flex justify-between">
+                            <span>Sisa Piutang Saat Ini</span>
+                            <strong className="tabular">{formatRupiah(outstanding)}</strong>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Estimasi Pengurang Sisa Piutang</span>
+                            <strong className="text-emerald-700 tabular">{formatRupiah(estReceivableCredit)}</strong>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Estimasi Kelebihan Dana Dikembalikan</span>
+                            <strong className="tabular">{formatRupiah(estCashExcess)}</strong>
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   </CardContent>
                 </Card>
@@ -347,6 +375,26 @@ export function CustomerReturnRequestForm({ transaction }: CustomerReturnRequest
               {/* Form Input Alasan Retur */}
               <Card>
                 <CardContent className="space-y-4 p-5">
+                  {isTempo ? (
+                    <div>
+                      <label htmlFor="excess-refund-method" className="block text-sm font-semibold text-gray-900">
+                        Metode Pengembalian Kelebihan Dana (Jika Melebihi Sisa Piutang)
+                      </label>
+                      <p className="mt-0.5 text-xs text-gray-500">
+                        Retur transaksi TEMPO otomatis mengurangi sisa piutang terlebih dahulu. Metode di bawah ini hanya dipakai apabila nilai retur melebihi sisa piutang.
+                      </p>
+                      <select
+                        id="excess-refund-method"
+                        value={excessRefundMethod}
+                        onChange={(e) => setExcessRefundMethod(e.target.value as "cash" | "qris" | "bank_transfer")}
+                        className="mt-2 h-11 w-full max-w-xs rounded-lg border border-gray-300 bg-white px-3 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+                      >
+                        <option value="cash">Tunai</option>
+                        <option value="qris">QRIS</option>
+                        <option value="bank_transfer">Transfer Bank</option>
+                      </select>
+                    </div>
+                  ) : null}
                   <div>
                     <label htmlFor="return-reason" className="block text-sm font-semibold text-gray-900">
                       Alasan Retur <span className="text-red-500">*</span>

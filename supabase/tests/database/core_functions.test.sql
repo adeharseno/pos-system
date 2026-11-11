@@ -43,25 +43,31 @@ select is((select unit_name_snapshot from public.transaction_items where transac
 insert into rpc_state values ('qris_tx',(
   public.checkout_transaction('50000000-0000-0000-0000-000000000001','qris',
     '[{"product_unit_id":"30000000-0000-0000-0000-000000000003","quantity":5}]',null,null)->>'transaction_id')::uuid);
-select is((select status::text from public.transactions where id=(select id from rpc_state where key='qris_tx')),'pending_payment','QRIS checkout is pending');
-select ok((select payment_confirmed_at is null from public.transactions where id=(select id from rpc_state where key='qris_tx')),'pending QRIS is unconfirmed');
+select is((select status::text from public.transactions where id=(select id from rpc_state where key='qris_tx')),'completed','QRIS checkout completes immediately');
+select ok((select cash_received is null and cash_change is null and payment_confirmed_at is not null and payment_confirmed_by is not null from public.transactions where id=(select id from rpc_state where key='qris_tx')),'QRIS confirms immediately with no cash data');
 select is((select count(*)::integer from public.transaction_item_batches tib join public.transaction_items ti on ti.id=tib.transaction_item_id where ti.transaction_id=(select id from rpc_state where key='qris_tx')),1,'FEFO supports a single eligible batch');
 select is((select count(distinct invoice_number)::integer from public.transactions where id in (select id from rpc_state where key in ('cash_tx', 'qris_tx'))),2,'generated invoices are unique');
 select throws_ok($$select public.checkout_transaction('50000000-0000-0000-0000-000000000001','cash','[{"product_unit_id":"30000000-0000-0000-0000-000000000003","quantity":100}]',999999,null)$$,'P0001','INSUFFICIENT_STOCK','insufficient stock rejected');
 select throws_ok($$select public.checkout_transaction('50000000-0000-0000-0000-000000000001','cash','[{"product_unit_id":"39999999-0000-0000-0000-000000000099","quantity":1}]',1000,null)$$,'P0001','INVALID_PRODUCT_UNIT','invalid product unit rejected');
 
-select lives_ok(format('select public.confirm_qris_payment(%L,%L)',(select id from rpc_state where key='qris_tx'),'50000000-0000-0000-0000-000000000001'),'QRIS confirmation succeeds');
-select is((select status::text from public.transactions where id=(select id from rpc_state where key='qris_tx')),'completed','QRIS becomes completed');
+insert into rpc_state values ('qris_legacy_tx', '61000000-0000-0000-0000-000000000001');
+insert into public.transactions(id,invoice_number,cashier_id,subtotal,tax_amount,total_amount,payment_method,status)
+values ('61000000-0000-0000-0000-000000000001','INV-LEGACY-QRIS-001','50000000-0000-0000-0000-000000000001',500,0,500,'qris','pending_payment');
+select lives_ok(format('select public.confirm_qris_payment(%L,%L)',(select id from rpc_state where key='qris_legacy_tx'),'50000000-0000-0000-0000-000000000001'),'legacy pending QRIS confirmation succeeds');
+select is((select status::text from public.transactions where id=(select id from rpc_state where key='qris_legacy_tx')),'completed','legacy pending QRIS becomes completed');
 select throws_ok(format('select public.confirm_qris_payment(%L,%L)',(select id from rpc_state where key='qris_tx'),'50000000-0000-0000-0000-000000000001'),'P0001','QRIS_ALREADY_CONFIRMED','repeat confirmation rejected');
 select throws_ok(format('select public.confirm_qris_payment(%L,%L)',(select id from rpc_state where key='cash_tx'),'50000000-0000-0000-0000-000000000001'),'P0001','NOT_MANUAL_PAYMENT_TRANSACTION','cash cannot be manually confirmed');
 
 insert into rpc_state values ('bank_tx',(
   public.checkout_transaction('50000000-0000-0000-0000-000000000001','bank_transfer',
     '[{"product_unit_id":"30000000-0000-0000-0000-000000000003","quantity":2}]',null,null)->>'transaction_id')::uuid);
-select is((select status::text from public.transactions where id=(select id from rpc_state where key='bank_tx')),'pending_payment','bank transfer checkout is pending');
-select ok((select cash_received is null and cash_change is null and payment_confirmed_at is null from public.transactions where id=(select id from rpc_state where key='bank_tx')),'bank transfer has no cash or automatic confirmation data');
-select lives_ok(format('select public.confirm_qris_payment(%L,%L)',(select id from rpc_state where key='bank_tx'),'50000000-0000-0000-0000-000000000001'),'bank transfer confirmation succeeds');
-select is((select status::text from public.transactions where id=(select id from rpc_state where key='bank_tx')),'completed','confirmed bank transfer becomes completed');
+select is((select status::text from public.transactions where id=(select id from rpc_state where key='bank_tx')),'completed','bank transfer checkout completes immediately');
+select ok((select cash_received is null and cash_change is null and payment_confirmed_at is not null and payment_confirmed_by is not null from public.transactions where id=(select id from rpc_state where key='bank_tx')),'bank transfer confirms immediately with no cash data');
+insert into rpc_state values ('bank_legacy_tx', '61000000-0000-0000-0000-000000000002');
+insert into public.transactions(id,invoice_number,cashier_id,subtotal,tax_amount,total_amount,payment_method,status)
+values ('61000000-0000-0000-0000-000000000002','INV-LEGACY-BANK-001','50000000-0000-0000-0000-000000000001',500,0,500,'bank_transfer','pending_payment');
+select lives_ok(format('select public.confirm_qris_payment(%L,%L)',(select id from rpc_state where key='bank_legacy_tx'),'50000000-0000-0000-0000-000000000001'),'legacy pending bank transfer confirmation succeeds');
+select is((select status::text from public.transactions where id=(select id from rpc_state where key='bank_legacy_tx')),'completed','confirmed bank transfer becomes completed');
 select throws_ok(format('select public.confirm_qris_payment(%L,%L)',(select id from rpc_state where key='bank_tx'),'50000000-0000-0000-0000-000000000001'),'P0001','BANK_TRANSFER_ALREADY_CONFIRMED','repeat bank transfer confirmation rejected');
 select throws_like(format('select public.void_transaction(%L,%L,%L)',(select id from rpc_state where key='bank_tx'),'50000000-0000-0000-0000-000000000001','paid transfer'),'%chk_bank_transfer_void_must_be_unconfirmed%','confirmed bank transfer cannot be voided');
 
@@ -75,10 +81,15 @@ select lives_ok(format('select public.create_customer_return(%L,%L,%L,%L,jsonb_b
   '50000000-0000-0000-0000-000000000001',(select id from rpc_state where key='qris_tx'),'qris','paid refund','transaction_item_id',(select id from rpc_state where key='qris_source_item'),'quantity_in_base'),'confirmed QRIS remains returnable');
 select is((select count(*)::integer from public.return_items where transaction_item_id=(select id from rpc_state where key='qris_source_item')),1,'QRIS return is recorded');
 
-insert into rpc_state values ('pending_void_tx',(
-  public.checkout_transaction('50000000-0000-0000-0000-000000000001','qris',
-    '[{"product_unit_id":"30000000-0000-0000-0000-000000000003","quantity":1}]',null,null)->>'transaction_id')::uuid);
-select lives_ok(format('select public.void_transaction(%L,%L,%L)',(select id from rpc_state where key='pending_void_tx'),'50000000-0000-0000-0000-000000000001','abandoned'),'pending QRIS can be voided');
+insert into rpc_state values ('pending_void_tx', '61000000-0000-0000-0000-000000000003');
+insert into public.transactions(id,invoice_number,cashier_id,subtotal,tax_amount,total_amount,payment_method,status)
+values ('61000000-0000-0000-0000-000000000003','INV-LEGACY-VOID-001','50000000-0000-0000-0000-000000000001',500,0,500,'qris','pending_payment');
+insert into public.transaction_items(id,transaction_id,product_id,product_unit_id,product_name_snapshot,unit_name_snapshot,quantity_in_unit,conversion_to_base_snapshot,quantity_in_base,unit_price,discount_amount,tax_rate_snapshot,subtotal,tax_amount,total_amount)
+values ('62000000-0000-0000-0000-000000000003','61000000-0000-0000-0000-000000000003','20000000-0000-0000-0000-000000000002','30000000-0000-0000-0000-000000000003','Product B','tablet',1,1,1,500,0,0,500,0,500);
+insert into public.transaction_item_batches(transaction_item_id,product_id,batch_id,quantity_in_base,cost_price_snapshot)
+values ('62000000-0000-0000-0000-000000000003','20000000-0000-0000-0000-000000000002','40000000-0000-0000-0000-000000000003',1,300);
+update public.product_batches set quantity = quantity - 1 where id = '40000000-0000-0000-0000-000000000003';
+select lives_ok(format('select public.void_transaction(%L,%L,%L)',(select id from rpc_state where key='pending_void_tx'),'50000000-0000-0000-0000-000000000001','abandoned'),'legacy pending QRIS can be voided');
 select ok((select status='voided' and payment_confirmed_at is null and payment_confirmed_by is null from public.transactions where id=(select id from rpc_state where key='pending_void_tx')),'voided pending QRIS remains unconfirmed');
 select is((select quantity from public.product_batches where id='40000000-0000-0000-0000-000000000003'),44,'pending QRIS void restores stock exactly once');
 select throws_ok(format('select public.void_transaction(%L,%L,%L)',(select id from rpc_state where key='pending_void_tx'),'50000000-0000-0000-0000-000000000001','again'),'P0001','TRANSACTION_ALREADY_VOIDED','double pending QRIS void rejected');

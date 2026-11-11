@@ -1,9 +1,8 @@
 import { requireRole } from "@/modules/auth/application/auth-service";
 import { approveCustomerReturn } from "@/modules/returns/application/returns-service";
-import { objectValue, optionalStringField, readJsonObject, stringField } from "@/modules/shared/api/input";
+import { optionalStringField, readJsonObject } from "@/modules/shared/api/input";
 import { executeApi } from "@/modules/shared/api/response";
 import { requireUuid } from "@/modules/shared/validation/input";
-import type { ItemCondition } from "@/modules/returns/types";
 
 export async function POST(
   request: Request,

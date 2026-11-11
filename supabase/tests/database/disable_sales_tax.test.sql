@@ -152,9 +152,10 @@ select public.checkout_transaction_idempotent(
 ) data;
 
 select ok(
-  (select status = 'pending_payment' and tax_amount = 0 and subtotal = 15000 and total_amount = 15000
+  (select status = 'completed' and tax_amount = 0 and subtotal = 15000 and total_amount = 15000
+      and cash_received is null and cash_change is null and payment_confirmed_at is not null
    from public.transactions where id = (select (data->>'transaction_id')::uuid from qris_res)),
-  'QRIS checkout stores pending_payment with tax_amount = 0'
+  'QRIS checkout settles immediately as completed with tax_amount = 0'
 );
 select ok(
   (select tax_rate_snapshot = 0 and tax_amount = 0 and total_amount = 15000
@@ -162,17 +163,13 @@ select ok(
   'QRIS transaction_items persists tax_rate_snapshot = 0 and tax_amount = 0'
 );
 
-select public.confirm_qris_payment(
+select throws_ok(format(
+  'select public.confirm_qris_payment(%L, %L)',
   (select (data->>'transaction_id')::uuid from qris_res),
   'd7000000-0000-4000-8000-000000000001'
-);
-select ok(
-  (select status = 'completed' and tax_amount = 0 and total_amount = 15000
-   from public.transactions where id = (select (data->>'transaction_id')::uuid from qris_res)),
-  'confirmed QRIS remains completed with tax_amount = 0 and total_amount = 15000'
-);
+), 'P0001', 'QRIS_ALREADY_CONFIRMED', 'instant completed QRIS rejects repeat manual confirmation');
 
--- 3c. Bank transfer checkout & confirm
+-- 3c. Bank transfer checkout settles immediately without tax
 create temporary table bank_res as
 select public.checkout_transaction_idempotent(
   'd7900000-0000-4000-8000-000000000004',
@@ -184,24 +181,20 @@ select public.checkout_transaction_idempotent(
   null
 ) data;
 
-select public.confirm_qris_payment(
-  (select (data->>'transaction_id')::uuid from bank_res),
-  'd7000000-0000-4000-8000-000000000001'
-);
 select ok(
-  (select status = 'completed' and tax_amount = 0 and total_amount = 15000
+  (select status = 'completed' and tax_amount = 0 and total_amount = 15000 and payment_confirmed_at is not null
    from public.transactions where id = (select (data->>'transaction_id')::uuid from bank_res)),
-  'confirmed bank_transfer remains completed with tax_amount = 0 and total_amount = 15000'
+  'bank_transfer completes immediately with tax_amount = 0 and total_amount = 15000'
 );
 
--- 3d. Void pending QRIS restores stock cleanly
+-- 3d. Void zero-tax cash checkout restores stock cleanly
 create temporary table void_qris_res as
 select public.checkout_transaction_idempotent(
   'd7900000-0000-4000-8000-000000000005',
   'd7000000-0000-4000-8000-000000000002',
-  'qris',
+  'cash',
   '[{"product_unit_id":"d7400000-0000-4000-8000-000000000001","quantity":1}]'::jsonb,
-  null,
+  15000,
   '{"prescription_category":"bebas"}'::jsonb,
   null
 ) data;
@@ -210,8 +203,8 @@ select lives_ok(format(
   'select public.void_transaction(%L, %L, %L)',
   (select (data->>'transaction_id')::uuid from void_qris_res),
   'd7000000-0000-4000-8000-000000000001',
-  'batal pending qris'
-), 'voiding zero-tax pending QRIS succeeds');
+  'batal cash zero tax'
+), 'voiding zero-tax cash sale succeeds');
 
 -- 3e. BPJS checkout with cart item + susulan item
 create temporary table bpjs_mix_res as

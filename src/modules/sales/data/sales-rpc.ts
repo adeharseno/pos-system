@@ -3,7 +3,7 @@ import "server-only";
 import { callCoreRpc } from "@/modules/shared/data/core-rpc";
 import { requireResultObject, resultNumber, resultString } from "@/modules/shared/data/result";
 import { toCheckoutRpcArgs } from "../rpc-contract";
-import type { CheckoutInput, CheckoutResult, TransactionActionInput, TransactionStatusResult, VoidTransactionInput } from "../types";
+import type { CheckoutInput, CheckoutResult, ReceivablePaymentStatus, TransactionActionInput, TransactionStatusResult, VoidTransactionInput } from "../types";
 
 export async function checkoutRpc(input: CheckoutInput): Promise<CheckoutResult> {
   const data = requireResultObject(await callCoreRpc("checkout_transaction_idempotent", toCheckoutRpcArgs(input)));
@@ -12,6 +12,11 @@ export async function checkoutRpc(input: CheckoutInput): Promise<CheckoutResult>
     status: resultString(data, "status") as CheckoutResult["status"], subtotal: resultNumber(data, "subtotal"),
     taxAmount: resultNumber(data, "tax_amount"), totalAmount: resultNumber(data, "total_amount"),
     cashChange: typeof data.cash_change === "number" ? data.cash_change : null,
+    ...(typeof data.receivable_id === "string" ? { receivableId: data.receivable_id } : {}),
+    ...(typeof data.customer_id === "string" ? { customerId: data.customer_id } : {}),
+    ...(typeof data.customer_name === "string" ? { customerName: data.customer_name } : {}),
+    ...(typeof data.due_date === "string" ? { dueDate: data.due_date } : {}),
+    ...(typeof data.payment_status === "string" ? { paymentStatus: data.payment_status as ReceivablePaymentStatus } : {}),
   };
 }
 

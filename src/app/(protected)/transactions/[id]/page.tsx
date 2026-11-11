@@ -4,7 +4,7 @@ import { requirePermission } from "@/modules/auth/application/auth-service";
 import { getCustomerReturns, getTransaction } from "@/modules/sales/data/transaction-queries";
 import { resolveTransactionDisplayStatus } from "@/modules/sales/transaction-history-filters";
 import { getSusulanItemsForTransaction } from "@/modules/sales/data/bpjs-susulan-queries";
-import { buildReceiptViewModel, formatPrescriptionDate, formatReceiptDate, resolveReceiptTotals, type ReceiptTransactionRow } from "@/modules/sales/receipt";
+import { buildReceiptViewModel, formatPrescriptionDate, formatReceiptDate, receivableStatusLabel, resolveReceiptTotals, type ReceiptTransactionRow } from "@/modules/sales/receipt";
 import { TransactionActions } from "@/modules/sales/components/transaction-actions";
 import { AutoPrintReceipt } from "@/modules/sales/components/auto-print-receipt";
 import { FulfillSusulanButton } from "@/modules/sales/components/fulfill-susulan-button";
@@ -12,6 +12,7 @@ import { paymentLabel, TransactionStatusBadge, transactionLinkClass } from "@/mo
 import { transactionActionVisibility, transactionPrintLabel } from "@/modules/sales/transaction-detail-ui";
 import { requireUuid } from "@/modules/shared/validation/input";
 import { formatRupiah } from "@/modules/ui/currency";
+import { formatIndonesianDate } from "@/modules/ui/date";
 import { Card, CardContent, CardHeader, Container } from "@/modules/ui/components";
 import { returnQuantity } from "@/modules/returns/return-quantity";
 import { canStartReturn, detailReturnState } from "@/modules/returns/return-detail-state";
@@ -169,12 +170,32 @@ export default async function TransactionDetailPage({ params }: { params: Promis
           {transaction.paymentMethod === "cash" || transaction.paymentMethod === "bpjs" ? <>
             <div className="flex flex-wrap justify-between gap-3"><dt className="text-gray-600">Uang diterima</dt><dd className="tabular">{formatRupiah(transaction.cashReceived ?? 0)}</dd></div>
             <div className="flex flex-wrap justify-between gap-3"><dt className="text-gray-600">Kembalian</dt><dd className="tabular">{formatRupiah(transaction.cashChange ?? 0)}</dd></div>{transaction.paymentMethod === "bpjs" ? <div className="flex flex-wrap justify-between gap-3"><dt className="text-gray-600">Status pembayaran</dt><dd className="font-medium">Ditanggung BPJS</dd></div> : null}
+          </> : transaction.paymentMethod === "tempo" ? <>
+            <div className="flex flex-wrap justify-between gap-3"><dt className="text-gray-600">Pembeli</dt><dd className="font-medium text-gray-900">{transaction.customerName ?? "-"}{transaction.customerPhone ? ` (${transaction.customerPhone})` : ""}</dd></div>
+            <div className="flex flex-wrap justify-between gap-3"><dt className="text-gray-600">Jatuh tempo</dt><dd className="font-medium text-gray-900">{formatIndonesianDate(transaction.receivable?.dueDate)}</dd></div>
+            <div className="flex flex-wrap justify-between gap-3"><dt className="text-gray-600">Status pembayaran</dt><dd className={`font-semibold ${transaction.receivable?.paymentStatus === "paid" ? "text-emerald-700" : "text-amber-800"}`}>{receivableStatusLabel(transaction.receivable?.paymentStatus)}</dd></div>
+            <div className="flex flex-wrap justify-between gap-3"><dt className="text-gray-600">Sudah dibayar</dt><dd className="tabular">{formatRupiah(transaction.receivable?.paidAmount ?? 0)}</dd></div>
+            <div className="flex flex-wrap justify-between gap-3"><dt className="text-gray-600">Sisa tagihan</dt><dd className="font-semibold text-gray-900 tabular">{formatRupiah(transaction.receivable?.outstandingAmount ?? summaryTotals.total)}</dd></div>
           </> : <div><dt className="text-gray-600">Status pembayaran</dt><dd className={`mt-2 font-medium ${transaction.status === "pending_payment" ? "text-amber-800" : ""}`}>{transaction.status === "completed" ? "Sudah dikonfirmasi" : transaction.status === "voided" ? "Transaksi dibatalkan" : "MENUNGGU PEMBAYARAN"}</dd></div>}
         </dl>
         <div className="grid gap-3 border-t border-gray-200 pt-6">
           <AutoPrintReceipt transactionId={transaction.transactionId} label={transactionPrintLabel(transaction.status, row.payment_method)} autoPrint={false} />
-          <Link href={`/transactions/${transaction.transactionId}/receipt`} className={`${transactionLinkClass} w-full`}>Lihat {transaction.status === "pending_payment" ? "Invoice" : "Struk"} di Tab Baru</Link>
-          {canStartReturn(transaction.status, state) ? <Link href={`/transactions/${transaction.transactionId}/return`} className={`${transactionLinkClass} w-full`}>Request Retur Barang</Link> : null}
+          <Link href={`/transactions/${transaction.transactionId}/receipt`} className={`${transactionLinkClass} w-full`}>Lihat {transaction.status === "pending_payment" || transaction.paymentMethod === "tempo" ? "Invoice" : "Struk"} di Tab Baru</Link>
+          {canStartReturn(transaction.status, state) ? (
+            <Link href={`/transactions/${transaction.transactionId}/return`} className={`${transactionLinkClass} w-full`}>Request Retur Barang</Link>
+          ) : null}
+          {transaction.paymentMethod === "tempo" ? (
+            <div className="space-y-2">
+              {canManagePayments && transaction.receivable?.id ? (
+                <Link href={`/transactions/receivables/${transaction.receivable.id}`} className={`${transactionLinkClass} w-full`}>
+                  Lihat Detail Piutang &amp; Catat Pembayaran
+                </Link>
+              ) : null}
+              <p className="rounded-lg bg-amber-50 px-3.5 py-2.5 text-sm text-amber-900">
+                Transaksi TEMPO yang sudah selesai tidak dapat dibatalkan langsung. Gunakan Request Retur Barang untuk koreksi retur.
+              </p>
+            </div>
+          ) : null}
           <TransactionActions transactionId={transaction.transactionId} invoice={transaction.invoiceNumber} total={summaryTotals.total} status={transaction.status} paymentMethod={row.payment_method} canConfirm={canManagePayments && actions.confirm} canVoid={canManagePayments && actions.void} />
         </div>
       </CardContent></Card>

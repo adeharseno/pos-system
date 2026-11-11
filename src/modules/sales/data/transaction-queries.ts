@@ -6,7 +6,7 @@ import { resolveTransactionDisplayStatus } from "../transaction-history-filters"
 
 export async function getTransaction(transactionId:string) {
   const {data,error}=await createAdminSupabaseClient().from("transactions")
-    .select("id,invoice_number,created_at,subtotal,tax_amount,total_amount,payment_method,cash_received,cash_change,status,employees!transactions_cashier_id_fkey(full_name),transaction_prescriptions(prescription_category,patient_name,bpjs_number,prescription_number,prescription_origin,prescription_date),transaction_items(id,quantity_in_unit,quantity_in_base,conversion_to_base_snapshot,unit_price,subtotal,tax_amount,total_amount,product_name_snapshot,unit_name_snapshot),bpjs_susulan_items(id,fulfillment_status)")
+    .select("id,invoice_number,created_at,subtotal,tax_amount,total_amount,payment_method,cash_received,cash_change,status,employees!transactions_cashier_id_fkey(full_name),customers!transactions_customer_id_fkey(name,phone),customer_receivables(id,original_amount,paid_amount,credited_return_amount,outstanding_amount,due_date,payment_status),transaction_prescriptions(prescription_category,patient_name,bpjs_number,prescription_number,prescription_origin,prescription_date),transaction_items(id,quantity_in_unit,quantity_in_base,conversion_to_base_snapshot,unit_price,subtotal,tax_amount,total_amount,product_name_snapshot,unit_name_snapshot),bpjs_susulan_items(id,fulfillment_status)")
     .eq("id",transactionId).maybeSingle();
   if(error) throw mapDatabaseError(error);
   if (!data) return null;
@@ -26,7 +26,7 @@ export async function getTransaction(transactionId:string) {
 
 export async function getReceiptTransaction(transactionId:string) {
   const {data,error}=await createAdminSupabaseClient().from("transactions")
-    .select("id,invoice_number,created_at,subtotal,tax_amount,total_amount,payment_method,cash_received,cash_change,status,employees!transactions_cashier_id_fkey(full_name),transaction_prescriptions(prescription_category,patient_name,bpjs_number,prescription_number,prescription_origin,prescription_date),transaction_items(quantity_in_unit,unit_price,total_amount,product_name_snapshot,unit_name_snapshot)")
+    .select("id,invoice_number,created_at,subtotal,tax_amount,total_amount,payment_method,cash_received,cash_change,status,employees!transactions_cashier_id_fkey(full_name),customers!transactions_customer_id_fkey(name,phone),customer_receivables(id,original_amount,paid_amount,credited_return_amount,outstanding_amount,due_date,payment_status),transaction_prescriptions(prescription_category,patient_name,bpjs_number,prescription_number,prescription_origin,prescription_date),transaction_items(quantity_in_unit,unit_price,total_amount,product_name_snapshot,unit_name_snapshot)")
     .eq("id",transactionId).maybeSingle();
   if(error) throw mapDatabaseError(error); return data;
 }

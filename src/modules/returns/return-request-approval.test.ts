@@ -6,7 +6,6 @@ import {
   validateRejectReturn,
 } from "./schemas";
 import { canStartReturn, detailReturnState } from "./return-detail-state";
-import { returnQuantity } from "./return-quantity";
 
 test("1. validateCustomerReturnRequest validates required fields", () => {
   const valid = {

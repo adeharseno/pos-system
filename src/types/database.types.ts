@@ -252,6 +252,250 @@ export type Database = {
           },
         ]
       }
+      customer_receivable_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          customer_id: string
+          id: string
+          notes: string | null
+          payment_date: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          receivable_id: string
+          recorded_by: string
+          reference: string | null
+          request_id: string
+          transaction_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          customer_id: string
+          id?: string
+          notes?: string | null
+          payment_date: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          receivable_id: string
+          recorded_by: string
+          reference?: string | null
+          request_id: string
+          transaction_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          customer_id?: string
+          id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_method?: Database["public"]["Enums"]["payment_method"]
+          receivable_id?: string
+          recorded_by?: string
+          reference?: string | null
+          request_id?: string
+          transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_receivable_payments_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_receivable_payments_receivable_id_fkey"
+            columns: ["receivable_id"]
+            isOneToOne: false
+            referencedRelation: "customer_receivables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_receivable_payments_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_receivable_payments_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transaction_history_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_receivable_payments_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_receivables: {
+        Row: {
+          created_at: string
+          created_by: string
+          credited_return_amount: number
+          customer_id: string
+          due_date: string
+          id: string
+          original_amount: number
+          outstanding_amount: number | null
+          paid_amount: number
+          payment_status: string
+          transaction_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          credited_return_amount?: number
+          customer_id: string
+          due_date: string
+          id?: string
+          original_amount: number
+          outstanding_amount?: number | null
+          paid_amount?: number
+          payment_status?: string
+          transaction_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          credited_return_amount?: number
+          customer_id?: string
+          due_date?: string
+          id?: string
+          original_amount?: number
+          outstanding_amount?: number | null
+          paid_amount?: number
+          payment_status?: string
+          transaction_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_receivables_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_receivables_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_receivables_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: true
+            referencedRelation: "transaction_history_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_receivables_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: true
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_requests: {
+        Row: {
+          created_at: string
+          customer_id: string
+          employee_id: string
+          fingerprint: Json
+          request_id: string
+          result: Json
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          employee_id: string
+          fingerprint: Json
+          request_id: string
+          result: Json
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          employee_id?: string
+          fingerprint?: Json
+          request_id?: string
+          result?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_requests_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_requests_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customers: {
+        Row: {
+          address: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          name: string
+          normalized_phone: string | null
+          notes: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          normalized_phone?: string | null
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          normalized_phone?: string | null
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customers_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_access_guard: {
         Row: {
           id: boolean
@@ -1423,10 +1667,12 @@ export type Database = {
         Row: {
           admin_notes: string | null
           business_date: string
+          cash_refund_amount: number | null
           created_at: string
           id: string
           processed_by: string
           reason: string
+          receivable_credit_amount: number
           refund_confirmed_at: string | null
           refund_confirmed_by: string | null
           refund_method: Database["public"]["Enums"]["payment_method"] | null
@@ -1445,10 +1691,12 @@ export type Database = {
         Insert: {
           admin_notes?: string | null
           business_date?: string
+          cash_refund_amount?: number | null
           created_at?: string
           id?: string
           processed_by: string
           reason: string
+          receivable_credit_amount?: number
           refund_confirmed_at?: string | null
           refund_confirmed_by?: string | null
           refund_method?: Database["public"]["Enums"]["payment_method"] | null
@@ -1467,10 +1715,12 @@ export type Database = {
         Update: {
           admin_notes?: string | null
           business_date?: string
+          cash_refund_amount?: number | null
           created_at?: string
           id?: string
           processed_by?: string
           reason?: string
+          receivable_credit_amount?: number
           refund_confirmed_at?: string | null
           refund_confirmed_by?: string | null
           refund_method?: Database["public"]["Enums"]["payment_method"] | null
@@ -2094,6 +2344,7 @@ export type Database = {
           cash_received: number | null
           cashier_id: string
           created_at: string
+          customer_id: string | null
           id: string
           invoice_number: string
           payment_confirmed_at: string | null
@@ -2114,6 +2365,7 @@ export type Database = {
           cash_received?: number | null
           cashier_id: string
           created_at?: string
+          customer_id?: string | null
           id?: string
           invoice_number: string
           payment_confirmed_at?: string | null
@@ -2134,6 +2386,7 @@ export type Database = {
           cash_received?: number | null
           cashier_id?: string
           created_at?: string
+          customer_id?: string | null
           id?: string
           invoice_number?: string
           payment_confirmed_at?: string | null
@@ -2154,6 +2407,13 @@ export type Database = {
             columns: ["cashier_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
           {
@@ -2259,12 +2519,16 @@ export type Database = {
           cashier_id: string | null
           cashier_name: string | null
           created_at: string | null
+          customer_name: string | null
           financial_status:
             | Database["public"]["Enums"]["transaction_status"]
             | null
           id: string | null
           invoice_number: string | null
           payment_method: Database["public"]["Enums"]["payment_method"] | null
+          receivable_due_date: string | null
+          receivable_outstanding_amount: number | null
+          receivable_payment_status: string | null
           status: string | null
           total_amount: number | null
         }
@@ -2301,6 +2565,8 @@ export type Database = {
       checkout_transaction: {
         Args: {
           p_cash_received?: number
+          p_customer_id?: string
+          p_due_date?: string
           p_employee_id: string
           p_items: Json
           p_payment_method: Database["public"]["Enums"]["payment_method"]
@@ -2311,6 +2577,8 @@ export type Database = {
       checkout_transaction_idempotent: {
         Args: {
           p_cash_received?: number
+          p_customer_id?: string
+          p_due_date?: string
           p_employee_id: string
           p_items: Json
           p_payment_method: Database["public"]["Enums"]["payment_method"]
@@ -2323,6 +2591,8 @@ export type Database = {
       checkout_transaction_with_prescription: {
         Args: {
           p_cash_received?: number
+          p_customer_id?: string
+          p_due_date?: string
           p_employee_id: string
           p_items: Json
           p_payment_method: Database["public"]["Enums"]["payment_method"]
@@ -2350,6 +2620,17 @@ export type Database = {
       }
       confirm_qris_payment: {
         Args: { p_employee_id: string; p_transaction_id: string }
+        Returns: Json
+      }
+      create_customer_idempotent: {
+        Args: {
+          p_address?: string
+          p_employee_id: string
+          p_name: string
+          p_notes?: string
+          p_phone?: string
+          p_request_id: string
+        }
         Returns: Json
       }
       create_customer_return: {
@@ -2415,6 +2696,10 @@ export type Database = {
       }
       create_supplier_return: {
         Args: { p_employee_id: string; p_items: Json; p_reason: string }
+        Returns: Json
+      }
+      customer_receivable_due_reminders: {
+        Args: { p_today?: string }
         Returns: Json
       }
       dashboard_analytics_report: {
@@ -2491,6 +2776,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      get_customer_receivable_detail: {
+        Args: {
+          p_employee_id: string
+          p_receivable_id: string
+          p_today?: string
+        }
+        Returns: Json
+      }
       get_employee_permissions: {
         Args: {
           p_employee_id: string
@@ -2510,6 +2803,21 @@ export type Database = {
           p_transaction_id: string
         }
         Returns: undefined
+      }
+      list_customer_receivables: {
+        Args: {
+          p_dir?: string
+          p_due_from?: string
+          p_due_to?: string
+          p_employee_id: string
+          p_limit?: number
+          p_page?: number
+          p_q?: string
+          p_sort?: string
+          p_status?: string
+          p_today?: string
+        }
+        Returns: Json
       }
       login_attempt_get: { Args: { p_identifier: string }; Returns: Json }
       login_attempt_set: {
@@ -2582,6 +2890,19 @@ export type Database = {
           p_reference?: string
           p_request_id: string
           p_supplier_id?: string
+        }
+        Returns: Json
+      }
+      record_customer_receivable_payment: {
+        Args: {
+          p_amount: number
+          p_employee_id: string
+          p_notes?: string
+          p_payment_date: string
+          p_payment_method: Database["public"]["Enums"]["payment_method"]
+          p_receivable_id: string
+          p_reference?: string
+          p_request_id: string
         }
         Returns: Json
       }
@@ -2692,7 +3013,7 @@ export type Database = {
     Enums: {
       drug_classification: "otc" | "otc_limited" | "prescription_required"
       employee_position: "owner_admin" | "kasir" | "staf"
-      payment_method: "cash" | "qris" | "bank_transfer" | "bpjs"
+      payment_method: "cash" | "qris" | "bank_transfer" | "bpjs" | "tempo"
       return_source: "customer" | "supplier"
       transaction_status: "pending_payment" | "completed" | "voided"
     }
@@ -2824,7 +3145,7 @@ export const Constants = {
     Enums: {
       drug_classification: ["otc", "otc_limited", "prescription_required"],
       employee_position: ["owner_admin", "kasir", "staf"],
-      payment_method: ["cash", "qris", "bank_transfer", "bpjs"],
+      payment_method: ["cash", "qris", "bank_transfer", "bpjs", "tempo"],
       return_source: ["customer", "supplier"],
       transaction_status: ["pending_payment", "completed", "voided"],
     },

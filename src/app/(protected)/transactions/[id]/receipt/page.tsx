@@ -3,13 +3,23 @@ import { notFound } from "next/navigation";
 import { requirePosOperator } from "@/modules/auth/application/auth-service";
 import { getReceiptTransaction } from "@/modules/sales/data/transaction-queries";
 import { getSusulanItemsForTransaction } from "@/modules/sales/data/bpjs-susulan-queries";
-import { buildReceiptViewModel, formatPrescriptionDate, formatReceiptDate, RECEIPT_PHARMACY_ADDRESS, resolveReceiptTotals, sanitizeReceiptProductName, type ReceiptTransactionRow } from "@/modules/sales/receipt";
+import { buildReceiptViewModel, formatPrescriptionDate, formatReceiptDate, RECEIPT_PHARMACY_ADDRESS, receivableStatusLabel, resolveReceiptTotals, sanitizeReceiptProductName, type ReceiptTransactionRow } from "@/modules/sales/receipt";
 import { PrintReceiptButton } from "@/modules/sales/components/print-receipt-button";
 import { formatRupiah } from "@/modules/ui/currency";
+import { formatIndonesianDate } from "@/modules/ui/date";
 import { requireUuid } from "@/modules/shared/validation/input";
 
 const value = (text: string | undefined) => text || "-";
-const paymentName = (method: "cash" | "qris" | "bank_transfer" | "bpjs") => method === "cash" ? "TUNAI" : method === "qris" ? "QRIS" : method === "bank_transfer" ? "TRANSFER BANK" : "DITANGGUNG BPJS";
+const paymentName = (method: "cash" | "qris" | "bank_transfer" | "bpjs" | "tempo") =>
+  method === "cash"
+    ? "TUNAI"
+    : method === "qris"
+    ? "QRIS"
+    : method === "bank_transfer"
+    ? "TRANSFER BANK"
+    : method === "tempo"
+    ? "TEMPO"
+    : "DITANGGUNG BPJS";
 const statusDisplay = (status: "completed" | "pending_payment" | "voided") => status === "completed" ? "LUNAS" : status === "pending_payment" ? "BELUM LUNAS" : "DIBATALKAN";
 
 export default async function ReceiptPage({ params }: { params: Promise<{ id: string }> }) {
@@ -21,7 +31,13 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
   ]);
   if (!row) notFound();
   const receipt = buildReceiptViewModel(row as unknown as ReceiptTransactionRow);
-  const statusLabel = statusDisplay(receipt.status);
+  const isTempo = receipt.paymentMethod === "tempo";
+  const tempoDueDate = receipt.receivable?.dueDate ?? null;
+  const tempoPaid = receipt.receivable?.paidAmount ?? 0;
+  const tempoRemaining = receipt.receivable?.outstandingAmount ?? receipt.total;
+  const statusLabel = isTempo
+    ? receivableStatusLabel(receipt.receivable?.paymentStatus)
+    : statusDisplay(receipt.status);
 
   // Combine regular items and susulan items without any special label or suffix
   const allItems = [
@@ -73,6 +89,19 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
           <p className="receipt-notice-sub mt-0.5 text-[8px] font-medium text-black">Dokumen ini adalah tagihan pembayaran {paymentName(receipt.paymentMethod)}, bukan bukti lunas.</p>
         </div>
       ) : null}
+      {isTempo && receipt.status !== "voided" ? (
+        <div className="receipt-notice border-t border-dashed border-zinc-400 py-1.5 text-center text-[9px] leading-tight text-black">
+          <p className="font-bold text-amber-900 print:text-black">INVOICE TEMPO</p>
+          <p className="mt-0.5 text-[8.5px] font-semibold text-black">Status: {statusLabel}</p>
+          <p className="mt-0.5 text-[8px] font-medium text-black">
+            Pembeli: {value(receipt.customerName ?? undefined)}
+            {receipt.customerPhone ? ` (${receipt.customerPhone})` : ""}
+          </p>
+          <p className="mt-0.5 text-[8px] font-semibold text-black">
+            Jatuh Tempo: {formatIndonesianDate(tempoDueDate)}
+          </p>
+        </div>
+      ) : null}
       {receipt.status === "voided" ? (
         <div className="border-t border-zinc-900 py-1 text-center text-[9px] font-bold leading-tight text-black">TRANSAKSI DIBATALKAN</div>
       ) : null}
@@ -97,13 +126,21 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
           <dd className="receipt-total tabular">{formatRupiah(finalTotal)}</dd>
         </div>
         <div className="flex justify-between"><dt className="font-medium">Pembayaran</dt><dd className="font-semibold">{receipt.paymentMethod === "bpjs" ? "DITANGGUNG BPJS" : paymentName(receipt.paymentMethod)}</dd></div>
+        {isTempo ? (
+          <>
+            <div className="flex justify-between"><dt className="font-medium">Pembeli</dt><dd className="font-medium">{value(receipt.customerName ?? undefined)}</dd></div>
+            <div className="flex justify-between"><dt className="font-medium">Jatuh Tempo</dt><dd className="font-semibold">{formatIndonesianDate(tempoDueDate)}</dd></div>
+            {tempoPaid > 0 ? <div className="flex justify-between"><dt className="font-medium">Sudah Dibayar</dt><dd className="tabular font-medium">{formatRupiah(tempoPaid)}</dd></div> : null}
+            <div className="flex justify-between font-bold"><dt>Sisa Tagihan</dt><dd className="tabular">{formatRupiah(tempoRemaining)}</dd></div>
+          </>
+        ) : null}
         {(receipt.paymentMethod === "cash" || receipt.paymentMethod === "bpjs") && receipt.cashReceived !== undefined ? (
           <>
             <div className="flex justify-between"><dt className="font-medium">{receipt.paymentMethod === "cash" ? "TUNAI" : "UANG DITERIMA"}</dt><dd className="tabular font-medium">{formatRupiah(receipt.cashReceived)}</dd></div>
             <div className="flex justify-between"><dt className="font-medium">KEMBALI</dt><dd className="tabular font-medium">{formatRupiah(receipt.cashChange ?? 0)}</dd></div>
           </>
         ) : null}
-        <div className="flex justify-between"><dt className="font-medium">Status</dt><dd className={`font-bold ${receipt.status === "voided" ? "text-red-700 print:text-black" : receipt.status === "pending_payment" ? "text-amber-800 print:text-black" : "text-black"}`}>{statusLabel}</dd></div>
+        <div className="flex justify-between"><dt className="font-medium">Status</dt><dd className={`font-bold ${receipt.status === "voided" ? "text-red-700 print:text-black" : receipt.status === "pending_payment" || (isTempo && receipt.receivable?.paymentStatus !== "paid") ? "text-amber-800 print:text-black" : "text-black"}`}>{statusLabel}</dd></div>
       </dl>
       <footer className="receipt-footer mt-2.5 border-t border-dashed border-zinc-400 pt-1.5 text-center text-[8px] font-medium text-black leading-tight">
         <p>Terima kasih.</p>

@@ -71,12 +71,23 @@ export default async function TransactionReturnPage({
     };
   });
 
+  const receivableRaw = row.customer_receivables as
+    | { outstanding_amount?: number | null }
+    | Array<{ outstanding_amount?: number | null }>
+    | null;
+  const receivableRecord = Array.isArray(receivableRaw) ? receivableRaw[0] ?? null : receivableRaw;
+  const outstandingReceivable =
+    row.payment_method === "tempo" && receivableRecord
+      ? Number(receivableRecord.outstanding_amount ?? 0)
+      : null;
+
   return (
     <CustomerReturnRequestForm
       transaction={{
         id: row.id,
         invoice: row.invoice_number,
-        payment: row.payment_method as "cash" | "qris" | "bank_transfer" | "bpjs",
+        payment: row.payment_method as "cash" | "qris" | "bank_transfer" | "bpjs" | "tempo",
+        outstandingReceivable,
         items,
       }}
     />

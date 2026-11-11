@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { Client } from "pg";
-import { deduplicateCashierUnits, buildCashierProductResults } from "../../src/modules/catalog/search";
+import { buildCashierProductResults } from "../../src/modules/catalog/search";
 import { addCartItem, type CartCandidate } from "../../src/modules/sales/cart";
 
 const DB_URL = process.env.SUPABASE_DB_URL || "postgresql://postgres:postgres@localhost:54322/postgres";

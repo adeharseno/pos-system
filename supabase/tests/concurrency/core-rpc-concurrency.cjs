@@ -148,6 +148,31 @@ async function prepareSale(client, quantity = 10, stock = 20, method = 'cash') {
   return ids;
 }
 
+async function prepareLegacyPendingSale(client, quantity = 1, stock = 10, method = 'qris') {
+  const ids = await seed(client, { stock1: stock });
+  const txId = randomUUID();
+  const itemId = randomUUID();
+  await client.query(
+    `insert into public.transactions(id,invoice_number,cashier_id,subtotal,tax_amount,total_amount,payment_method,status)
+     values($1,$2,$3,$4,0,$4,$5,'pending_payment')`,
+    [txId, `INV-LEGACY-${txId.slice(0, 8)}`, ids.cashier, quantity * 100, method]
+  );
+  await client.query(
+    `insert into public.transaction_items(id,transaction_id,product_id,product_unit_id,product_name_snapshot,unit_name_snapshot,quantity_in_unit,conversion_to_base_snapshot,quantity_in_base,unit_price,discount_amount,tax_rate_snapshot,subtotal,tax_amount,total_amount)
+     values($1,$2,$3,$4,'Concurrent product','tablet',$5,1,$5,100,0,0,$6,0,$6)`,
+    [itemId, txId, ids.product, ids.unit, quantity, quantity * 100]
+  );
+  await client.query(
+    `insert into public.transaction_item_batches(transaction_item_id,product_id,batch_id,quantity_in_base,cost_price_snapshot)
+     values($1,$2,$3,$4,50)`,
+    [itemId, ids.product, ids.batch1, quantity]
+  );
+  await client.query('update public.product_batches set quantity = quantity - $1 where id = $2', [quantity, ids.batch1]);
+  ids.transaction = txId;
+  ids.item = itemId;
+  return ids;
+}
+
 function returnCall(ids, quantity) {
   return { text:'select public.create_customer_return($1,$2,\'qris\',\'race\',$3::jsonb)',
     values:[ids.cashier,ids.transaction,JSON.stringify([{transaction_item_id:ids.item,quantity_in_base:quantity}])] };
@@ -218,7 +243,7 @@ async function main() {
   });
 
   await run('QRIS confirm vs confirm', async (client) => {
-    const ids=await prepareSale(client,1,10,'qris');
+    const ids=await prepareLegacyPendingSale(client,1,10,'qris');
     const call={text:'select public.confirm_qris_payment($1,$2)',values:[ids.transaction,ids.cashier]};
     const results=await race([call,call]);
     assert(successes(results).length===1 && messageOf(failures(results)[0]).includes('QRIS_ALREADY_CONFIRMED'),'duplicate confirmation not rejected');
@@ -226,7 +251,7 @@ async function main() {
   });
 
   await run('QRIS confirm vs void (confirm wins)', async (client) => {
-    const ids=await prepareSale(client,1,10,'qris');
+    const ids=await prepareLegacyPendingSale(client,1,10,'qris');
     const results=await serializedRace(
       {text:'select public.confirm_qris_payment($1,$2)',values:[ids.transaction,ids.cashier]},
       {text:'select public.void_transaction($1,$2,\'race\')',values:[ids.transaction,ids.cashier]}
@@ -239,7 +264,7 @@ async function main() {
   });
 
   await run('QRIS confirm vs void (void wins)', async (client) => {
-    const ids=await prepareSale(client,1,10,'qris');
+    const ids=await prepareLegacyPendingSale(client,1,10,'qris');
     const results=await serializedRace(
       {text:'select public.void_transaction($1,$2,\'race\')',values:[ids.transaction,ids.cashier]},
       {text:'select public.confirm_qris_payment($1,$2)',values:[ids.transaction,ids.cashier]}

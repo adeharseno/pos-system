@@ -3,7 +3,7 @@ import type { EmployeeRole } from "@/modules/auth/types";
 
 import { BoxIcon, CartIcon, ChartIcon, HomeIcon, UsersIcon } from "./icons";
 
-type NavChild = { label: string; href: string; admin?: boolean };
+type NavChild = { label: string; href: string; admin?: boolean; matchPrefixes?: string[] };
 export type NavItem = {
   label: string;
   href: string;
@@ -11,6 +11,7 @@ export type NavItem = {
   admin?: boolean;
   posOperator?: boolean;
   cashier?: boolean;
+  matchPrefixes?: string[];
   children?: NavChild[];
 };
 
@@ -20,8 +21,7 @@ export const navigationGroups: Array<{ label: string; items: NavItem[] }> = [
     items: [
       { label: "Beranda", href: "/dashboard", icon: HomeIcon },
       { label: "Kasir", href: "/cashier", icon: CartIcon, posOperator: true },
-      { label: "Transaksi", href: "/transactions", icon: ChartIcon, cashier: true },
-      { label: "Retur Penjualan", href: "/returns", icon: BoxIcon, admin: true },
+      { label: "Transaksi", href: "/transactions", icon: ChartIcon, cashier: true, matchPrefixes: ["/returns"] },
     ],
   },
   {

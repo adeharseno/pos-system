@@ -101,9 +101,21 @@ export default async function ReturnReceiptPage({
             <span className="tabular">{formatRupiah(detail.refundSubtotal)}</span>
           </div>
           <div className="mt-1 flex justify-between border-t border-zinc-300 pt-1 text-[10.5px] font-bold">
-            <span>Total Pengembalian Dana:</span>
+            <span>Total Nilai Retur:</span>
             <span className="tabular">{formatRupiah(detail.refundTotal)}</span>
           </div>
+          {detail.transactionPaymentMethod === "tempo" || detail.receivableCreditAmount > 0 ? (
+            <>
+              <div className="mt-1 flex justify-between text-[8px] text-zinc-700">
+                <span>Pengurang Sisa Piutang:</span>
+                <span className="font-semibold tabular">{formatRupiah(detail.receivableCreditAmount)}</span>
+              </div>
+              <div className="flex justify-between text-[8px] text-zinc-700">
+                <span>Kelebihan Refund Dana:</span>
+                <span className="font-semibold tabular">{formatRupiah(detail.cashRefundAmount)}</span>
+              </div>
+            </>
+          ) : null}
           <div className="mt-1 flex justify-between text-[8px] text-zinc-700">
             <span>Metode Pengembalian:</span>
             <span className="font-semibold uppercase">{detail.refundMethod}</span>
