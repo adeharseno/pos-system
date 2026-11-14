@@ -187,9 +187,10 @@ button:disabled { cursor: not-allowed; }
     font-size: 14.5px !important;
   }
   .receipt-document .receipt-item-detail {
-    font-size: 13px !important;
+    font-size: 14.5px !important;
   }
-  .receipt-document .receipt-total {
+  .receipt-document .receipt-total,
+  .receipt-document .receipt-payment-total {
     font-size: 17px !important;
   }
   .receipt-document .receipt-footer {
@@ -200,8 +201,12 @@ button:disabled { cursor: not-allowed; }
 }
 
 @media print {
-  @page { margin: 2mm 3mm; size: 80mm auto; }
+  @page { margin: 0; size: 80mm auto; }
+  html,
   body {
+    width: 80mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
     background: white !important;
     font-size: 9px !important;
     line-height: 1.25 !important;
@@ -209,7 +214,7 @@ button:disabled { cursor: not-allowed; }
   }
   header.fixed, aside.fixed, .receipt-actions { display: none !important; }
   .app-main { padding: 0 !important; }
-  .receipt-page { min-height: auto !important; padding: 0 !important; }
+  .receipt-page { width: 80mm !important; min-height: auto !important; margin: 0 !important; padding: 0 !important; }
   .receipt-document {
     --text-xs: 8.5px;
     --text-xs--line-height: 11px;
@@ -221,10 +226,11 @@ button:disabled { cursor: not-allowed; }
     --text-lg--line-height: 15px;
     font-size: 9px !important;
     line-height: 1.25 !important;
-    width: 72mm !important;
-    max-width: 100% !important;
-    margin: 0 auto !important;
-    padding: 1mm 0 !important;
+    box-sizing: border-box !important;
+    width: 76mm !important;
+    max-width: 76mm !important;
+    margin: 0 !important;
+    padding: 1mm 2mm !important;
     color: #000000 !important;
     box-shadow: none !important;
     -webkit-print-color-adjust: exact !important;
@@ -262,10 +268,11 @@ button:disabled { cursor: not-allowed; }
     font-weight: 600 !important;
   }
   .receipt-document .receipt-item-detail {
-    font-size: 8.5px !important;
+    font-size: 9.5px !important;
     font-weight: 600 !important;
   }
-  .receipt-document .receipt-total {
+  .receipt-document .receipt-total,
+  .receipt-document .receipt-payment-total {
     font-size: 11.5px !important;
     font-weight: 700 !important;
   }

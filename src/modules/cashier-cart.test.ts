@@ -6,6 +6,7 @@ import { addCartItem,cartSubtotalPreview,decreaseCartQuantity,increaseCartQuanti
 const product={id:"p1",name:"Paracetamol",sku:"PAR-01",requires_prescription:true,product_units:[{id:"u1",unit_name:"Tablet",conversion_to_base:1,selling_price:1000,barcode:null},{id:"u2",unit_name:"Box",conversion_to_base:10,selling_price:9000,barcode:"BOX"}]};
 const tablet:CartCandidate={productId:"p1",productName:"Paracetamol",productUnitId:"u1",unitLabel:"Tablet",conversionToBase:1,displayedUnitPrice:1000,requiresPrescription:true};
 const box:CartCandidate={...tablet,productUnitId:"u2",unitLabel:"Box",conversionToBase:10,displayedUnitPrice:9000};
+const stockedTablet:CartCandidate={...tablet,availableStockBase:75};
 test("successful product search mapping includes units and aggregate stock",()=>{const result=buildCashierProductResults([product],[{product_id:"p1",quantity:4},{product_id:"p1",quantity:6}]);assert.equal(result[0].availableStockBase,10);assert.equal(result[0].units.length,2);});
 test("selling eligibility depends on positive stock and price, not the unit label",()=>{assert.deepEqual(cashierUnitSaleState(10,58000),{enabled:true,label:"+ Tambah"});assert.deepEqual(cashierUnitSaleState(10,0),{enabled:false,label:"Harga belum diatur"});assert.deepEqual(cashierUnitSaleState(0,58000),{enabled:false,label:"Stok habis"});assert.equal(addCartItem([],{...tablet,unitLabel:""})[0].conversionToBase,1);});
 test("cart rejects missing or zero-price selling units",()=>{assert.throws(()=>addCartItem([],{...tablet,displayedUnitPrice:0}));assert.throws(()=>addCartItem([],{...tablet,productUnitId:""}));});
@@ -24,3 +25,16 @@ test("remove item returns empty cart",()=>assert.deepEqual(removeCartItem(addCar
 test("empty cart subtotal preview is zero",()=>assert.equal(cartSubtotalPreview([]),0));
 test("subtotal preview sums displayed prices only",()=>assert.equal(cartSubtotalPreview(addCartItem(addCartItem([],tablet),{...box,quantity:2})),19000));
 test("prescription-required product remains flagged in cart",()=>assert.equal(addCartItem([],tablet)[0].requiresPrescription,true));
+test("cart rejects add, increment, and manual quantity above sellable stock",()=>{
+  const full=addCartItem([],{...stockedTablet,quantity:75});
+  assert.throws(()=>addCartItem(full,stockedTablet),/maksimal 75 Tablet/);
+  assert.throws(()=>increaseCartQuantity(full,"p1","u1"),/maksimal 75 Tablet/);
+  assert.throws(()=>setCartQuantity(full,"p1","u1",121),/maksimal 75 Tablet/);
+  assert.equal(full[0].quantity,75);
+});
+test("stock limit is shared across different selling-unit conversions",()=>{
+  const sevenBoxes=addCartItem([],{...box,quantity:7,availableStockBase:75});
+  const allocated=addCartItem(sevenBoxes,{...stockedTablet,quantity:5});
+  assert.deepEqual(allocated.map(item=>item.quantity),[7,5]);
+  assert.throws(()=>setCartQuantity(allocated,"p1","u1",6),/maksimal 5 Tablet/);
+});

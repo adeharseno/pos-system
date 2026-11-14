@@ -325,6 +325,7 @@ export function CustomerPicker({
                 return;
               }
               if (event.key === "Escape") {
+                event.stopPropagation();
                 setOpen(false);
                 return;
               }

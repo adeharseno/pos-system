@@ -1,9 +1,11 @@
 "use client";
 import Link from "next/link";
+import { useRef, type KeyboardEvent } from "react";
 import { formatRupiah } from "@/modules/ui/currency";
 import { formatIndonesianDate } from "@/modules/ui/date";
 import type { CheckoutResult, PaymentMethod } from "../types";
 import { AutoPrintReceipt } from "./auto-print-receipt";
+import { consumeCashierKeyboardAction, isEditableKeyboardTarget } from "../cashier-keyboard";
 
 export function CheckoutSuccess({
   result,
@@ -14,6 +16,8 @@ export function CheckoutSuccess({
   paymentMethod?: PaymentMethod;
   onNewSale: () => void;
 }) {
+  const dialogRef = useRef<HTMLElement>(null);
+  const actionLock = useRef(false);
   const isTempo = paymentMethod === "tempo";
   const paymentMethodLabel =
     paymentMethod === "cash"
@@ -27,8 +31,17 @@ export function CheckoutSuccess({
       : "Ditanggung BPJS";
 
   return (
-    <div className="fixed inset-0 z-[70] grid place-items-center bg-zinc-950/40 p-4">
+    <div className="fixed inset-0 z-[70] grid place-items-center bg-zinc-950/40 p-4" onKeyDown={(event:KeyboardEvent<HTMLDivElement>)=>{
+      const action=consumeCashierKeyboardAction(event,"success",isEditableKeyboardTarget(event.target));
+      if(!action)return;
+      event.stopPropagation();
+      if(actionLock.current)return;
+      if(action==="new-sale"){actionLock.current=true;onNewSale();}
+      else if(action==="print-receipt")dialogRef.current?.querySelector<HTMLButtonElement>('[data-receipt-print-action="true"]')?.click();
+      else if(action==="view-receipt")dialogRef.current?.querySelector<HTMLAnchorElement>('[data-receipt-view-action="true"]')?.click();
+    }}>
       <section
+        ref={dialogRef}
         aria-labelledby="success-title"
         aria-modal="true"
         role="dialog"
@@ -96,6 +109,7 @@ export function CheckoutSuccess({
             label={isTempo ? "Cetak Invoice" : undefined}
           />
           <Link
+            data-receipt-view-action="true"
             className="flex min-h-12 items-center justify-center rounded-[7px] border border-[var(--border-strong)] px-4 text-sm font-semibold"
             href={`/transactions/${result.transactionId}/receipt`}
           >

@@ -62,7 +62,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
 
   return <main className="receipt-page min-h-screen px-4 py-6 sm:px-6">
     <div className="receipt-actions mx-auto mb-4 flex w-full max-w-[360px] flex-wrap gap-2"><Link className="flex min-h-11 flex-1 items-center justify-center rounded-[7px] border border-[var(--border-strong)] bg-white px-4 text-sm font-semibold" href="/cashier">Kembali ke Kasir</Link><PrintReceiptButton /></div>
-    <article className="receipt-document mx-auto w-full max-w-[360px] bg-white px-3.5 py-3 text-black shadow-sm leading-[1.25]">
+    <article data-receipt-ready="true" className="receipt-document mx-auto w-full max-w-[360px] bg-white px-3.5 py-3 text-black shadow-sm leading-[1.25]">
       <header className="text-center">
         <h1 className="receipt-title text-[11.5px] font-bold tracking-[.06em] leading-tight text-black">APOTEK CIPAYUNG FARMA</h1>
         <div className="receipt-address mt-0.5 text-[8.5px] font-medium leading-tight text-black">{RECEIPT_PHARMACY_ADDRESS.map(line => <p key={line}>{line}</p>)}</div>
@@ -112,7 +112,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
               <p className="receipt-item-title min-w-0 font-semibold break-words text-black">{item.productName}</p>
               <p className="receipt-item-price tabular shrink-0 font-semibold text-black">{formatRupiah(item.lineTotal)}</p>
             </div>
-            <p className="receipt-item-detail tabular mt-0.5 text-[8.5px] font-semibold text-black">
+            <p className="receipt-item-detail tabular mt-0.5 text-[9.5px] font-semibold text-black">
               {item.quantity} {item.unitName} × {formatRupiah(item.unitPrice)}
             </p>
           </div>
@@ -125,6 +125,12 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
           <dt className="receipt-total">TOTAL</dt>
           <dd className="receipt-total tabular">{formatRupiah(finalTotal)}</dd>
         </div>
+        {(receipt.paymentMethod === "cash" || receipt.paymentMethod === "bpjs") && receipt.cashReceived !== undefined ? (
+          <>
+            <div className="receipt-payment-total flex justify-between"><dt className="font-medium">{receipt.paymentMethod === "cash" ? "TUNAI" : "UANG DITERIMA"}</dt><dd className="tabular font-medium">{formatRupiah(receipt.cashReceived)}</dd></div>
+            <div className="receipt-payment-total flex justify-between"><dt className="font-medium">KEMBALI</dt><dd className="tabular font-medium">{formatRupiah(receipt.cashChange ?? 0)}</dd></div>
+          </>
+        ) : null}
         <div className="flex justify-between"><dt className="font-medium">Pembayaran</dt><dd className="font-semibold">{receipt.paymentMethod === "bpjs" ? "DITANGGUNG BPJS" : paymentName(receipt.paymentMethod)}</dd></div>
         {isTempo ? (
           <>
@@ -132,12 +138,6 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
             <div className="flex justify-between"><dt className="font-medium">Jatuh Tempo</dt><dd className="font-semibold">{formatIndonesianDate(tempoDueDate)}</dd></div>
             {tempoPaid > 0 ? <div className="flex justify-between"><dt className="font-medium">Sudah Dibayar</dt><dd className="tabular font-medium">{formatRupiah(tempoPaid)}</dd></div> : null}
             <div className="flex justify-between font-bold"><dt>Sisa Tagihan</dt><dd className="tabular">{formatRupiah(tempoRemaining)}</dd></div>
-          </>
-        ) : null}
-        {(receipt.paymentMethod === "cash" || receipt.paymentMethod === "bpjs") && receipt.cashReceived !== undefined ? (
-          <>
-            <div className="flex justify-between"><dt className="font-medium">{receipt.paymentMethod === "cash" ? "TUNAI" : "UANG DITERIMA"}</dt><dd className="tabular font-medium">{formatRupiah(receipt.cashReceived)}</dd></div>
-            <div className="flex justify-between"><dt className="font-medium">KEMBALI</dt><dd className="tabular font-medium">{formatRupiah(receipt.cashChange ?? 0)}</dd></div>
           </>
         ) : null}
         <div className="flex justify-between"><dt className="font-medium">Status</dt><dd className={`font-bold ${receipt.status === "voided" ? "text-red-700 print:text-black" : receipt.status === "pending_payment" || (isTempo && receipt.receivable?.paymentStatus !== "paid") ? "text-amber-800 print:text-black" : "text-black"}`}>{statusLabel}</dd></div>

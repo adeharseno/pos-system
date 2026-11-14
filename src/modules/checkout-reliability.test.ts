@@ -41,6 +41,17 @@ test("out of stock removes the stale cart line", () => {
   assert.match(result.message, /stok habis/);
 });
 
+test("authoritative reconciliation shares base stock across mixed selling units", () => {
+  const mixed = [
+    { ...line, productUnitId: "box", unitLabel: "BOX", conversionToBase: 10, quantity: 7 },
+    { ...line, productUnitId: "tablet", unitLabel: "TAB", conversionToBase: 1, quantity: 20 },
+  ];
+  const result = reconcileCartWithAvailability(mixed, [{ productId: "p1", availableStockBase: 75 }]);
+  assert.deepEqual(result.cart.map(item => item.quantity), [7, 5]);
+  assert.equal(result.cart.reduce((total, item) => total + item.quantity * item.conversionToBase, 0), 75);
+  assert.match(result.message, /tersisa 5 TAB/);
+});
+
 test("computeCartFingerprint generates stable signature regardless of cart order", () => {
   const line2 = { ...line, productId: "p2", productUnitId: "u2" };
   const sig1 = computeCartFingerprint([line, line2]);

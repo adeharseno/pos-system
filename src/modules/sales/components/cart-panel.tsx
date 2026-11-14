@@ -11,7 +11,7 @@ const rupiah=formatRupiah;
  * be emptied while typing (Backspace/Delete) instead of snapping back to 1.
  * The draft is committed on blur/Enter, and arrow keys step the quantity.
  */
-function QuantityInput({value,onChange,label,id}:{value:number;onChange:(value:number)=>void;label:string;id:string}){
+function QuantityInput({value,onChange,onError,onFocus,label,id,index,unitId}:{value:number;onChange:(value:number)=>void;onError:(message:string)=>void;onFocus?:()=>void;label:string;id:string;index:number;unitId:string}){
   const [draft,setDraft]=useState(String(value));
   const [focused,setFocused]=useState(false);
   const [lastValue,setLastValue]=useState(value);
@@ -20,29 +20,30 @@ function QuantityInput({value,onChange,label,id}:{value:number;onChange:(value:n
   const commit=()=>{
     const parsed=Number.parseInt(draft,10);
     const next=Number.isSafeInteger(parsed)&&parsed>0?parsed:value;
-    setDraft(String(next));
-    if(next!==value)onChange(next);
+    try{if(next!==value)onChange(next);setDraft(String(next));}
+    catch(error){setDraft(String(value));onError(error instanceof Error?error.message:"Jumlah tidak valid.");}
   };
   const step=(delta:number)=>{
     const parsed=Number.parseInt(draft,10);
     const base=Number.isSafeInteger(parsed)&&parsed>0?parsed:value;
     const next=Math.max(1,base+delta);
-    setDraft(String(next));
-    onChange(next);
+    try{onChange(next);setDraft(String(next));}
+    catch(error){setDraft(String(value));onError(error instanceof Error?error.message:"Jumlah tidak valid.");}
   };
   const keyDown=(event:KeyboardEvent<HTMLInputElement>)=>{
+    if(event.repeat&&(event.key==="ArrowUp"||event.key==="ArrowDown"||event.key==="+"||event.key==="Add"||event.key==="-"||event.key==="Subtract"||event.key==="Enter")){event.preventDefault();return;}
     if(event.key==="ArrowUp"){event.preventDefault();step(1);}
     else if(event.key==="ArrowDown"){event.preventDefault();step(-1);}
+    else if(event.key==="+"||event.key==="Add"){event.preventDefault();step(1);}
+    else if(event.key==="-"||event.key==="Subtract"){event.preventDefault();step(-1);}
     else if(event.key==="Enter"){event.preventDefault();commit();}
   };
-  return <input id={id} aria-label={label} className="tabular qty-input-field h-full w-11 border-x border-[var(--border)] text-center text-sm font-semibold outline-none" inputMode="numeric" pattern="[0-9]*" type="text" value={draft}
-    onFocus={event=>{setFocused(true);event.currentTarget.select();}}
+  return <input id={id} data-cart-qty-index={index} data-cart-unit-id={unitId} aria-label={label} className="tabular qty-input-field h-full w-11 border-x border-[var(--border)] text-center text-sm font-semibold outline-none" inputMode="numeric" pattern="[0-9]*" type="text" value={draft}
+    onFocus={event=>{setFocused(true);event.currentTarget.select();onFocus?.();}}
     onBlur={()=>{setFocused(false);commit();}}
     onChange={event=>{
       const raw=event.target.value.replace(/\D/g,"");
       setDraft(raw);
-      const parsed=Number.parseInt(raw,10);
-      if(Number.isSafeInteger(parsed)&&parsed>0)onChange(parsed);
     }}
     onKeyDown={keyDown} />;
 }
@@ -53,6 +54,8 @@ export function CartPanel({
   onClose,
   onReview,
   onReviewBpjs,
+  onError = () => undefined,
+  onQuantityFocus,
   mobile = false,
 }: {
   cart: CartLine[];
@@ -60,10 +63,13 @@ export function CartPanel({
   onClose?: () => void;
   onReview: () => void;
   onReviewBpjs?: () => void;
+  onError?: (message: string) => void;
+  onQuantityFocus?: (line: CartLine) => void;
   mobile?: boolean;
 }) {
   const subtotal = cartSubtotalPreview(cart);
   const count = cart.reduce((total, line) => total + line.quantity, 0);
+  const safelyChange=(change:()=>CartLine[])=>{try{onChange(change());}catch(error){onError(error instanceof Error?error.message:"Jumlah tidak valid.");}};
   return (
     <aside
       aria-label="Pesanan saat ini"
@@ -96,7 +102,7 @@ export function CartPanel({
           </div>
         ) : (
           <div className="divide-y divide-[var(--border)]">
-            {cart.map((line) => (
+            {cart.map((line, index) => (
               <article className="py-4" key={`${line.productId}:${line.productUnitId}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -120,7 +126,7 @@ export function CartPanel({
                     <button
                       aria-label={`Kurangi ${line.productName} ${line.unitLabel}`}
                       className="grid size-11 place-items-center text-lg hover:bg-zinc-50"
-                      onClick={() => onChange(decreaseCartQuantity(cart, line.productId, line.productUnitId))}
+                      onClick={() => safelyChange(() => decreaseCartQuantity(cart, line.productId, line.productUnitId))}
                     >
                       −
                     </button>
@@ -131,13 +137,17 @@ export function CartPanel({
                       key={`${line.productId}:${line.productUnitId}`}
                       id={`qty-${line.productUnitId}`}
                       label={`Jumlah ${line.productName} ${line.unitLabel}`}
+                      index={index}
+                      unitId={line.productUnitId}
                       value={line.quantity}
                       onChange={(value) => onChange(setCartQuantity(cart, line.productId, line.productUnitId, value))}
+                      onError={onError}
+                      onFocus={() => onQuantityFocus?.(line)}
                     />
                     <button
                       aria-label={`Tambah ${line.productName} ${line.unitLabel}`}
                       className="grid size-11 place-items-center text-lg hover:bg-zinc-50"
-                      onClick={() => onChange(increaseCartQuantity(cart, line.productId, line.productUnitId))}
+                      onClick={() => safelyChange(() => increaseCartQuantity(cart, line.productId, line.productUnitId))}
                     >
                       +
                     </button>

@@ -11,17 +11,20 @@ export function releaseSubmissionLock(lock: SubmissionLock) { lock.current = fal
 export type ProductAvailability = { productId: string; availableStockBase: number };
 export function reconcileCartWithAvailability(cart: CartLine[], availability: ProductAvailability[]) {
   const stock = new Map(availability.map(row => [row.productId, row.availableStockBase]));
+  const remaining = new Map(stock);
   const changed: string[] = [];
   const next = cart.flatMap(line => {
-    const available = stock.get(line.productId);
+    const available = remaining.get(line.productId);
     if (available === undefined) return [line];
     const maximum = Math.floor(available / line.conversionToBase);
     if (maximum <= 0) { changed.push(`${line.productName}: stok habis`); return []; }
     if (line.quantity > maximum) {
       changed.push(`${line.productName}: tersisa ${maximum} ${line.unitLabel}`);
-      return [{ ...line, quantity: maximum }];
+      remaining.set(line.productId, available - maximum * line.conversionToBase);
+      return [{ ...line, quantity: maximum, availableStockBase: stock.get(line.productId) }];
     }
-    return [line];
+    remaining.set(line.productId, available - line.quantity * line.conversionToBase);
+    return [{ ...line, availableStockBase: stock.get(line.productId) }];
   });
   return { cart: next, message: changed.join("; ") };
 }

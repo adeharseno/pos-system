@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { CustomerSummary } from "@/modules/customers/customer-input";
 import { addDaysToYmd } from "@/modules/ui/date";
 import { formatRupiah, parseRupiahInput } from "@/modules/ui/currency";
@@ -17,6 +17,7 @@ import {
 import { jakartaToday } from "../transaction-history-filters";
 import { acquireSubmissionLock, clearPersistedPendingCheckout, computeCartFingerprint, getPersistedPendingCheckout, persistPendingCheckout, releaseSubmissionLock } from "../checkout-reliability";
 import { CustomerPicker } from "./customer-picker";
+import { consumeCashierKeyboardAction, isEditableKeyboardTarget } from "../cashier-keyboard";
 
 type CashSuccess = CheckoutResult & { cashReceived: number };
 
@@ -45,6 +46,8 @@ export function CheckoutPanel({
   onInsufficientStock: () => Promise<string>;
 }) {
   const submissionLock = useRef(false);
+  const dialogRef = useRef<HTMLElement>(null);
+  const cashInputRef = useRef<HTMLInputElement>(null);
   const cartFingerprint = cart.length ? computeCartFingerprint(cart) : `bpjs-empty:${isBpjsOnly}`;
   const persisted = getPersistedPendingCheckout(cartFingerprint);
   const requestId = useRef<string | null>(persisted?.requestId ?? null);
@@ -191,10 +194,28 @@ export function CheckoutPanel({
     }
   }
 
+  useEffect(() => { dialogRef.current?.focus(); }, []);
+
+  const handleKeyboard = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const action = consumeCashierKeyboardAction(event, "checkout", isEditableKeyboardTarget(event.target));
+    if (!action) return;
+    event.stopPropagation();
+    if (action === "category-bebas") selectCategory("bebas");
+    else if (action === "category-umum") selectCategory("umum");
+    else if (action === "category-bpjs") selectCategory("bpjs");
+    else if (action === "method-cash" && category !== "bpjs") { setMethod("cash"); setError(null); }
+    else if (action === "method-qris" && category !== "bpjs") { setMethod("qris"); setError(null); }
+    else if (action === "method-transfer" && category !== "bpjs") { setMethod("bank_transfer"); setError(null); }
+    else if (action === "method-tempo" && category !== "bpjs") { setMethod("tempo"); setError(null); }
+    else if (action === "focus-cash" && category !== "bpjs" && method === "cash") cashInputRef.current?.focus();
+    else if (action === "submit-checkout") void submit();
+    else if (action === "close-checkout") handleClose();
+  };
+
   return (
-    <div className="fixed inset-0 z-[60] grid place-items-center p-3 sm:p-6">
+    <div className="fixed inset-0 z-[60] grid place-items-center p-3 sm:p-6" onKeyDown={handleKeyboard}>
       <button aria-label="Tutup pemeriksaan pembayaran" className="absolute inset-0 bg-zinc-950/40" onClick={handleClose} />
-      <section aria-labelledby="checkout-title" aria-modal="true" role="dialog" className="relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-[600px] flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+      <section ref={dialogRef} tabIndex={-1} aria-labelledby="checkout-title" aria-modal="true" role="dialog" className="relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-[600px] flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
         <header className="flex min-h-16 items-center justify-between border-b border-[var(--border)] px-4 sm:px-6">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-[var(--accent)]">Pembayaran</p>
@@ -429,6 +450,7 @@ export function CheckoutPanel({
                 <div className="flex h-14 items-center rounded-[var(--radius)] border border-[var(--border-strong)] bg-white px-4 focus-within:border-[var(--accent)] focus-within:ring-2 focus-within:ring-[var(--accent-soft)]">
                   <span className="mr-2 text-zinc-500">Rp</span>
                   <input
+                    ref={cashInputRef}
                     className="plain-input-field tabular min-w-0 flex-1 text-xl font-semibold outline-none"
                     inputMode="numeric"
                     placeholder="0"
